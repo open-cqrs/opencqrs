@@ -1,8 +1,8 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
-site_name: CQRS/ES Framework
-site_url: https://www.digitalfrontiers.de
-repo_url: https://github.com/dxfrontiers/cqrs-es-framework
-copyright: Copyright &copy; 2025 Digital Frontiers GmbH & Co. KG
+site_name: OpenCQRS
+site_url: https://www.opencqrs.com
+repo_url: https://github.com/open-cqrs/opencqrs
+copyright: Copyright &copy; 2025 OpenCQRS and contributors
 
 plugins:
   - social
@@ -13,7 +13,7 @@ extra:
     esdb_homepage: https://to.be.defined
     esdb_version: 0.79.1
     framework_version: 1.0.0
-  homepage: https://www.digitalfrontiers.de
+  homepage: https://www.opencqrs.com
   social:
     - icon: fontawesome/solid/blog
       link: https://blog.digitalfrontiers.de
