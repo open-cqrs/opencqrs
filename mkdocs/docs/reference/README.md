@@ -1,0 +1,38 @@
+
+- Modules (Client / Framework / Test)
+- Events
+- Exceptions
+  - Client vs. Framework 
+  - Transient
+  - Non-Transient
+- Core Components
+  - EsdbClient
+  - EventRepository
+  - Command Router
+  - EventHandlingProcessor
+    - Transactions
+    - ...
+  - Test-Fixture
+    - simulates CommandRouter
+    - in-memory capture/replay
+    - ...
+  - Event Publishers
+    - EventPublisher
+    - CommandEventPublisher
+    - ImmediateEventPublisher
+  - StateRebuildingCache
+  - TypeResolver
+  - Marshaller (Client/Framework)
+  - ...
+- Must-Have "Extension Points":
+  - common (sealed function interfaces, autowiring when using annotations) 
+  - CHD (manual, Bean & Annotation)
+    - sourcing modes
+  - SRHD
+  - EHD
+- Spring Support/Integration (Auto-Configurations)
+  - EsdbClient Config
+  - EHP Life-Cycle
+    - Retry Configuration
+    - ....
+  - Test Slice

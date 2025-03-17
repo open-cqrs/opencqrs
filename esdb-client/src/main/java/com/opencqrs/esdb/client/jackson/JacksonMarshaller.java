@@ -1,0 +1,187 @@
+/* Copyright (C) 2025 OpenCQRS and contributors */
+package com.opencqrs.esdb.client.jackson;
+
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.opencqrs.esdb.client.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+
+/** {@link ObjectMapper} based {@link Marshaller} implementation. */
+public class JacksonMarshaller implements Marshaller {
+
+    private final ObjectMapper objectMapper;
+
+    public JacksonMarshaller(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    public Health fromHealthResponse(String response) {
+        try {
+            return objectMapper.readValue(response, Health.class);
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public String toWriteEventsRequest(List<EventCandidate> eventCandidates, List<Precondition> preconditions) {
+        var jacksonPreconditions = preconditions.stream().map(this::toJackson).toList();
+
+        try {
+            return objectMapper.writeValueAsString(
+                    Map.of("events", eventCandidates, "preconditions", jacksonPreconditions));
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public List<Event> fromWriteEventsResponse(String response) {
+        try {
+            List<JacksonResponseElement.Item.Payload.Event> deserialized = objectMapper.readValue(
+                    response,
+                    objectMapper
+                            .getTypeFactory()
+                            .constructCollectionLikeType(List.class, JacksonResponseElement.Item.Payload.Event.class));
+            return deserialized.stream()
+                    .map(e -> new Event(
+                            e.source,
+                            e.subject,
+                            e.type,
+                            e.data,
+                            e.specversion,
+                            e.id,
+                            e.time,
+                            e.datacontenttype,
+                            null,
+                            e.predecessorhash))
+                    .toList();
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public String toReadOrObserveEventsRequest(String subject, Set<Option> options) {
+        JacksonOptions jacksonOptions = new JacksonOptions(
+                mapOptionIfPresent(options, Option.Recursive.class, o -> true),
+                mapOptionIfPresent(
+                        options, Option.Order.class, o -> o.type().name().toLowerCase()),
+                mapOptionIfPresent(options, Option.LowerBoundId.class, Option.LowerBoundId::id),
+                mapOptionIfPresent(options, Option.UpperBoundId.class, Option.UpperBoundId::id),
+                mapOptionIfPresent(
+                        options,
+                        Option.FromLatestEvent.class,
+                        o -> new JacksonOptions.FromLatestEvent(
+                                o.subject(),
+                                o.type(),
+                                switch (o.ifEventIsMissing()) {
+                                    case READ_NOTHING -> "read-nothing";
+                                    case READ_EVERYTHING -> "read-everything";
+                                })));
+
+        try {
+            return objectMapper.writeValueAsString(Map.of("subject", subject, "options", jacksonOptions));
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public ResponseElement fromReadOrObserveResponseLine(String line) {
+        try {
+            JacksonResponseElement jacksonResponseElement = objectMapper.readValue(line, JacksonResponseElement.class);
+            return switch (jacksonResponseElement) {
+                case JacksonResponseElement.Heartbeat heartbeat -> new ResponseElement.Heartbeat();
+                case JacksonResponseElement.Item item -> new Event(
+                        item.payload.event.source,
+                        item.payload.event.subject,
+                        item.payload.event.type,
+                        item.payload.event.data,
+                        item.payload.event.specversion,
+                        item.payload.event.id,
+                        item.payload.event.time,
+                        item.payload.event.datacontenttype,
+                        item.hash,
+                        item.payload.event.predecessorhash);
+            };
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    private JacksonPrecondition toJackson(Precondition precondition) {
+        return switch (precondition) {
+            case Precondition.SubjectIsPristine p -> new JacksonPrecondition.IsPristine(
+                    "isSubjectPristine", new JacksonPrecondition.IsPristine.Payload(p.subject()));
+
+            case Precondition.SubjectIsOnEventId p -> new JacksonPrecondition.IsOnEventId(
+                    "isSubjectOnEventId", new JacksonPrecondition.IsOnEventId.Payload(p.subject(), p.eventId()));
+        };
+    }
+
+    interface JacksonPrecondition {
+        record IsPristine(String type, Payload payload) implements JacksonPrecondition {
+            record Payload(String subject) {}
+        }
+
+        record IsOnEventId(String type, Payload payload) implements JacksonPrecondition {
+            record Payload(String subject, String eventId) {}
+        }
+    }
+
+    private <T, O extends Option> T mapOptionIfPresent(
+            Set<Option> options, Class<O> optionClass, Function<O, T> mapper) {
+        return options.stream()
+                .filter(o -> o.getClass().equals(optionClass))
+                .findAny()
+                .map(o -> mapper.apply((O) o))
+                .orElse(null);
+    }
+
+    record JacksonOptions(
+            Boolean recursive,
+            String order,
+            String lowerBoundId,
+            String upperBoundId,
+            FromLatestEvent fromLatestEvent) {
+        record FromLatestEvent(String subject, String type, String ifEventIsMissing) {}
+    }
+
+    @JsonTypeInfo(
+            use = JsonTypeInfo.Id.NAME,
+            include = JsonTypeInfo.As.EXISTING_PROPERTY,
+            property = "type",
+            visible = true)
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = JacksonResponseElement.Heartbeat.class, name = "heartbeat"),
+        @JsonSubTypes.Type(value = JacksonResponseElement.Item.class, name = "item"),
+    })
+    sealed interface JacksonResponseElement {
+        record Heartbeat() implements JacksonResponseElement {}
+
+        record Item(@NotNull Payload payload, @NotBlank String hash) implements JacksonResponseElement {
+            record Payload(@NotNull Event event) {
+                record Event(
+                        @NotBlank String source,
+                        @NotBlank String subject,
+                        @NotBlank String type,
+                        @NotNull Map<String, ?> data,
+                        @NotBlank String specversion,
+                        @NotBlank String id,
+                        @NotNull Instant time,
+                        @NotBlank String datacontenttype,
+                        @NotBlank String predecessorhash) {}
+            }
+        }
+    }
+}

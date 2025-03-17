@@ -1,0 +1,31 @@
+spring.application.name: library
+
+
+esdb:
+  server:
+    uri: http://localhost:3000
+    access-token: secret
+
+cqrs:
+  event-handling:
+    standard:
+      life-cycle.partitions: 2
+    groups:
+      logging:
+        sequence.resolution: no-sequence
+        retry.policy: none
+      statistics:
+        life-cycle:
+          partitions: 1
+          controller: application-context
+        progress.tracking: in-memory
+  metadata:
+    propagation:
+      keys:
+        - "request-uri"
+
+management:
+  endpoint:
+    health:
+      show-components: always
+      #show-details: always

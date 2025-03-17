@@ -1,0 +1,3 @@
+com.opencqrs.esdb.client.EsdbClientAutoConfiguration
+com.opencqrs.esdb.client.EsdbHealthContributorAutoConfiguration
+com.opencqrs.esdb.client.JacksonMarshallerAutoConfiguration

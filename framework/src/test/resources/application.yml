@@ -1,0 +1,7 @@
+spring.application.name: test-app
+
+cqrs.event-handling:
+  standard:
+    retry:
+      policy: fixed
+      initial-interval: 5

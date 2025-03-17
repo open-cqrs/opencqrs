@@ -1,0 +1,49 @@
+version: '3'
+services:
+    event-store:
+        image: docker.io/thenativeweb/eventsourcingdb:0.79.1
+        user: "root:root"
+        volumes:
+            - event-data:/events
+        entrypoint: "eventsourcingdb-server run --access-token secret --store-data-directory /events --ui"
+        ports:
+            - "3000:3000"
+
+    h2database:
+        image: oscarfonts/h2:2.2.224
+        ports:
+            - "1521:1521"
+            - "8081:81"
+        environment:
+            H2_OPTIONS: "-ifNotExists"
+
+    application:
+        image: "dxfrontiers/cqrs-example-application:latest"
+        ports:
+            - "8080"
+        environment:
+            ESDB_SERVER_URI: http://event-store:3000
+            SPRING_DATASOURCE_URL: jdbc:h2:tcp:h2database:1521/library
+            SPRING_DATASOURCE_USERNAME: sa
+            SPRING_DATASOURCE_PASSWORD:
+            SPRING_SQL_INIT_MODE: always
+            SPRING_JPA_HIBERNATE_DDL_AUTO: update
+            SERVER_SHUTDOWN: graceful
+            JAVA_TOOL_OPTIONS: "-XX:UseSVE=0"
+        depends_on:
+            - event-store
+            - h2database
+        deploy:
+            replicas: 2
+
+    nginx:
+        image: nginx:latest
+        volumes:
+            - ./nginx.conf:/etc/nginx/nginx.conf:ro
+        depends_on:
+            - application
+        ports:
+            - "8080:8080"
+
+volumes:
+    event-data:

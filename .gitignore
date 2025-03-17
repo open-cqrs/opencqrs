@@ -1,0 +1,10 @@
+.direnv
+.gradle
+.idea
+build
+out
+*/build
+*/out
+.cache
+mkdocs/site
+mkdocs/.cache

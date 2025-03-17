@@ -1,0 +1,12 @@
+/* Copyright (C) 2025 OpenCQRS and contributors */
+package com.opencqrs.framework;
+
+import com.opencqrs.framework.command.Command;
+
+public record BorrowBookCommand(String isbn) implements Command {
+
+    @Override
+    public String getSubject() {
+        return "/books/" + isbn;
+    }
+}

@@ -1,0 +1,4 @@
+esdb:
+  server:
+    uri: http://unknown
+    access-token: not-used

@@ -1,0 +1,121 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+site_name: CQRS/ES Framework
+site_url: https://www.digitalfrontiers.de
+repo_url: https://github.com/dxfrontiers/cqrs-es-framework
+copyright: Copyright &copy; 2025 Digital Frontiers GmbH & Co. KG
+
+plugins:
+  - social
+  - macros
+
+extra:
+  custom:
+    esdb_homepage: https://to.be.defined
+    esdb_version: 0.79.1
+    framework_version: 1.0.0
+  homepage: https://www.digitalfrontiers.de
+  social:
+    - icon: fontawesome/solid/blog
+      link: https://blog.digitalfrontiers.de
+    - icon: fontawesome/brands/github
+      link: https://github.com/dxfrontiers
+    - icon: fontawesome/brands/x-twitter
+      link: https:/x.com/dxfrontiers
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/digital-frontiers-gmbh-co-kg
+
+theme:
+  name: material
+  language: en
+  favicon: images/favicon.png
+  icon:
+    logo: material/library
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.footer
+    - navigation.tabs
+    - navigation.indexes
+    - content.code.copy
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.snippets:
+      auto_append:
+        - includes/glossary.md
+      check_paths: True
+
+watch:
+  - includes
+
+nav:
+  - Overview: index.md
+  - Getting Started:
+    - tutorials/README.md
+    - Setting up the Environment: tutorials/01_setup/index.md
+    - Handling Commands: tutorials/02_command_handling/index.md
+    - Developing the Domain: tutorials/03_domain_logic/index.md
+    - Handling Events: tutorials/04_book_reminder/index.md
+    - Building Read Models from Events: tutorials/05_catalog_projection/index.md
+    - Testing the Domain: tutorials/06_testing/index.md
+  - Guides:
+    - howto/README.md
+    - Registering explicit Event Types: howto/explicit_type_registration/index.md
+    - Upcasting a Single Event: howto/upcaster_single_event/index.md
+    - Persisting Abstract Event Classes: howto/abstract_type_persistence/index.md
+  - Reference:
+    - reference/README.md
+    - Modules: reference/modules/index.md
+    - Event Representations: reference/events/index.md
+    - Exception Handling: reference/exceptions/index.md
+    - Core Components:
+      - reference/core_components/index.md
+      - Event-Sourcing DB Client: reference/core_components/esdb_client/index.md
+      - Event Repository: reference/core_components/event_repository/index.md
+      - Command Router: reference/core_components/command_router/index.md
+      - Event Handling Processor: reference/core_components/event_handling_processor/index.md
+    - Extension Points:
+        - reference/extension_points/index.md
+        - Definining Command Handlers: reference/extension_points/command_handler/index.md
+        - Defining State Rebuilding Handlers: reference/extension_points/state_rebuilding_handler/index.md
+        - Defining Event Handlers: reference/extension_points/event_handler/index.md
+  - Concepts:
+    - concepts/README.md
+    - Events: concepts/events/index.md
+    - Event Sourcing: concepts/event_sourcing/index.md
+    - Event Upcasting: concepts/upcasting/index.md

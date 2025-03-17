@@ -1,0 +1,101 @@
+{
+  "properties": [
+    {
+      "name": "cqrs.event-handling.standard.fetch.subject",
+      "defaultValue": "/"
+    },
+    {
+      "name": "cqrs.event-handling.standard.fetch.recursive",
+      "defaultValue": "true"
+    },
+    {
+      "name": "cqrs.event-handling.standard.life-cycle.auto-start",
+      "defaultValue": "true"
+    },
+    {
+      "name": "cqrs.event-handling.standard.life-cycle.partitions",
+      "defaultValue": "1"
+    },
+    {
+      "name": "cqrs.event-handling.standard.sequence.resolution",
+      "defaultValue": "per_second_level_subject"
+    },
+    {
+      "name": "cqrs.event-handling.standard.retry.policy",
+      "defaultValue": "exponential_backoff"
+    },
+    {
+      "name": "cqrs.event-handling.standard.retry.initial-interval",
+      "defaultValue": "PT2S"
+    },
+    {
+      "name": "cqrs.event-handling.standard.retry.max-interval",
+      "defaultValue": "PT30S"
+    },
+    {
+      "name": "cqrs.event-handling.standard.retry.multiplier",
+      "defaultValue": "1.5"
+    },
+    {
+      "name": "cqrs.metadata.propagation.keys",
+      "defaultValue": "[]"
+    }
+  ],
+  "hints": [
+    {
+      "name": "cqrs.command-handling.cache.ref",
+      "providers": [
+        {
+          "name": "spring-bean-reference",
+          "parameters": {
+            "target": "com.opencqrs.framework.command.cache.StateRebuildingCache"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cqrs.event-handling.standard.life-cycle.controller-registration",
+      "providers": [
+        {
+          "name": "spring-bean-reference",
+          "parameters": {
+            "target": "com.opencqrs.framework.eventhandler.EventHandlingProcessorLifecycleRegistration"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cqrs.event-handling.standard.life-cycle.lock-registry",
+      "providers": [
+        {
+          "name": "spring-bean-reference",
+          "parameters": {
+            "target": "org.springframework.integration.support.locks.LockRegistry"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cqrs.event-handling.standard.progress.tracker-ref",
+      "providers": [
+        {
+          "name": "spring-bean-reference",
+          "parameters": {
+            "target": "com.opencqrs.framework.eventhandler.progress.ProgressTracker"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cqrs.event-handling.standard.sequence.resolver-ref",
+      "providers": [
+        {
+          "name": "spring-bean-reference",
+          "parameters": {
+            "target": "com.opencqrs.framework.eventhandler.partitioning.EventSequenceResolver"
+          }
+        }
+      ]
+    }
+  ]
+}
