@@ -153,8 +153,8 @@ lines to your _build script_ (depending on the build system chosen before):
         implementation("org.springframework.boot:spring-boot-starter-data-jpa")
         implementation("org.springframework.boot:spring-boot-starter-web")
         runtimeOnly("com.h2database:h2")
-        implementation("com.opencqrs:cqrs-framework-spring-boot-starter:{{ custom.framework_version }}")
-        testImplementation("com.opencqrs:cqrs-framework-test:{{ custom.framework_version }}")
+        implementation("com.opencqrs:framework-spring-boot-starter:{{ custom.framework_version }}")
+        testImplementation("com.opencqrs:framework-test:{{ custom.framework_version }}")
         testImplementation("org.springframework.boot:spring-boot-starter-test")
         testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     }
@@ -167,8 +167,8 @@ lines to your _build script_ (depending on the build system chosen before):
         implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
         implementation 'org.springframework.boot:spring-boot-starter-web'
         runtimeOnly 'com.h2database:h2'
-        implementation 'com.opencqrs:cqrs-framework-spring-boot-starter:{{ custom.framework_version }}'
-        testImplementation 'com.opencqrs:cqrs-framework-test:{{ custom.framework_version }}'
+        implementation 'com.opencqrs:framework-spring-boot-starter:{{ custom.framework_version }}'
+        testImplementation 'com.opencqrs:framework-test:{{ custom.framework_version }}'
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
@@ -200,12 +200,12 @@ lines to your _build script_ (depending on the build system chosen before):
             </dependency>
             <dependency>
                 <groupId>com.opencqrs</groupId>
-                <artifactId>cqrs-framework-spring-boot-starter</artifactId>
+                <artifactId>framework-spring-boot-starter</artifactId>
                 <version>{{ custom.framework_version }}</version>
             </dependency>
             <dependency>
                 <groupId>com.opencqrs</groupId>
-                <artifactId>cqrs-framework-test</artifactId>
+                <artifactId>framework-test</artifactId>
                 <version>{{ custom.framework_version }}</version>
                 <scope>test</scope>
             </dependency>

@@ -5,7 +5,7 @@ description: How events are represented within the CQRS/ES framework
 Events published or consumed using the CQRS/ES Framework are stored within the Event-Sourcing DB, which in turn
 uses the [Cloud Events Specification](https://github.com/cloudevents/spec) as a basis for representing events in JSON.
 
-The following diagram depicts how these events are represented within the `esdb-client` and `cqrs-framework`
+The following diagram depicts how these events are represented within the `esdb-client` and `framework`
 [modules](../modules/index.md) and an exemplary application `domain`:
 
 ```mermaid
@@ -19,7 +19,7 @@ namespace domain {
         +String isbn
     }
 }
-namespace cqrs-framework {
+namespace framework {
     class EventData~E~ {
         <<record>>
         +Map~String, ?~ metaData
@@ -91,19 +91,19 @@ additionally containing:
 
 ## Event Payload and Metadata
 
-Within the `cqrs-framework` the `data` of `EventCandidate` and `Event`, respectively, is transformed into
+Within the `framework` the `data` of `EventCandidate` and `Event`, respectively, is transformed into
 an `EventData` representation with:
 *   the `payload` representing the actual Java event object, e.g. `BookPurchasedEvent`
 *   the `metaData` containing additional meta-data accompanying the event
 
 !!! info
     The [Cloud Events Specification](https://github.com/cloudevents/spec) is constrained to having only a single
-    `data` attribute per event. Hence, the `cqrs-framework` uses `EventData` to distinguish between the actual
+    `data` attribute per event. Hence, the `framework` uses `EventData` to distinguish between the actual
     Java object payload and its optional meta-data.
 
 ## Application Events
 
-The event persistence within the `cqrs-framework` module is focused on writing and reading Java object events, that
+The event persistence within the `framework` module is focused on writing and reading Java object events, that
 can be serialized to and deserialized from JSON. Accordingly, `EventData` is used as a wrapper for representing the
 object payload and its optional meta-data. The event `type` indicates which Java class to use for deserializing
 the events.

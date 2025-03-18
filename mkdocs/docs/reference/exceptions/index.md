@@ -6,7 +6,7 @@ The [core modules](../modules/index.md#core) use different exception hierarchies
 
 ## Client Exceptions
 
-The `esdb-client` module exposes the following exception hierarchy, when using `Client`{ title="com.opencqrs.eventsourcingdb.client.Client" }
+The `esdb-client` module exposes the following exception hierarchy, when using `Client`{ title="com.opencqrs.esdb.client.Client" }
 operations:
 
 ```mermaid
@@ -35,18 +35,18 @@ The following table describes, which error cases are represented by each of thes
 
 | Exception Class                                                                                                              | Cause/Description                                                                    |
 |------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
-| `ClientException` { title="com.opencqrs.eventsourcingdb.client.ClientException" }                                       | base class for all client-related exceptions, extending `java.lang.RuntimeException` |
-| `HttpException` { title="com.opencqrs.eventsourcingdb.client.ClientException.HttpException" }                           | base class for HTTP status codes representing errors                                 |
-| `HttpClientException` { title="com.opencqrs.eventsourcingdb.client.ClientException.HttpException.HttpClientException" } | represents HTTP 4xx client errors                                                    |
-| `HttpServerException` { title="com.opencqrs.eventsourcingdb.client.ClientException.HttpException.HttpServerException" } | represents HTTP 5xx server errors                                                    |
-| `InterruptedException` { title="com.opencqrs.eventsourcingdb.client.ClientException.InterruptedException" }             | represents thread interruption                                                       |                                                      
-| `TransportException` { title="com.opencqrs.eventsourcingdb.client.ClientException.TransportException" }                 | represents network and connection errors                                             |
-| `InvalidUsageException` { title="com.opencqrs.eventsourcingdb.client.ClientException.InvalidUsageException" }           | represents invalid Client API usage, e.g. conflicting preconditions or options       |
-| `MarshallingException` { title="com.opencqrs.eventsourcingdb.client.ClientException.MarshallingException" }             | represents serialization/deserialization errors to/from JSON                         |
+| `ClientException` { title="com.opencqrs.esdb.client.ClientException" }                                       | base class for all client-related exceptions, extending `java.lang.RuntimeException` |
+| `HttpException` { title="com.opencqrs.esdb.client.ClientException.HttpException" }                           | base class for HTTP status codes representing errors                                 |
+| `HttpClientException` { title="com.opencqrs.esdb.client.ClientException.HttpException.HttpClientException" } | represents HTTP 4xx client errors                                                    |
+| `HttpServerException` { title="com.opencqrs.esdb.client.ClientException.HttpException.HttpServerException" } | represents HTTP 5xx server errors                                                    |
+| `InterruptedException` { title="com.opencqrs.esdb.client.ClientException.InterruptedException" }             | represents thread interruption                                                       |                                                      
+| `TransportException` { title="com.opencqrs.esdb.client.ClientException.TransportException" }                 | represents network and connection errors                                             |
+| `InvalidUsageException` { title="com.opencqrs.esdb.client.ClientException.InvalidUsageException" }           | represents invalid Client API usage, e.g. conflicting preconditions or options       |
+| `MarshallingException` { title="com.opencqrs.esdb.client.ClientException.MarshallingException" }             | represents serialization/deserialization errors to/from JSON                         |
 
 ## Framework Exceptions
 
-The `cqrs-framework` module exposes the following exception hierarchy, when using any of its core components:
+The `framework` module exposes the following exception hierarchy, when using any of its core components:
 
 ```mermaid
 classDiagram
@@ -89,13 +89,13 @@ The following table describes, which error cases are represented by each of thes
 
 Additionally, the following occurrences of `ClientException` are wrapped into `TransientException`{ title="com.opencqrs.framework.CqrsFrameworkException.TransientException" }:
 
--  `HttpClientException`{ title="com.opencqrs.eventsourcingdb.client.ClientException.HttpException.HttpClientException" } with `statusCode` 408 (request timeout)
--  `HttpServerException`{ title="com.opencqrs.eventsourcingdb.client.ClientException.HttpException.HttpServerException" }
--  `TransportException`{ title="com.opencqrs.eventsourcingdb.client.ClientException.TransportException" }
+-  `HttpClientException`{ title="com.opencqrs.esdb.client.ClientException.HttpException.HttpClientException" } with `statusCode` 408 (request timeout)
+-  `HttpServerException`{ title="com.opencqrs.esdb.client.ClientException.HttpException.HttpServerException" }
+-  `TransportException`{ title="com.opencqrs.esdb.client.ClientException.TransportException" }
 
 The following occurrences of `ClientException` are wrapped into `NonTransientException`{ title="com.opencqrs.framework.CqrsFrameworkException.NonTransientException" }:
 
--  `HttpClientException`{ title="com.opencqrs.eventsourcingdb.client.ClientException.HttpException.HttpClientException" } with any other 4xx `statusCode`
--  `HttpException`{ title="com.opencqrs.eventsourcingdb.client.ClientException.HttpException" } for any non 4xx/5xx `statusCode`
--  `InvalidUsageException`{ title="com.opencqrs.eventsourcingdb.client.ClientException.InvalidUsageException" }
--  `MarshallingException`{ title="com.opencqrs.eventsourcingdb.client.ClientException.MarshallingException" }
+-  `HttpClientException`{ title="com.opencqrs.esdb.client.ClientException.HttpException.HttpClientException" } with any other 4xx `statusCode`
+-  `HttpException`{ title="com.opencqrs.esdb.client.ClientException.HttpException" } for any non 4xx/5xx `statusCode`
+-  `InvalidUsageException`{ title="com.opencqrs.esdb.client.ClientException.InvalidUsageException" }
+-  `MarshallingException`{ title="com.opencqrs.esdb.client.ClientException.MarshallingException" }
