@@ -4,7 +4,7 @@ spring.application.name: library
 esdb:
   server:
     uri: http://localhost:3000
-    access-token: secret
+    api-token: secret
 
 cqrs:
   event-handling:

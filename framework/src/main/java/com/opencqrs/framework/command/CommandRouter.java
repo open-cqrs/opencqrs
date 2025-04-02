@@ -4,7 +4,6 @@ package com.opencqrs.framework.command;
 import static java.util.stream.Collectors.*;
 
 import com.opencqrs.esdb.client.Event;
-import com.opencqrs.esdb.client.IdUtil;
 import com.opencqrs.esdb.client.Option;
 import com.opencqrs.esdb.client.Precondition;
 import com.opencqrs.framework.CqrsFrameworkException;
@@ -194,7 +193,7 @@ public final class CommandRouter {
                 cached -> {
                     Set<Option> options = new HashSet<>();
                     if (cached.eventId() != null) {
-                        options.add(new Option.LowerBoundId(IdUtil.nextEventId(cached.eventId())));
+                        options.add(new Option.LowerBoundExclusive(cached.eventId()));
                     }
 
                     EventReader.ClientRequestor clientRequestor =

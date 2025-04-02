@@ -10,8 +10,7 @@ import java.util.function.Consumer;
  * Sealed interface for options used by {@link Client} implementations to read or observe events from the underlying
  * event store.
  */
-public sealed interface Option
-        permits Option.Recursive, Option.Order, Option.LowerBoundId, Option.UpperBoundId, Option.FromLatestEvent {
+public sealed interface Option {
 
     /**
      * Specifies that events shall be fetched recursively, that is including the requested subject (events) and its
@@ -42,23 +41,42 @@ public sealed interface Option
     }
 
     /**
-     * Specifies the lowest event id to fetch from.
+     * Specifies the lowest inclusive event id to fetch from.
      *
      * @param id the lower bound event id (inclusive)
      * @see Client#read(String, Set)
      * @see Client#read(String, Set, Consumer)
      * @see Client#observe(String, Set, Consumer)
      */
-    record LowerBoundId(@NotBlank String id) implements Option {}
+    record LowerBoundInclusive(@NotBlank String id) implements Option {}
 
     /**
-     * Specifies the highest event id to fetch to.
+     * Specifies the lowest exclusive event id to fetch from.
+     *
+     * @param id the lower bound event id (inclusive)
+     * @see Client#read(String, Set)
+     * @see Client#read(String, Set, Consumer)
+     * @see Client#observe(String, Set, Consumer)
+     */
+    record LowerBoundExclusive(@NotBlank String id) implements Option {}
+
+    /**
+     * Specifies the highest inclusive event id to fetch to.
      *
      * @param id the upper bound event id (inclusive)
      * @see Client#read(String, Set)
      * @see Client#read(String, Set, Consumer)
      */
-    record UpperBoundId(@NotBlank String id) implements Option {}
+    record UpperBoundInclusive(@NotBlank String id) implements Option {}
+
+    /**
+     * Specifies the highest exclusive event id to fetch to.
+     *
+     * @param id the upper bound event id (inclusive)
+     * @see Client#read(String, Set)
+     * @see Client#read(String, Set, Consumer)
+     */
+    record UpperBoundExclusive(@NotBlank String id) implements Option {}
 
     /**
      * Specifies that the list of events is optimized by <i>omitting</i> any event prior to the latest event available

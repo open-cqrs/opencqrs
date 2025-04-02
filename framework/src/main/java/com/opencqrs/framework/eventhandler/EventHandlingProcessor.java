@@ -4,7 +4,6 @@ package com.opencqrs.framework.eventhandler;
 import com.opencqrs.esdb.client.Client;
 import com.opencqrs.esdb.client.ClientException;
 import com.opencqrs.esdb.client.Event;
-import com.opencqrs.esdb.client.IdUtil;
 import com.opencqrs.esdb.client.Option;
 import com.opencqrs.framework.CqrsFrameworkException;
 import com.opencqrs.framework.client.ClientInterruptedException;
@@ -210,8 +209,7 @@ public class EventHandlingProcessor implements Runnable {
                                 case Progress.Success success -> success.id();
                                 case Progress.None ignored -> null;
                             })
-                            .map(IdUtil::nextEventId)
-                            .map(Option.LowerBoundId::new)
+                            .map(Option.LowerBoundExclusive::new)
                             .ifPresent(options::add);
 
                     eventReader.consumeRaw(
