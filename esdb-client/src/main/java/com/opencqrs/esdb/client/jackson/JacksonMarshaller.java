@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -47,11 +48,11 @@ public class JacksonMarshaller implements Marshaller {
     @Override
     public List<Event> fromWriteEventsResponse(String response) {
         try {
-            List<JacksonResponseElement.Item.Payload.Event> deserialized = objectMapper.readValue(
+            List<JacksonResponseElement.Event.Payload> deserialized = objectMapper.readValue(
                     response,
                     objectMapper
                             .getTypeFactory()
-                            .constructCollectionLikeType(List.class, JacksonResponseElement.Item.Payload.Event.class));
+                            .constructCollectionLikeType(List.class, JacksonResponseElement.Event.Payload.class));
             return deserialized.stream()
                     .map(e -> new Event(
                             e.source,
@@ -62,7 +63,7 @@ public class JacksonMarshaller implements Marshaller {
                             e.id,
                             e.time,
                             e.datacontenttype,
-                            null,
+                            e.hash,
                             e.predecessorhash))
                     .toList();
         } catch (JsonProcessingException e) {
@@ -73,12 +74,26 @@ public class JacksonMarshaller implements Marshaller {
     @Override
     public String toReadOrObserveEventsRequest(String subject, Set<Option> options) {
         JacksonOptions jacksonOptions = new JacksonOptions(
-                mapOptionIfPresent(options, Option.Recursive.class, o -> true),
-                mapOptionIfPresent(
+                mapOptionIfPresentOrNull(options, Option.Recursive.class, o -> true),
+                mapOptionIfPresentOrNull(
                         options, Option.Order.class, o -> o.type().name().toLowerCase()),
-                mapOptionIfPresent(options, Option.LowerBoundId.class, Option.LowerBoundId::id),
-                mapOptionIfPresent(options, Option.UpperBoundId.class, Option.UpperBoundId::id),
                 mapOptionIfPresent(
+                                options,
+                                Option.LowerBoundInclusive.class,
+                                b -> new JacksonOptions.Bound(b.id(), JacksonOptions.Bound.Type.inclusive))
+                        .orElseGet(() -> mapOptionIfPresentOrNull(
+                                options,
+                                Option.LowerBoundExclusive.class,
+                                b -> new JacksonOptions.Bound(b.id(), JacksonOptions.Bound.Type.exclusive))),
+                mapOptionIfPresent(
+                                options,
+                                Option.UpperBoundInclusive.class,
+                                b -> new JacksonOptions.Bound(b.id(), JacksonOptions.Bound.Type.inclusive))
+                        .orElseGet(() -> mapOptionIfPresentOrNull(
+                                options,
+                                Option.UpperBoundExclusive.class,
+                                b -> new JacksonOptions.Bound(b.id(), JacksonOptions.Bound.Type.exclusive))),
+                mapOptionIfPresentOrNull(
                         options,
                         Option.FromLatestEvent.class,
                         o -> new JacksonOptions.FromLatestEvent(
@@ -102,17 +117,17 @@ public class JacksonMarshaller implements Marshaller {
             JacksonResponseElement jacksonResponseElement = objectMapper.readValue(line, JacksonResponseElement.class);
             return switch (jacksonResponseElement) {
                 case JacksonResponseElement.Heartbeat heartbeat -> new ResponseElement.Heartbeat();
-                case JacksonResponseElement.Item item -> new Event(
-                        item.payload.event.source,
-                        item.payload.event.subject,
-                        item.payload.event.type,
-                        item.payload.event.data,
-                        item.payload.event.specversion,
-                        item.payload.event.id,
-                        item.payload.event.time,
-                        item.payload.event.datacontenttype,
-                        item.hash,
-                        item.payload.event.predecessorhash);
+                case JacksonResponseElement.Event event -> new Event(
+                        event.payload.source,
+                        event.payload.subject,
+                        event.payload.type,
+                        event.payload.data,
+                        event.payload.specversion,
+                        event.payload.id,
+                        event.payload.time,
+                        event.payload.datacontenttype,
+                        event.payload.hash,
+                        event.payload.predecessorhash);
             };
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
@@ -139,21 +154,28 @@ public class JacksonMarshaller implements Marshaller {
         }
     }
 
-    private <T, O extends Option> T mapOptionIfPresent(
+    private <T, O extends Option> Optional<T> mapOptionIfPresent(
             Set<Option> options, Class<O> optionClass, Function<O, T> mapper) {
         return options.stream()
                 .filter(o -> o.getClass().equals(optionClass))
                 .findAny()
-                .map(o -> mapper.apply((O) o))
-                .orElse(null);
+                .map(o -> mapper.apply((O) o));
+    }
+
+    private <T, O extends Option> T mapOptionIfPresentOrNull(
+            Set<Option> options, Class<O> optionClass, Function<O, T> mapper) {
+        return mapOptionIfPresent(options, optionClass, mapper).orElse(null);
     }
 
     record JacksonOptions(
-            Boolean recursive,
-            String order,
-            String lowerBoundId,
-            String upperBoundId,
-            FromLatestEvent fromLatestEvent) {
+            Boolean recursive, String order, Bound lowerBound, Bound upperBound, FromLatestEvent fromLatestEvent) {
+        record Bound(String id, Type type) {
+            enum Type {
+                inclusive,
+                exclusive,
+            }
+        }
+
         record FromLatestEvent(String subject, String type, String ifEventIsMissing) {}
     }
 
@@ -164,24 +186,23 @@ public class JacksonMarshaller implements Marshaller {
             visible = true)
     @JsonSubTypes({
         @JsonSubTypes.Type(value = JacksonResponseElement.Heartbeat.class, name = "heartbeat"),
-        @JsonSubTypes.Type(value = JacksonResponseElement.Item.class, name = "item"),
+        @JsonSubTypes.Type(value = JacksonResponseElement.Event.class, name = "event"),
     })
     sealed interface JacksonResponseElement {
         record Heartbeat() implements JacksonResponseElement {}
 
-        record Item(@NotNull Payload payload, @NotBlank String hash) implements JacksonResponseElement {
-            record Payload(@NotNull Event event) {
-                record Event(
-                        @NotBlank String source,
-                        @NotBlank String subject,
-                        @NotBlank String type,
-                        @NotNull Map<String, ?> data,
-                        @NotBlank String specversion,
-                        @NotBlank String id,
-                        @NotNull Instant time,
-                        @NotBlank String datacontenttype,
-                        @NotBlank String predecessorhash) {}
-            }
+        record Event(@NotNull Payload payload) implements JacksonResponseElement {
+            record Payload(
+                    @NotBlank String source,
+                    @NotBlank String subject,
+                    @NotBlank String type,
+                    @NotNull Map<String, ?> data,
+                    @NotBlank String specversion,
+                    @NotBlank String id,
+                    @NotNull Instant time,
+                    @NotBlank String datacontenttype,
+                    @NotBlank String hash,
+                    @NotBlank String predecessorhash) {}
         }
     }
 }

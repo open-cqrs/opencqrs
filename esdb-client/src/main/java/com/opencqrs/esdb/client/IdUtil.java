@@ -13,15 +13,4 @@ public final class IdUtil {
     public static Long fromEventId(String id) {
         return Long.valueOf(id);
     }
-
-    /**
-     * Increases an {@link Event#id()} by one.
-     *
-     * @param id the event id
-     * @return the increased id
-     */
-    public static String nextEventId(String id) {
-        long nextId = fromEventId(id) + 1;
-        return Long.toString(nextId);
-    }
 }

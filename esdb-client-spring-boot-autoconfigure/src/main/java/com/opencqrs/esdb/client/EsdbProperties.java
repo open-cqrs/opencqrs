@@ -15,13 +15,13 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param connectionTimeout maximum duration to establish connection with the server
  */
 @ConfigurationProperties("esdb")
-public record EsdbClientProperties(@NotNull Server server, @NotNull @DefaultValue("PT5S") Duration connectionTimeout) {
+public record EsdbProperties(@NotNull Server server, @NotNull @DefaultValue("PT5S") Duration connectionTimeout) {
 
     /**
      * Server configuration settings.
      *
      * @param uri Server connection URI.
-     * @param accessToken Bearer access token.
+     * @param apiToken API access token.
      */
-    public record Server(@NotNull URI uri, @NotBlank String accessToken) {}
+    public record Server(@NotNull URI uri, @NotBlank String apiToken) {}
 }

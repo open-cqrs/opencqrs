@@ -87,16 +87,22 @@ can start it using Docker, as follows:
     ```shell
     docker run --rm -it \
         --publish 3000:3000 \
-        docker.io/thenativeweb/eventsourcingdb:{{ custom.esdb_version }} \
-        run --access-token secret --store-temporary
+        docker.io/thenativeweb/eventsourcingdb:{{ custom.esdb_version }} run \
+        --api-token secret \
+        --data-directory-temporary \
+        --http-enabled=true \
+        --https-enabled=false
     ```
 
 === " :fontawesome-brands-windows: Windows"
     ```shell
     docker run --rm -it ^
         --publish 3000:3000 ^
-        docker.io/thenativeweb/eventsourcingdb:{{ custom.esdb_version }} ^
-        run --access-token secret --store-temporary
+        docker.io/thenativeweb/eventsourcingdb:{{ custom.esdb_version }} run ^
+        --api-token secret ^
+        --data-directory-temporary ^
+        --http-enabled=true ^
+        --https-enabled=false
     ```
 
 The database will be listening on TCP port `3000` with the access token `secret`, which can be verified by querying its `/ping` endpoint as follows:
@@ -232,7 +238,7 @@ spring.application.name=library-service
 server.port=8080
 
 esdb.server.uri=http://localhost:3000
-esdb.server.access-token=secret
+esdb.server.api-token=secret
 
 management.endpoint.health.show-components=always
 ```

@@ -41,8 +41,10 @@ public class EsdbClientIntegrationTest {
     private final Map<Class<? extends Option>, ? extends Option> options = Map.of(
             Option.Recursive.class, new Option.Recursive(),
             Option.Order.class, new Option.Order(Option.Order.Type.CHRONOLOGICAL),
-            Option.LowerBoundId.class, new Option.LowerBoundId("42"),
-            Option.UpperBoundId.class, new Option.UpperBoundId("548"),
+            Option.LowerBoundInclusive.class, new Option.LowerBoundInclusive("42"),
+            Option.LowerBoundExclusive.class, new Option.LowerBoundExclusive("43"),
+            Option.UpperBoundInclusive.class, new Option.UpperBoundInclusive("548"),
+            Option.UpperBoundExclusive.class, new Option.UpperBoundExclusive("549"),
             Option.FromLatestEvent.class,
                     new Option.FromLatestEvent(
                             "subject", "type", Option.FromLatestEvent.IfEventIsMissing.READ_NOTHING));
@@ -237,7 +239,7 @@ public class EsdbClientIntegrationTest {
 
         @Test
         public void badRequestDetected() {
-            assertThatThrownBy(() -> client.observe("/", Set.of(new Option.LowerBoundId("")), event -> {}))
+            assertThatThrownBy(() -> client.observe("/", Set.of(new Option.LowerBoundExclusive("")), event -> {}))
                     .isInstanceOfSatisfying(
                             ClientException.HttpException.HttpClientException.class,
                             e -> assertThat(e.getStatusCode()).isEqualTo(400));
@@ -247,11 +249,23 @@ public class EsdbClientIntegrationTest {
         @ValueSource(
                 classes = {
                     Option.Order.class,
-                    Option.UpperBoundId.class,
+                    Option.UpperBoundInclusive.class,
+                    Option.UpperBoundExclusive.class,
                 })
         @Timeout(5)
         public void unsupportedRequestOptionsChecked(Class<? extends Option> unsupported) {
             assertThatThrownBy(() -> client.observe("/", Set.of(options.get(unsupported)), event -> {}))
+                    .isInstanceOf(ClientException.InvalidUsageException.class);
+        }
+
+        @Test
+        public void unsupportedLowerBoundOptionCombinationDetected() {
+            assertThatThrownBy(() -> client.observe(
+                            "/",
+                            Set.of(
+                                    options.get(Option.LowerBoundInclusive.class),
+                                    options.get(Option.LowerBoundExclusive.class)),
+                            event -> {}))
                     .isInstanceOf(ClientException.InvalidUsageException.class);
         }
 
@@ -373,7 +387,7 @@ public class EsdbClientIntegrationTest {
 
         @Test
         public void badRequestDetected() {
-            assertThatThrownBy(() -> client.read("/", Set.of(new Option.LowerBoundId(""))))
+            assertThatThrownBy(() -> client.read("/", Set.of(new Option.LowerBoundInclusive(""))))
                     .isInstanceOfSatisfying(
                             ClientException.HttpException.HttpClientException.class,
                             e -> assertThat(e.getStatusCode()).isEqualTo(400));
@@ -384,6 +398,28 @@ public class EsdbClientIntegrationTest {
         @ValueSource(classes = {})
         public void unsupportedRequestOptionsChecked(Class<? extends Option> unsupported) {
             assertThatThrownBy(() -> client.read("/", Set.of(options.get(unsupported)), event -> {}))
+                    .isInstanceOf(ClientException.InvalidUsageException.class);
+        }
+
+        @Test
+        public void unsupportedLowerBoundOptionCombinationDetected() {
+            assertThatThrownBy(() -> client.read(
+                            "/",
+                            Set.of(
+                                    options.get(Option.LowerBoundInclusive.class),
+                                    options.get(Option.LowerBoundExclusive.class)),
+                            event -> {}))
+                    .isInstanceOf(ClientException.InvalidUsageException.class);
+        }
+
+        @Test
+        public void unsupportedUpperBoundOptionCombinationDetected() {
+            assertThatThrownBy(() -> client.read(
+                            "/",
+                            Set.of(
+                                    options.get(Option.UpperBoundInclusive.class),
+                                    options.get(Option.UpperBoundExclusive.class)),
+                            event -> {}))
                     .isInstanceOf(ClientException.InvalidUsageException.class);
         }
 
@@ -479,13 +515,18 @@ public class EsdbClientIntegrationTest {
     static GenericContainer<?> esdb = new GenericContainer<>(
                     "docker.io/thenativeweb/eventsourcingdb:" + System.getProperty("esdb.version"))
             .withExposedPorts(3000)
-            .withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint(
-                    "eventsourcingdb-server", "run", "--access-token", "secret", "--store-temporary"));
+            .withCreateContainerCmdModifier(cmd -> cmd.withCmd(
+                    "run",
+                    "--api-token",
+                    "secret",
+                    "--data-directory-temporary",
+                    "--http-enabled=true",
+                    "--https-enabled=false"));
 
     @DynamicPropertySource
     static void esdbProperties(DynamicPropertyRegistry registry) {
         registry.add("esdb.server.uri", () -> "http://" + esdb.getHost() + ":" + esdb.getFirstMappedPort());
-        registry.add("esdb.server.access-token", () -> "secret");
+        registry.add("esdb.server.api-token", () -> "secret");
     }
 
     public record BookAddedEvent(String author, String title) {}

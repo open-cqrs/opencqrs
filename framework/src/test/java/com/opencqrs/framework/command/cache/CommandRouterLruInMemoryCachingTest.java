@@ -145,7 +145,7 @@ public class CommandRouterLruInMemoryCachingTest {
     }
 
     @Test
-    public void sourcedWithNextLowerBoundIdFromPreviouslyCachedInstance() {
+    public void sourcedWithExclusiveLowerBoundIdFromPreviouslyCachedInstance() {
         commandRouter.send(new AddBookCommand(isbn));
 
         assertChangedCacheKeys(() -> commandRouter.send(new BorrowBookCommand(isbn)), delta -> {
@@ -156,7 +156,7 @@ public class CommandRouterLruInMemoryCachingTest {
             ArgumentCaptor<Set<Option>> options = ArgumentCaptor.captor();
             verify(client, atLeastOnce()).read(eq("/books/" + isbn), options.capture(), any());
 
-            assertThat(options.getValue()).contains(new Option.LowerBoundId(IdUtil.nextEventId(eventId)));
+            assertThat(options.getValue()).contains(new Option.LowerBoundExclusive(eventId));
         });
     }
 
@@ -255,12 +255,17 @@ public class CommandRouterLruInMemoryCachingTest {
     static GenericContainer<?> esdb = new GenericContainer<>(
                     "docker.io/thenativeweb/eventsourcingdb:" + System.getProperty("esdb.version"))
             .withExposedPorts(3000)
-            .withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint(
-                    "eventsourcingdb-server", "run", "--access-token", "secret", "--store-temporary"));
+            .withCreateContainerCmdModifier(cmd -> cmd.withCmd(
+                    "run",
+                    "--api-token",
+                    "secret",
+                    "--data-directory-temporary",
+                    "--http-enabled=true",
+                    "--https-enabled=false"));
 
     @DynamicPropertySource
     static void esdbProperties(DynamicPropertyRegistry registry) {
         registry.add("esdb.server.uri", () -> "http://" + esdb.getHost() + ":" + esdb.getFirstMappedPort());
-        registry.add("esdb.server.access-token", () -> "secret");
+        registry.add("esdb.server.api-token", () -> "secret");
     }
 }

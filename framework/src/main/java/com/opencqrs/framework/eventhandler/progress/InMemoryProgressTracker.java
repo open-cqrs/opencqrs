@@ -2,9 +2,10 @@
 package com.opencqrs.framework.eventhandler.progress;
 
 import com.opencqrs.framework.eventhandler.EventHandler;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
 /**
@@ -14,7 +15,7 @@ import java.util.function.Supplier;
  */
 public class InMemoryProgressTracker implements ProgressTracker {
 
-    private final Map<GroupPartition, Progress> ids = new HashMap<>();
+    private final ConcurrentMap<GroupPartition, Progress> ids = new ConcurrentHashMap<>();
 
     @Override
     public Progress current(String group, long partition) {

@@ -288,12 +288,17 @@ public class CommandAndEventHandlingIntegrationTest {
     static GenericContainer<?> esdb = new GenericContainer<>(
                     "docker.io/thenativeweb/eventsourcingdb:" + System.getProperty("esdb.version"))
             .withExposedPorts(3000)
-            .withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint(
-                    "eventsourcingdb-server", "run", "--access-token", "secret", "--store-temporary"));
+            .withCreateContainerCmdModifier(cmd -> cmd.withCmd(
+                    "run",
+                    "--api-token",
+                    "secret",
+                    "--data-directory-temporary",
+                    "--http-enabled=true",
+                    "--https-enabled=false"));
 
     @DynamicPropertySource
     static void esdbProperties(DynamicPropertyRegistry registry) {
         registry.add("esdb.server.uri", () -> "http://" + esdb.getHost() + ":" + esdb.getFirstMappedPort());
-        registry.add("esdb.server.access-token", () -> "secret");
+        registry.add("esdb.server.api-token", () -> "secret");
     }
 }

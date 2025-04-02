@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /** {@link Client} implementation for the event sourcing database. */
@@ -18,12 +19,17 @@ public final class EsdbClient implements AutoCloseable, Client {
     private static final Set<Class<? extends Option>> VALID_READ_OPTIONS = Set.of(
             Option.Recursive.class,
             Option.Order.class,
-            Option.LowerBoundId.class,
-            Option.UpperBoundId.class,
+            Option.LowerBoundInclusive.class,
+            Option.LowerBoundExclusive.class,
+            Option.UpperBoundInclusive.class,
+            Option.UpperBoundExclusive.class,
             Option.FromLatestEvent.class);
 
-    private static final Set<Class<? extends Option>> VALID_OBSERVE_OPTIONS =
-            Set.of(Option.Recursive.class, Option.LowerBoundId.class, Option.FromLatestEvent.class);
+    private static final Set<Class<? extends Option>> VALID_OBSERVE_OPTIONS = Set.of(
+            Option.Recursive.class,
+            Option.LowerBoundInclusive.class,
+            Option.LowerBoundExclusive.class,
+            Option.FromLatestEvent.class);
 
     private final URI serverUri;
     private final String accessToken;
@@ -41,7 +47,7 @@ public final class EsdbClient implements AutoCloseable, Client {
 
     @Override
     public Health health() throws ClientException {
-        HttpRequest httpRequest = newJsonRequest("/api/health").GET().build();
+        HttpRequest httpRequest = newJsonRequest("/api/v1/health").GET().build();
 
         var response = httpRequestErrorHandler.handle(
                 httpRequest, headers -> HttpResponse.BodySubscribers.ofString(Util.fromHttpHeaders(headers)));
@@ -51,7 +57,7 @@ public final class EsdbClient implements AutoCloseable, Client {
     @Override
     public List<Event> write(List<EventCandidate> eventCandidates, List<Precondition> preconditions)
             throws ClientException {
-        HttpRequest httpRequest = newJsonRequest("/api/write-events")
+        HttpRequest httpRequest = newJsonRequest("/api/v1/write-events")
                 .POST(HttpRequest.BodyPublishers.ofString(
                         marshaller.toWriteEventsRequest(eventCandidates, preconditions)))
                 .build();
@@ -84,7 +90,7 @@ public final class EsdbClient implements AutoCloseable, Client {
     public void observe(String subject, Set<Option> options, Consumer<Event> eventConsumer) throws ClientException {
         checkValidOptions(VALID_OBSERVE_OPTIONS, options);
 
-        readOrObserve("/api/observe-events", subject, options, eventConsumer);
+        readOrObserve("/api/v1/observe-events", subject, options, eventConsumer);
         throw new ClientException.TransportException("Event observation stopped unexpectedly");
     }
 
@@ -92,7 +98,7 @@ public final class EsdbClient implements AutoCloseable, Client {
     public void read(String subject, Set<Option> options, Consumer<Event> eventConsumer) throws ClientException {
         checkValidOptions(VALID_READ_OPTIONS, options);
 
-        readOrObserve("/api/read-events", subject, options, eventConsumer);
+        readOrObserve("/api/v1/read-events", subject, options, eventConsumer);
     }
 
     @Override
@@ -103,13 +109,24 @@ public final class EsdbClient implements AutoCloseable, Client {
     }
 
     private void checkValidOptions(Set<Class<? extends Option>> supported, Set<Option> requested) {
-        List<? extends Class<? extends Option>> unsupported = requested.stream()
-                .map(Option::getClass)
-                .filter(o -> !supported.contains(o))
-                .toList();
+        Set<Class<? extends Option>> requestedOptionClasses =
+                requested.stream().map(Option::getClass).collect(Collectors.toSet());
 
-        if (!unsupported.isEmpty()) {
-            throw new ClientException.InvalidUsageException("unsupported option(s) used: " + unsupported);
+        if (!supported.containsAll(requestedOptionClasses)) {
+            requestedOptionClasses.removeAll(supported);
+            throw new ClientException.InvalidUsageException("unsupported option(s) used: " + requestedOptionClasses);
+        }
+
+        Set<Class<? extends Option>> invalidLowerBounds =
+                Set.of(Option.LowerBoundInclusive.class, Option.LowerBoundExclusive.class);
+        if (requestedOptionClasses.containsAll(invalidLowerBounds)) {
+            throw new ClientException.InvalidUsageException("invalid option combination: " + invalidLowerBounds);
+        }
+
+        Set<Class<? extends Option>> invalidUpperBounds =
+                Set.of(Option.UpperBoundInclusive.class, Option.UpperBoundExclusive.class);
+        if (requestedOptionClasses.containsAll(invalidUpperBounds)) {
+            throw new ClientException.InvalidUsageException("invalid option combination: " + invalidUpperBounds);
         }
     }
 

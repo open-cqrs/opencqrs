@@ -72,7 +72,7 @@ public class EventRepositoryTest {
     public class EventReaderTests {
 
         private EventReader.ClientRequestor clientRequestor =
-                (c, eventConsumer) -> c.read("/test", Set.of(new Option.LowerBoundId("0815")), eventConsumer);
+                (c, eventConsumer) -> c.read("/test", Set.of(new Option.LowerBoundInclusive("0815")), eventConsumer);
 
         private Event rawEvent = new Event(
                 eventSource.source(),
@@ -108,7 +108,7 @@ public class EventRepositoryTest {
                         return null;
                     })
                     .when(client)
-                    .read(eq("/test"), eq(Set.of(new Option.LowerBoundId("0815"))), any());
+                    .read(eq("/test"), eq(Set.of(new Option.LowerBoundInclusive("0815"))), any());
 
             doReturn(Stream.of(upcastedEvent)).when(eventUpcasters).upcast(rawEvent);
             doReturn(convertedEvent.getClass()).when(eventTypeResolver).getJavaClass(upcastedEvent.type());

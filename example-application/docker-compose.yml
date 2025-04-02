@@ -1,11 +1,11 @@
 version: '3'
 services:
     event-store:
-        image: docker.io/thenativeweb/eventsourcingdb:0.79.1
+        image: docker.io/thenativeweb/eventsourcingdb:0.106.0
         user: "root:root"
         volumes:
             - event-data:/events
-        entrypoint: "eventsourcingdb-server run --access-token secret --store-data-directory /events --ui"
+        command: "run --api-token secret --data-directory /events --http-enabled=true --https-enabled=false --with-ui"
         ports:
             - "3000:3000"
 
