@@ -95,9 +95,9 @@ public class EsdbClientIntegrationTest {
                 assertThat(e.dataContentType()).isEqualTo("application/json");
                 assertThat(e.id()).isNotBlank();
                 assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
-                assertThat(e.hash()).as("hash not yet returned on write").isNull();
+                assertThat(e.hash()).isNotBlank();
                 assertThat(e.predecessorHash()).isNotBlank();
-                assertThat(e.data()).as("mirrored from event candidate").isSameAs(data);
+                assertThat(e.data()).isEqualTo(data);
             });
         }
 
@@ -152,9 +152,9 @@ public class EsdbClientIntegrationTest {
                 assertThat(e.dataContentType()).isEqualTo("application/json");
                 assertThat(e.id()).isNotBlank();
                 assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
-                assertThat(e.hash()).as("hash not yet returned on write").isNull();
+                assertThat(e.hash()).isNotBlank();
                 assertThat(e.predecessorHash()).isNotBlank();
-                assertThat(e.data()).as("mirrored from event candidate").isSameAs(data);
+                assertThat(e.data()).isEqualTo(data);
             });
         }
 
@@ -219,16 +219,14 @@ public class EsdbClientIntegrationTest {
                         assertThat(e.dataContentType()).isEqualTo("application/json");
                         assertThat(e.id()).isNotBlank();
                         assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
-                        assertThat(e.hash())
-                                .as("hash not yet returned on write")
-                                .isNull();
+                        assertThat(e.hash()).isNotBlank();
                         assertThat(e.predecessorHash()).isNotBlank();
                     })
                     .anySatisfy(e -> {
-                        assertThat(e.data()).as("mirrored from event candidate").isSameAs(data1);
+                        assertThat(e.data()).isEqualTo(data1);
                     })
                     .anySatisfy(e -> {
-                        assertThat(e.data()).as("mirrored from event candidate").isSameAs(data2);
+                        assertThat(e.data()).isEqualTo(data2);
                     });
         }
     }
