@@ -74,13 +74,12 @@ public final class EsdbClient implements AutoCloseable, Client {
                             eventResponse.source(),
                             eventResponse.subject(),
                             eventResponse.type(),
-                            eventCandidate.data(),
+                            eventResponse.data(),
                             eventResponse.specVersion(),
                             eventResponse.id(),
                             eventResponse.time(),
                             eventResponse.dataContentType(),
-                            // hash is not yet available from write response
-                            null,
+                            eventResponse.hash(),
                             eventResponse.predecessorHash());
                 })
                 .toList();
