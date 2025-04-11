@@ -124,6 +124,34 @@ subprojects {
         }
     }
 
+    tasks.register("generateBadges") {
+        doLast {
+            val projectVersion = subprojects.firstOrNull()?.version ?: "1.0.0"
+            val javaVersion = JavaVersion.VERSION_21.toString().replace("JAVA_", "")
+            val springBootVersion = frameworkVersions["spring.boot.version"]
+            val esdbVersion = frameworkVersions["esdb.version"]
+
+            val badgesContent = """
+![Release](https://img.shields.io/badge/Release-$projectVersion-blue.svg)
+![JDK](https://img.shields.io/badge/JDK-$javaVersion-green.svg)
+![ESDB](https://img.shields.io/badge/ESDB-$esdbVersion-orange.svg)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-$springBootVersion-brightgreen.svg)
+""".trimIndent()
+
+            File("${project.rootDir}/badges.md").writeText(badgesContent)
+
+            val readmeFile = File("${project.rootDir}/README.md")
+            val readmeContent = readmeFile.readText()
+
+            val updatedReadme = readmeContent.replace(
+                Regex("<!-- BADGES_START -->(.*?)<!-- BADGES_END -->", RegexOption.DOT_MATCHES_ALL),
+                "<!-- BADGES_START -->\n$badgesContent\n<!-- BADGES_END -->"
+            )
+
+            readmeFile.writeText(updatedReadme)
+        }
+    }
+
     afterEvaluate {
         dependencyManagement {
             imports {
