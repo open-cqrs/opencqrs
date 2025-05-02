@@ -11,7 +11,7 @@ val memorySettings: Map<String, String> by extra
 
 plugins {
     id("maven-publish")
-    id("org.cyclonedx.bom") version "2.1.0" apply false
+    id("org.cyclonedx.bom") version "2.3.0" apply false
     id("io.spring.dependency-management") version "1.1.7"
     id("com.github.ben-manes.versions") version "0.52.0"
     id("com.diffplug.spotless") version "7.0.2" apply false
@@ -58,8 +58,7 @@ subprojects {
     tasks.register<CycloneDxTask>("generateBom") {
         mustRunAfter(tasks.named("processResources"))
 
-        // TODO: check if sufficient
-        includeConfigs = setOf("runtimeClasspath", "testCompileClasspath")
+        includeConfigs = setOf("runtimeClasspath")
         skipConfigs = setOf()
         outputFormat = "json"
 

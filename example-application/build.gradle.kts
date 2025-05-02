@@ -1,7 +1,7 @@
 plugins {
     id("java")
-    id("org.springframework.boot") version "3.4.2"
-    id("com.google.cloud.tools.jib") version "3.4.4"
+    id("org.springframework.boot") version "3.4.5"
+    id("com.google.cloud.tools.jib") version "3.4.5"
 }
 
 dependencies {
@@ -13,7 +13,7 @@ dependencies {
     implementation("org.springframework.integration:spring-integration-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     runtimeOnly("com.h2database:h2")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.4")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation(project(":framework-test"))

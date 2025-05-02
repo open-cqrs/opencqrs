@@ -11,5 +11,5 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-jdbc")
     testImplementation("com.h2database:h2")
     testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.awaitility:awaitility:4.2.2")
+    testImplementation("org.awaitility:awaitility:4.3.0")
 }

@@ -11,6 +11,7 @@
         devShells.default = pkgs.mkShell {
           packages = [
             pkgs.jdk21
+            pkgs.gnupg
             pkgs.python3Packages.mkdocs-material
             pkgs.python3Packages.cairosvg
             pkgs.python3Packages.pillow

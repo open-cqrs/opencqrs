@@ -1,4 +1,4 @@
-spring.application.name: tag://test-app
+spring.application.name: test-app
 
 cqrs.event-handling:
   standard:
