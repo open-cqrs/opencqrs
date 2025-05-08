@@ -20,7 +20,7 @@ public class EventPersistenceAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public EventSource eventSource(Environment environment) {
-        return new EventSource(environment.getProperty("spring.application.name"));
+        return new EventSource("tag://" + environment.getProperty("spring.application.name"));
     }
 
     @Bean

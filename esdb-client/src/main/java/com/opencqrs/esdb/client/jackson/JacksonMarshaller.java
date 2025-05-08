@@ -1,6 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client.jackson;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -74,7 +75,7 @@ public class JacksonMarshaller implements Marshaller {
     @Override
     public String toReadOrObserveEventsRequest(String subject, Set<Option> options) {
         JacksonOptions jacksonOptions = new JacksonOptions(
-                mapOptionIfPresentOrNull(options, Option.Recursive.class, o -> true),
+                mapOptionIfPresent(options, Option.Recursive.class, o -> true).orElse(false),
                 mapOptionIfPresentOrNull(
                         options, Option.Order.class, o -> o.type().name().toLowerCase()),
                 mapOptionIfPresent(
@@ -167,6 +168,7 @@ public class JacksonMarshaller implements Marshaller {
         return mapOptionIfPresent(options, optionClass, mapper).orElse(null);
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     record JacksonOptions(
             Boolean recursive, String order, Bound lowerBound, Bound upperBound, FromLatestEvent fromLatestEvent) {
         record Bound(String id, Type type) {
