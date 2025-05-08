@@ -242,7 +242,7 @@ public class CommandAndEventHandlingIntegrationTest {
             @Autowired EventUpcasting configuration, @Autowired EventDataMarshaller eventDataMarshaller) {
         client.write(
                 List.of(new EventCandidate(
-                        "test",
+                        "tag://test",
                         "/damaged/42",
                         "book.page.damaged-v1",
                         eventDataMarshaller.serialize(

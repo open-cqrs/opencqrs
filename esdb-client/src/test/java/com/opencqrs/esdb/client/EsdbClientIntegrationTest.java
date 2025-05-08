@@ -29,6 +29,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 public class EsdbClientIntegrationTest {
 
+    private static final String TEST_SOURCE = "tag://test-execution";
+
     @Autowired
     private Client client;
 
@@ -70,7 +72,7 @@ public class EsdbClientIntegrationTest {
         public void badRequestDetected() {
             assertThatThrownBy(() -> client.write(
                             List.of(new EventCandidate(
-                                    "test-execution", "in valid subject", "com.opencqrs.books-added.v1", Map.of())),
+                                    TEST_SOURCE, "in valid subject", "com.opencqrs.books-added.v1", Map.of())),
                             List.of()))
                     .isInstanceOfSatisfying(
                             ClientException.HttpException.HttpClientException.class,
@@ -84,11 +86,11 @@ public class EsdbClientIntegrationTest {
             Map<String, Object> data = objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class);
 
             List<Event> published = client.write(
-                    List.of(new EventCandidate("test-execution", subject, "com.opencqrs.books-added.v1", data)),
+                    List.of(new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-added.v1", data)),
                     List.of(new Precondition.SubjectIsPristine(subject)));
 
             assertThat(published).singleElement().satisfies(e -> {
-                assertThat(e.source()).isEqualTo("test-execution");
+                assertThat(e.source()).isEqualTo(TEST_SOURCE);
                 assertThat(e.subject()).isEqualTo(subject);
                 assertThat(e.type()).isEqualTo("com.opencqrs.books-added.v1");
                 assertThat(e.specVersion()).isEqualTo("1.0");
@@ -106,7 +108,7 @@ public class EsdbClientIntegrationTest {
             String subject = randomSubject();
 
             var eventCandidate = new EventCandidate(
-                    "test-execution",
+                    TEST_SOURCE,
                     subject,
                     "com.opencqrs.books-added.v1",
                     objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class));
@@ -131,7 +133,7 @@ public class EsdbClientIntegrationTest {
 
             List<Event> added = client.write(
                     List.of(new EventCandidate(
-                            "test-execution",
+                            TEST_SOURCE,
                             subject,
                             "com.opencqrs.books-added.v1",
                             objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
@@ -140,12 +142,12 @@ public class EsdbClientIntegrationTest {
             Map<String, Object> data = objectMapper.convertValue(new BookRemovedEvent("pages missing"), Map.class);
 
             List<Event> published = client.write(
-                    List.of(new EventCandidate("test-execution", subject, "com.opencqrs.books-removed.v1", data)),
+                    List.of(new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-removed.v1", data)),
                     List.of(new Precondition.SubjectIsOnEventId(
                             subject, added.getFirst().id())));
 
             assertThat(published).singleElement().satisfies(e -> {
-                assertThat(e.source()).isEqualTo("test-execution");
+                assertThat(e.source()).isEqualTo(TEST_SOURCE);
                 assertThat(e.subject()).isEqualTo(subject);
                 assertThat(e.type()).isEqualTo("com.opencqrs.books-removed.v1");
                 assertThat(e.specVersion()).isEqualTo("1.0");
@@ -164,7 +166,7 @@ public class EsdbClientIntegrationTest {
 
             List<Event> added = client.write(
                     List.of(new EventCandidate(
-                            "test-execution",
+                            TEST_SOURCE,
                             subject,
                             "com.opencqrs.books-added.v1",
                             objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
@@ -172,7 +174,7 @@ public class EsdbClientIntegrationTest {
 
             client.write(
                     List.of(new EventCandidate(
-                            "test-execution",
+                            TEST_SOURCE,
                             subject,
                             "com.opencqrs.books-removed.v1",
                             objectMapper.convertValue(new BookRemovedEvent("pages missing"), Map.class))),
@@ -180,7 +182,7 @@ public class EsdbClientIntegrationTest {
 
             assertThatThrownBy(() -> client.write(
                             List.of(new EventCandidate(
-                                    "test-execution",
+                                    TEST_SOURCE,
                                     subject,
                                     "com.opencqrs.books-removed.v1",
                                     objectMapper.convertValue(new BookRemovedEvent("pages missing"), Map.class))),
@@ -205,14 +207,14 @@ public class EsdbClientIntegrationTest {
 
             List<Event> published = client.write(
                     List.of(
-                            new EventCandidate("test-execution", subject, "com.opencqrs.books-added.v1", data1),
-                            new EventCandidate("test-execution", subject, "com.opencqrs.books-removed.v1", data2)),
+                            new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-added.v1", data1),
+                            new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-removed.v1", data2)),
                     List.of(new Precondition.SubjectIsPristine(subject)));
 
             assertThat(published)
                     .hasSize(2)
                     .allSatisfy(e -> {
-                        assertThat(e.source()).isEqualTo("test-execution");
+                        assertThat(e.source()).isEqualTo(TEST_SOURCE);
                         assertThat(e.subject()).isEqualTo(subject);
                         assertThat(e.type()).startsWith("com.opencqrs.books-").endsWith("v1");
                         assertThat(e.specVersion()).isEqualTo("1.0");
@@ -289,7 +291,7 @@ public class EsdbClientIntegrationTest {
             String subject = randomSubject();
             client.write(
                     List.of(new EventCandidate(
-                            "test-execution",
+                            TEST_SOURCE,
                             subject,
                             "com.opencqrs.books-added.v1",
                             objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
@@ -314,7 +316,7 @@ public class EsdbClientIntegrationTest {
                 String subject = randomSubject();
                 client.write(
                         List.of(new EventCandidate(
-                                "test-execution",
+                                TEST_SOURCE,
                                 subject,
                                 "com.opencqrs.books-added.v1",
                                 objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
@@ -323,7 +325,7 @@ public class EsdbClientIntegrationTest {
                 await().untilAsserted(() -> assertThat(observedEvents.poll())
                         .isNotNull()
                         .satisfies(e -> {
-                            assertThat(e.source()).isEqualTo("test-execution");
+                            assertThat(e.source()).isEqualTo(TEST_SOURCE);
                             assertThat(e.subject()).isEqualTo(subject);
                             assertThat(e.type()).isEqualTo("com.opencqrs.books-added.v1");
                             assertThat(e.specVersion()).isEqualTo("1.0");
@@ -347,7 +349,7 @@ public class EsdbClientIntegrationTest {
 
             client.write(
                     List.of(new EventCandidate(
-                            "test-execution",
+                            TEST_SOURCE,
                             subject,
                             "com.opencqrs.books-added.v1",
                             objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
@@ -429,7 +431,7 @@ public class EsdbClientIntegrationTest {
 
             subjects.forEach(subject -> client.write(
                     List.of(new EventCandidate(
-                            "test-execution",
+                            TEST_SOURCE,
                             subject,
                             "com.opencqrs.books-added.v1",
                             objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
@@ -439,7 +441,7 @@ public class EsdbClientIntegrationTest {
 
             assertThat(consumedEvents).hasSizeGreaterThanOrEqualTo(subjects.size());
             subjects.forEach(subject -> assertThat(consumedEvents).anySatisfy(e -> {
-                assertThat(e.source()).isEqualTo("test-execution");
+                assertThat(e.source()).isEqualTo(TEST_SOURCE);
                 assertThat(e.subject()).isEqualTo(subject);
                 assertThat(e.type()).isEqualTo("com.opencqrs.books-added.v1");
                 assertThat(e.specVersion()).isEqualTo("1.0");
@@ -459,17 +461,17 @@ public class EsdbClientIntegrationTest {
             client.write(
                     List.of(
                             new EventCandidate(
-                                    "test-execution",
+                                    TEST_SOURCE,
                                     subject,
                                     "com.opencqrs.books-added.v1",
                                     objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class)),
                             new EventCandidate(
-                                    "test-execution",
+                                    TEST_SOURCE,
                                     subject + "/pages/42",
                                     "com.opencqrs.books-page-damaged.v1",
                                     objectMapper.convertValue(new BookPageDamagedEvent(), Map.class)),
                             new EventCandidate(
-                                    "test-execution",
+                                    TEST_SOURCE,
                                     subject,
                                     "com.opencqrs.books-removed.v1",
                                     objectMapper.convertValue(new BookRemovedEvent("page damaged"), Map.class))),
@@ -479,7 +481,7 @@ public class EsdbClientIntegrationTest {
                     .as("recursive events ignored")
                     .hasSize(2)
                     .anySatisfy(e -> {
-                        assertThat(e.source()).isEqualTo("test-execution");
+                        assertThat(e.source()).isEqualTo(TEST_SOURCE);
                         assertThat(e.subject()).isEqualTo(subject);
                         assertThat(e.type()).isEqualTo("com.opencqrs.books-added.v1");
                         assertThat(e.specVersion()).isEqualTo("1.0");
@@ -491,7 +493,7 @@ public class EsdbClientIntegrationTest {
                                 .isEqualTo(new BookAddedEvent("JRR Tolkien", "LOTR"));
                     })
                     .anySatisfy(e -> {
-                        assertThat(e.source()).isEqualTo("test-execution");
+                        assertThat(e.source()).isEqualTo(TEST_SOURCE);
                         assertThat(e.subject()).isEqualTo(subject);
                         assertThat(e.type()).isEqualTo("com.opencqrs.books-removed.v1");
                         assertThat(e.specVersion()).isEqualTo("1.0");
