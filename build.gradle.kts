@@ -14,7 +14,7 @@ plugins {
     id("org.cyclonedx.bom") version "2.3.0" apply false
     id("io.spring.dependency-management") version "1.1.7"
     id("com.github.ben-manes.versions") version "0.52.0"
-    id("com.diffplug.spotless") version "7.0.2" apply false
+    id("com.diffplug.spotless") version "7.0.3" apply false
 }
 
 allprojects {
@@ -34,7 +34,7 @@ subprojects {
 
     extensions.configure<SpotlessExtension> {
         java {
-            palantirJavaFormat().formatJavadoc(true)
+            palantirJavaFormat("2.64.0").formatJavadoc(true)
             // support for spotless:off and spotless:on comments
             toggleOffOn()
             licenseHeader("/* Copyright (C) \$YEAR OpenCQRS and contributors */")

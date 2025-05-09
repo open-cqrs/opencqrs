@@ -213,13 +213,13 @@ public class JdbcProgressTracker implements ProgressTracker, InitializingBean, S
         proceedTransactionOperations.executeWithoutResult(status -> {
             switch (execution.get()) {
                 case Progress.None ignored -> {}
-                case Progress.Success success -> defaultTransactionOperations.executeWithoutResult(
-                        transactionStatus -> {
-                            int updated = jdbcOperations.update(updateQuery, success.id(), group, partition);
-                            if (updated == 0) {
-                                jdbcOperations.update(insertQuery, group, partition, success.id());
-                            }
-                        });
+                case Progress.Success success ->
+                    defaultTransactionOperations.executeWithoutResult(transactionStatus -> {
+                        int updated = jdbcOperations.update(updateQuery, success.id(), group, partition);
+                        if (updated == 0) {
+                            jdbcOperations.update(insertQuery, group, partition, success.id());
+                        }
+                    });
             }
         });
     }

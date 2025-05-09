@@ -199,12 +199,14 @@ public final class CommandRouter {
                     EventReader.ClientRequestor clientRequestor =
                             switch (commandHandlerDefinition.sourcingMode()) {
                                 case NONE -> (client, eventConsumer) -> {};
-                                case LOCAL -> (client, eventConsumer) ->
+                                case LOCAL ->
+                                    (client, eventConsumer) ->
+                                            client.read(command.getSubject(), options, eventConsumer);
+                                case RECURSIVE ->
+                                    (client, eventConsumer) -> {
+                                        options.add(new Option.Recursive());
                                         client.read(command.getSubject(), options, eventConsumer);
-                                case RECURSIVE -> (client, eventConsumer) -> {
-                                    options.add(new Option.Recursive());
-                                    client.read(command.getSubject(), options, eventConsumer);
-                                };
+                                    };
                             };
 
                     AtomicReference<String> latestSourcedId = new AtomicReference<>(cached.eventId());
@@ -251,12 +253,12 @@ public final class CommandRouter {
 
         R result =
                 switch (commandHandlerDefinition.handler()) {
-                    case CommandHandler.ForCommand<Object, Command, R> handler -> handler.handle(
-                            command, eventCapturer);
-                    case CommandHandler.ForInstanceAndCommand<Object, Command, R> handler -> handler.handle(
-                            fromCacheMerged.instance(), command, eventCapturer);
-                    case CommandHandler.ForInstanceAndCommandAndMetaData<Object, Command, R> handler -> handler.handle(
-                            fromCacheMerged.instance(), command, metaData, eventCapturer);
+                    case CommandHandler.ForCommand<Object, Command, R> handler ->
+                        handler.handle(command, eventCapturer);
+                    case CommandHandler.ForInstanceAndCommand<Object, Command, R> handler ->
+                        handler.handle(fromCacheMerged.instance(), command, eventCapturer);
+                    case CommandHandler.ForInstanceAndCommandAndMetaData<Object, Command, R> handler ->
+                        handler.handle(fromCacheMerged.instance(), command, metaData, eventCapturer);
                 };
 
         if (!eventCapturer.getEvents().isEmpty()) {

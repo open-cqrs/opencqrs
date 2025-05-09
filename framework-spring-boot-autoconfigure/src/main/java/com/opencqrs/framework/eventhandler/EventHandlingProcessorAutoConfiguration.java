@@ -190,83 +190,88 @@ public class EventHandlingProcessorAutoConfiguration {
                             EventHandlingProcessorLifecycleRegistration.class);
                     var lifecycleRegistration =
                             switch (processorSettings.lifeCycle().controllerRegistration()) {
-                                case null -> switch (processorSettings
-                                        .lifeCycle()
-                                        .controller()) {
-                                    case APPLICATION_CONTEXT -> fallbackLifecycleRegistration;
-                                    case LEADER_ELECTION -> {
-                                        var lockRegistry =
-                                                switch (processorSettings
-                                                        .lifeCycle()
-                                                        .lockRegistry()) {
-                                                    case null -> parentContext.getBean(LockRegistry.class);
-                                                    default -> parentContext.getBean(
-                                                            processorSettings
-                                                                    .lifeCycle()
-                                                                    .lockRegistry(),
-                                                            LockRegistry.class);
-                                                };
-                                        yield parentContext
-                                                .getBeanProvider(
-                                                        LeaderElectionLifecycleConfiguration.Registration.class)
-                                                .getObject(lockRegistry);
-                                    }
-                                        // indirect check if LockRegistry is available on the class-path
-                                    case null -> switch (parentContext
-                                            .getBeanProvider(LeaderElectionLifecycleConfiguration.class)
-                                            .getIfAvailable()) {
-                                        case null -> fallbackLifecycleRegistration;
-                                        default -> {
-                                            var uniqueLockRegistry = parentContext
-                                                    .getBeanProvider(LockRegistry.class)
-                                                    .getIfUnique();
-                                            yield switch (uniqueLockRegistry) {
-                                                case null -> {
-                                                    log.warning(() -> "multiple " + LockRegistry.class.getSimpleName()
-                                                            + " bean candidates found, falling back to 'application-context' controller for event handling processor: "
-                                                            + group);
-                                                    yield fallbackLifecycleRegistration;
-                                                }
-                                                default -> parentContext
-                                                        .getBeanProvider(
-                                                                LeaderElectionLifecycleConfiguration.Registration.class)
-                                                        .getObject(uniqueLockRegistry);
-                                            };
+                                case null ->
+                                    switch (processorSettings.lifeCycle().controller()) {
+                                        case APPLICATION_CONTEXT -> fallbackLifecycleRegistration;
+                                        case LEADER_ELECTION -> {
+                                            var lockRegistry =
+                                                    switch (processorSettings
+                                                            .lifeCycle()
+                                                            .lockRegistry()) {
+                                                        case null -> parentContext.getBean(LockRegistry.class);
+                                                        default ->
+                                                            parentContext.getBean(
+                                                                    processorSettings
+                                                                            .lifeCycle()
+                                                                            .lockRegistry(),
+                                                                    LockRegistry.class);
+                                                    };
+                                            yield parentContext
+                                                    .getBeanProvider(
+                                                            LeaderElectionLifecycleConfiguration.Registration.class)
+                                                    .getObject(lockRegistry);
                                         }
+                                        // indirect check if LockRegistry is available on the class-path
+                                        case null ->
+                                            switch (parentContext
+                                                    .getBeanProvider(LeaderElectionLifecycleConfiguration.class)
+                                                    .getIfAvailable()) {
+                                                case null -> fallbackLifecycleRegistration;
+                                                default -> {
+                                                    var uniqueLockRegistry = parentContext
+                                                            .getBeanProvider(LockRegistry.class)
+                                                            .getIfUnique();
+                                                    yield switch (uniqueLockRegistry) {
+                                                        case null -> {
+                                                            log.warning(() ->
+                                                                    "multiple " + LockRegistry.class.getSimpleName()
+                                                                            + " bean candidates found, falling back to 'application-context' controller for event handling processor: "
+                                                                            + group);
+                                                            yield fallbackLifecycleRegistration;
+                                                        }
+                                                        default ->
+                                                            parentContext
+                                                                    .getBeanProvider(
+                                                                            LeaderElectionLifecycleConfiguration
+                                                                                    .Registration.class)
+                                                                    .getObject(uniqueLockRegistry);
+                                                    };
+                                                }
+                                            };
                                     };
-                                };
-                                default -> parentContext.getBean(
-                                        processorSettings.lifeCycle().controllerRegistration(),
-                                        EventHandlingProcessorLifecycleRegistration.class);
+                                default ->
+                                    parentContext.getBean(
+                                            processorSettings.lifeCycle().controllerRegistration(),
+                                            EventHandlingProcessorLifecycleRegistration.class);
                             };
 
                     var defaultProgressTracker =
                             parentContext.getBean("inMemoryProgressTracker", ProgressTracker.class);
                     var progressTracker =
                             switch (processorSettings.progress().trackerRef()) {
-                                case null -> switch (processorSettings
-                                        .progress()
-                                        .tracking()) {
-                                    case IN_MEMORY -> defaultProgressTracker;
-                                    case JDBC -> parentContext.getBean(JdbcProgressTracker.class);
-                                    case null -> {
-                                        var uniqueJdbc = parentContext
-                                                .getBeanProvider(JdbcProgressTracker.class)
-                                                .getIfUnique();
-                                        yield switch (uniqueJdbc) {
-                                            case null -> {
-                                                log.warning(
-                                                        () -> "multiple " + JdbcProgressTracker.class.getSimpleName()
-                                                                + " bean candidates found, falling back to 'in-memory' progress tracking for event handling processor: "
-                                                                + group);
-                                                yield defaultProgressTracker;
-                                            }
-                                            default -> uniqueJdbc;
-                                        };
-                                    }
-                                };
-                                default -> parentContext.getBean(
-                                        processorSettings.progress().trackerRef(), ProgressTracker.class);
+                                case null ->
+                                    switch (processorSettings.progress().tracking()) {
+                                        case IN_MEMORY -> defaultProgressTracker;
+                                        case JDBC -> parentContext.getBean(JdbcProgressTracker.class);
+                                        case null -> {
+                                            var uniqueJdbc = parentContext
+                                                    .getBeanProvider(JdbcProgressTracker.class)
+                                                    .getIfUnique();
+                                            yield switch (uniqueJdbc) {
+                                                case null -> {
+                                                    log.warning(() ->
+                                                            "multiple " + JdbcProgressTracker.class.getSimpleName()
+                                                                    + " bean candidates found, falling back to 'in-memory' progress tracking for event handling processor: "
+                                                                    + group);
+                                                    yield defaultProgressTracker;
+                                                }
+                                                default -> uniqueJdbc;
+                                            };
+                                        }
+                                    };
+                                default ->
+                                    parentContext.getBean(
+                                            processorSettings.progress().trackerRef(), ProgressTracker.class);
                             };
 
                     var defaultSequenceResolver = parentContext.getBean(
@@ -274,18 +279,21 @@ public class EventHandlingProcessorAutoConfiguration {
                             PerConfigurableLevelSubjectEventSequenceResolver.class);
                     var sequenceResolver =
                             switch (processorSettings.sequence().resolverRef()) {
-                                case null -> switch (processorSettings
-                                        .sequence()
-                                        .resolution()) {
-                                    case PER_SECOND_LEVEL_SUBJECT -> defaultSequenceResolver;
-                                    case PER_SUBJECT -> parentContext.getBean(
-                                            "perSubjectEventSequenceResolver", PerSubjectEventSequenceResolver.class);
-                                    case NO_SEQUENCE -> parentContext.getBean(
-                                            "noEventSequenceResolver", NoEventSequenceResolver.class);
-                                    case null -> defaultSequenceResolver;
-                                };
-                                default -> parentContext.getBean(
-                                        processorSettings.sequence().resolverRef(), EventSequenceResolver.class);
+                                case null ->
+                                    switch (processorSettings.sequence().resolution()) {
+                                        case PER_SECOND_LEVEL_SUBJECT -> defaultSequenceResolver;
+                                        case PER_SUBJECT ->
+                                            parentContext.getBean(
+                                                    "perSubjectEventSequenceResolver",
+                                                    PerSubjectEventSequenceResolver.class);
+                                        case NO_SEQUENCE ->
+                                            parentContext.getBean(
+                                                    "noEventSequenceResolver", NoEventSequenceResolver.class);
+                                        case null -> defaultSequenceResolver;
+                                    };
+                                default ->
+                                    parentContext.getBean(
+                                            processorSettings.sequence().resolverRef(), EventSequenceResolver.class);
                             };
 
                     DefaultPartitionKeyResolver partitionKeyResolver = new DefaultPartitionKeyResolver(

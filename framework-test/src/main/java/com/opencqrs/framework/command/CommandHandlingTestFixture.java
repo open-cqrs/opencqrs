@@ -691,10 +691,10 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
                 R result =
                         switch (commandHandler) {
                             case CommandHandler.ForCommand<I, C, R> handler -> handler.handle(command, eventCapturer);
-                            case CommandHandler.ForInstanceAndCommand<I, C, R> handler -> handler.handle(
-                                    currentState, command, eventCapturer);
-                            case CommandHandler.ForInstanceAndCommandAndMetaData<I, C, R> handler -> handler.handle(
-                                    currentState, command, metaData, eventCapturer);
+                            case CommandHandler.ForInstanceAndCommand<I, C, R> handler ->
+                                handler.handle(currentState, command, eventCapturer);
+                            case CommandHandler.ForInstanceAndCommandAndMetaData<I, C, R> handler ->
+                                handler.handle(currentState, command, metaData, eventCapturer);
                         };
                 return new Expect(
                         command, eventCapturer.previousInstance.get(), eventCapturer.getEvents(), result, null);

@@ -221,8 +221,8 @@ public class CommandRouterTest {
         switch (commandHandler) {
             case CommandHandler.ForCommand handler -> verify(handler).handle(eq(cmd), any());
             case CommandHandler.ForInstanceAndCommand handler -> verify(handler).handle(eq(null), eq(cmd), any());
-            case CommandHandler.ForInstanceAndCommandAndMetaData handler -> verify(handler)
-                    .handle(eq(null), eq(cmd), eq(metaData), any());
+            case CommandHandler.ForInstanceAndCommandAndMetaData handler ->
+                verify(handler).handle(eq(null), eq(cmd), eq(metaData), any());
         }
     }
 
@@ -244,43 +244,45 @@ public class CommandRouterTest {
         };
 
         switch (condition) {
-            case EXISTS -> doAnswer(invocation -> {
-                        Consumer<Event> consumer = invocation.getArgument(2);
-                        consumer.accept(new Event(
-                                "test",
-                                command.getSubject(),
-                                eventTypeResolver.getEventType(sourcedEvent.getClass()),
-                                eventDataMarshaller.serialize(
-                                        new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
-                                "1.0",
-                                "2345",
-                                Instant.now(),
-                                "application/json",
-                                UUID.randomUUID().toString(),
-                                UUID.randomUUID().toString()));
-                        return null;
-                    })
-                    .when(client)
-                    .read(eq(command.getSubject()), eq(Set.of(new Option.Recursive())), any());
+            case EXISTS ->
+                doAnswer(invocation -> {
+                            Consumer<Event> consumer = invocation.getArgument(2);
+                            consumer.accept(new Event(
+                                    "test",
+                                    command.getSubject(),
+                                    eventTypeResolver.getEventType(sourcedEvent.getClass()),
+                                    eventDataMarshaller.serialize(
+                                            new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
+                                    "1.0",
+                                    "2345",
+                                    Instant.now(),
+                                    "application/json",
+                                    UUID.randomUUID().toString(),
+                                    UUID.randomUUID().toString()));
+                            return null;
+                        })
+                        .when(client)
+                        .read(eq(command.getSubject()), eq(Set.of(new Option.Recursive())), any());
 
-            case PRISTINE -> doAnswer(invocation -> {
-                        Consumer<Event> consumer = invocation.getArgument(2);
-                        consumer.accept(new Event(
-                                "test",
-                                command.getSubject() + "/child/42",
-                                eventTypeResolver.getEventType(sourcedEvent.getClass()),
-                                eventDataMarshaller.serialize(
-                                        new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
-                                "1.0",
-                                "2345",
-                                Instant.now(),
-                                "application/json",
-                                UUID.randomUUID().toString(),
-                                UUID.randomUUID().toString()));
-                        return null;
-                    })
-                    .when(client)
-                    .read(eq(command.getSubject()), eq(Set.of(new Option.Recursive())), any());
+            case PRISTINE ->
+                doAnswer(invocation -> {
+                            Consumer<Event> consumer = invocation.getArgument(2);
+                            consumer.accept(new Event(
+                                    "test",
+                                    command.getSubject() + "/child/42",
+                                    eventTypeResolver.getEventType(sourcedEvent.getClass()),
+                                    eventDataMarshaller.serialize(
+                                            new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
+                                    "1.0",
+                                    "2345",
+                                    Instant.now(),
+                                    "application/json",
+                                    UUID.randomUUID().toString(),
+                                    UUID.randomUUID().toString()));
+                            return null;
+                        })
+                        .when(client)
+                        .read(eq(command.getSubject()), eq(Set.of(new Option.Recursive())), any());
         }
 
         CommandHandlerDefinition<Book, ? extends Command, Void> chd =
@@ -310,43 +312,45 @@ public class CommandRouterTest {
         };
 
         switch (condition) {
-            case EXISTS -> doAnswer(invocation -> {
-                        Consumer<Event> consumer = invocation.getArgument(2);
-                        consumer.accept(new Event(
-                                "test",
-                                command.getSubject() + "/child/42",
-                                eventTypeResolver.getEventType(sourcedEvent.getClass()),
-                                eventDataMarshaller.serialize(
-                                        new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
-                                "1.0",
-                                "2345",
-                                Instant.now(),
-                                "application/json",
-                                UUID.randomUUID().toString(),
-                                UUID.randomUUID().toString()));
-                        return null;
-                    })
-                    .when(client)
-                    .read(eq(command.getSubject()), eq(Set.of(new Option.Recursive())), any());
+            case EXISTS ->
+                doAnswer(invocation -> {
+                            Consumer<Event> consumer = invocation.getArgument(2);
+                            consumer.accept(new Event(
+                                    "test",
+                                    command.getSubject() + "/child/42",
+                                    eventTypeResolver.getEventType(sourcedEvent.getClass()),
+                                    eventDataMarshaller.serialize(
+                                            new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
+                                    "1.0",
+                                    "2345",
+                                    Instant.now(),
+                                    "application/json",
+                                    UUID.randomUUID().toString(),
+                                    UUID.randomUUID().toString()));
+                            return null;
+                        })
+                        .when(client)
+                        .read(eq(command.getSubject()), eq(Set.of(new Option.Recursive())), any());
 
-            case PRISTINE -> doAnswer(invocation -> {
-                        Consumer<Event> consumer = invocation.getArgument(2);
-                        consumer.accept(new Event(
-                                "test",
-                                command.getSubject(),
-                                eventTypeResolver.getEventType(sourcedEvent.getClass()),
-                                eventDataMarshaller.serialize(
-                                        new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
-                                "1.0",
-                                "2345",
-                                Instant.now(),
-                                "application/json",
-                                UUID.randomUUID().toString(),
-                                UUID.randomUUID().toString()));
-                        return null;
-                    })
-                    .when(client)
-                    .read(eq(command.getSubject()), eq(Set.of(new Option.Recursive())), any());
+            case PRISTINE ->
+                doAnswer(invocation -> {
+                            Consumer<Event> consumer = invocation.getArgument(2);
+                            consumer.accept(new Event(
+                                    "test",
+                                    command.getSubject(),
+                                    eventTypeResolver.getEventType(sourcedEvent.getClass()),
+                                    eventDataMarshaller.serialize(
+                                            new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
+                                    "1.0",
+                                    "2345",
+                                    Instant.now(),
+                                    "application/json",
+                                    UUID.randomUUID().toString(),
+                                    UUID.randomUUID().toString()));
+                            return null;
+                        })
+                        .when(client)
+                        .read(eq(command.getSubject()), eq(Set.of(new Option.Recursive())), any());
         }
 
         CommandHandlerDefinition<Book, ? extends Command, Void> chd =
@@ -357,12 +361,14 @@ public class CommandRouterTest {
 
         assertThatThrownBy(() -> subject.send(command)).isInstanceOfSatisfying(CqrsFrameworkException.class, e -> {
             switch (condition) {
-                case PRISTINE -> assertThat(e)
-                        .isInstanceOf(CommandSubjectAlreadyExistsException.class)
-                        .hasFieldOrPropertyWithValue("command", command);
-                case EXISTS -> assertThat(e)
-                        .isInstanceOf(CommandSubjectDoesNotExistException.class)
-                        .hasFieldOrPropertyWithValue("command", command);
+                case PRISTINE ->
+                    assertThat(e)
+                            .isInstanceOf(CommandSubjectAlreadyExistsException.class)
+                            .hasFieldOrPropertyWithValue("command", command);
+                case EXISTS ->
+                    assertThat(e)
+                            .isInstanceOf(CommandSubjectDoesNotExistException.class)
+                            .hasFieldOrPropertyWithValue("command", command);
                 case NONE -> fail("no exception expected");
             }
         });
@@ -439,14 +445,14 @@ public class CommandRouterTest {
 
         switch (srh) {
             case StateRebuildingHandler.FromObject handler -> verify(handler).on(null, sourcedEvent);
-            case StateRebuildingHandler.FromObjectAndRawEvent handler -> verify(handler)
-                    .on(null, sourcedEvent, rawEvent);
-            case StateRebuildingHandler.FromObjectAndMetaData handler -> verify(handler)
-                    .on(null, sourcedEvent, metaData);
-            case StateRebuildingHandler.FromObjectAndMetaDataAndSubject handler -> verify(handler)
-                    .on(null, sourcedEvent, metaData, command.getSubject());
-            case StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent handler -> verify(handler)
-                    .on(null, sourcedEvent, metaData, command.getSubject(), rawEvent);
+            case StateRebuildingHandler.FromObjectAndRawEvent handler ->
+                verify(handler).on(null, sourcedEvent, rawEvent);
+            case StateRebuildingHandler.FromObjectAndMetaData handler ->
+                verify(handler).on(null, sourcedEvent, metaData);
+            case StateRebuildingHandler.FromObjectAndMetaDataAndSubject handler ->
+                verify(handler).on(null, sourcedEvent, metaData, command.getSubject());
+            case StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent handler ->
+                verify(handler).on(null, sourcedEvent, metaData, command.getSubject(), rawEvent);
         }
     }
 
@@ -539,14 +545,14 @@ public class CommandRouterTest {
 
         switch (srh) {
             case StateRebuildingHandler.FromObject handler -> verify(handler).on(null, publishedEvent);
-            case StateRebuildingHandler.FromObjectAndRawEvent handler -> verify(handler)
-                    .on(null, publishedEvent, null);
-            case StateRebuildingHandler.FromObjectAndMetaData handler -> verify(handler)
-                    .on(null, publishedEvent, metaData);
-            case StateRebuildingHandler.FromObjectAndMetaDataAndSubject handler -> verify(handler)
-                    .on(null, publishedEvent, metaData, command.getSubject());
-            case StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent handler -> verify(handler)
-                    .on(null, publishedEvent, metaData, command.getSubject(), null);
+            case StateRebuildingHandler.FromObjectAndRawEvent handler ->
+                verify(handler).on(null, publishedEvent, null);
+            case StateRebuildingHandler.FromObjectAndMetaData handler ->
+                verify(handler).on(null, publishedEvent, metaData);
+            case StateRebuildingHandler.FromObjectAndMetaDataAndSubject handler ->
+                verify(handler).on(null, publishedEvent, metaData, command.getSubject());
+            case StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent handler ->
+                verify(handler).on(null, publishedEvent, metaData, command.getSubject(), null);
         }
     }
 

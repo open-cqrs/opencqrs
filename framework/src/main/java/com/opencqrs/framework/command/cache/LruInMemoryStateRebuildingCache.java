@@ -42,10 +42,12 @@ public class LruInMemoryStateRebuildingCache implements StateRebuildingCache {
 
         return switch (updatedValue.eventId()) {
             case null -> updatedValue;
-            default -> cache.compute(key, (cacheKey, cacheValue) -> switch (cacheValue) {
-                case null -> updatedValue;
-                default -> isHigherEventId(cacheValue.eventId(), updatedValue.eventId()) ? cacheValue : updatedValue;
-            });
+            default ->
+                cache.compute(key, (cacheKey, cacheValue) -> switch (cacheValue) {
+                    case null -> updatedValue;
+                    default ->
+                        isHigherEventId(cacheValue.eventId(), updatedValue.eventId()) ? cacheValue : updatedValue;
+                });
         };
     }
 

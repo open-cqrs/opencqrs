@@ -229,10 +229,10 @@ public class EventHandlingProcessorTest {
                 EventHandler<? extends MyEvent> eventHandler = eh;
                 switch (eh) {
                     case EventHandler.ForObject handler -> verify(handler).handle(event);
-                    case EventHandler.ForObjectAndMetaData handler -> verify(handler)
-                            .handle(event, metaData);
-                    case EventHandler.ForObjectAndMetaDataAndRawEvent handler -> verify(handler)
-                            .handle(event, metaData, raw);
+                    case EventHandler.ForObjectAndMetaData handler ->
+                        verify(handler).handle(event, metaData);
+                    case EventHandler.ForObjectAndMetaDataAndRawEvent handler ->
+                        verify(handler).handle(event, metaData, raw);
                 }
             });
 

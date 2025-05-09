@@ -38,10 +38,11 @@ public class CommandRouterAutoConfiguration {
             ApplicationContext applicationContext) {
         String cacheBeanRef =
                 switch (cacheProperties.ref()) {
-                    case null -> switch (cacheProperties.type()) {
-                        case NONE -> "noStateRebuildingCache";
-                        case IN_MEMORY -> "lruInMemoryStateRebuildingCache";
-                    };
+                    case null ->
+                        switch (cacheProperties.type()) {
+                            case NONE -> "noStateRebuildingCache";
+                            case IN_MEMORY -> "lruInMemoryStateRebuildingCache";
+                        };
                     default -> cacheProperties.ref();
                 };
 

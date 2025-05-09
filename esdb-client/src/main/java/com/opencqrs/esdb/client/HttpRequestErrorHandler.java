@@ -65,11 +65,13 @@ final class HttpRequestErrorHandler {
         HttpResponse<ResponseHolder<T>> httpResponse;
         try {
             httpResponse = httpClient.send(request, responseInfo -> switch (responseInfo.statusCode()) {
-                case 200 -> HttpResponse.BodySubscribers.mapping(
-                        bodySubscriber.apply(responseInfo.headers()), ResponseHolder.Success::new);
-                default -> HttpResponse.BodySubscribers.mapping(
-                        HttpResponse.BodySubscribers.ofString(Util.fromHttpHeaders(responseInfo.headers())),
-                        s -> new ResponseHolder.Failure<>(responseInfo.statusCode(), s));
+                case 200 ->
+                    HttpResponse.BodySubscribers.mapping(
+                            bodySubscriber.apply(responseInfo.headers()), ResponseHolder.Success::new);
+                default ->
+                    HttpResponse.BodySubscribers.mapping(
+                            HttpResponse.BodySubscribers.ofString(Util.fromHttpHeaders(responseInfo.headers())),
+                            s -> new ResponseHolder.Failure<>(responseInfo.statusCode(), s));
             });
         } catch (IOException e) {
             switch (e.getCause()) {

@@ -24,14 +24,14 @@ class Util {
                     state.updateAndGet(i -> Optional.ofNullable(
                                     switch (srhd.handler()) {
                                         case StateRebuildingHandler.FromObject<I, E> handler -> handler.on(i, event);
-                                        case StateRebuildingHandler.FromObjectAndRawEvent<I, E> handler -> handler.on(
-                                                i, event, rawEvent);
-                                        case StateRebuildingHandler.FromObjectAndMetaData<I, E> handler -> handler.on(
-                                                i, event, metaData);
-                                        case StateRebuildingHandler.FromObjectAndMetaDataAndSubject<I, E>
-                                        handler -> handler.on(i, event, metaData, subject);
+                                        case StateRebuildingHandler.FromObjectAndRawEvent<I, E> handler ->
+                                            handler.on(i, event, rawEvent);
+                                        case StateRebuildingHandler.FromObjectAndMetaData<I, E> handler ->
+                                            handler.on(i, event, metaData);
+                                        case StateRebuildingHandler.FromObjectAndMetaDataAndSubject<I, E> handler ->
+                                            handler.on(i, event, metaData, subject);
                                         case StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<I, E>
-                                        handler -> handler.on(i, event, metaData, subject, rawEvent);
+                                                handler -> handler.on(i, event, metaData, subject, rawEvent);
                                     })
                             .orElseThrow(() -> new CqrsFrameworkException.NonTransientException(
                                     "state rebuilding handler returned 'null' instance for event: "

@@ -118,17 +118,18 @@ public class JacksonMarshaller implements Marshaller {
             JacksonResponseElement jacksonResponseElement = objectMapper.readValue(line, JacksonResponseElement.class);
             return switch (jacksonResponseElement) {
                 case JacksonResponseElement.Heartbeat heartbeat -> new ResponseElement.Heartbeat();
-                case JacksonResponseElement.Event event -> new Event(
-                        event.payload.source,
-                        event.payload.subject,
-                        event.payload.type,
-                        event.payload.data,
-                        event.payload.specversion,
-                        event.payload.id,
-                        event.payload.time,
-                        event.payload.datacontenttype,
-                        event.payload.hash,
-                        event.payload.predecessorhash);
+                case JacksonResponseElement.Event event ->
+                    new Event(
+                            event.payload.source,
+                            event.payload.subject,
+                            event.payload.type,
+                            event.payload.data,
+                            event.payload.specversion,
+                            event.payload.id,
+                            event.payload.time,
+                            event.payload.datacontenttype,
+                            event.payload.hash,
+                            event.payload.predecessorhash);
             };
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
@@ -137,11 +138,13 @@ public class JacksonMarshaller implements Marshaller {
 
     private JacksonPrecondition toJackson(Precondition precondition) {
         return switch (precondition) {
-            case Precondition.SubjectIsPristine p -> new JacksonPrecondition.IsPristine(
-                    "isSubjectPristine", new JacksonPrecondition.IsPristine.Payload(p.subject()));
+            case Precondition.SubjectIsPristine p ->
+                new JacksonPrecondition.IsPristine(
+                        "isSubjectPristine", new JacksonPrecondition.IsPristine.Payload(p.subject()));
 
-            case Precondition.SubjectIsOnEventId p -> new JacksonPrecondition.IsOnEventId(
-                    "isSubjectOnEventId", new JacksonPrecondition.IsOnEventId.Payload(p.subject(), p.eventId()));
+            case Precondition.SubjectIsOnEventId p ->
+                new JacksonPrecondition.IsOnEventId(
+                        "isSubjectOnEventId", new JacksonPrecondition.IsOnEventId.Payload(p.subject(), p.eventId()));
         };
     }
 

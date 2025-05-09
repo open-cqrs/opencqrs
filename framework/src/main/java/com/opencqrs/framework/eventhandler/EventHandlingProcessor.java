@@ -222,13 +222,13 @@ public class EventHandlingProcessor implements Runnable {
                                                     if (!skipEvent.getAndSet(false)) {
                                                         var rawEventRelevant =
                                                                 switch (eventSequenceResolver) {
-                                                                    case EventSequenceResolver.ForRawEvent
-                                                                    esr -> partitionKeyResolver.resolve(
-                                                                                    esr.sequenceIdFor(raw))
-                                                                            == partition;
+                                                                    case EventSequenceResolver.ForRawEvent esr ->
+                                                                        partitionKeyResolver.resolve(
+                                                                                        esr.sequenceIdFor(raw))
+                                                                                == partition;
                                                                     case EventSequenceResolver
-                                                                            .ForObjectAndMetaDataAndRawEvent
-                                                                    ignored -> true;
+                                                                                    .ForObjectAndMetaDataAndRawEvent
+                                                                            ignored -> true;
                                                                 };
                                                         if (rawEventRelevant) {
                                                             rawCallback.upcast((upcastedCallback, upcasted) ->
@@ -236,15 +236,17 @@ public class EventHandlingProcessor implements Runnable {
                                                                         var convertedEventRelevant =
                                                                                 switch (eventSequenceResolver) {
                                                                                     case EventSequenceResolver
-                                                                                            .ForRawEvent
-                                                                                    ignored -> true;
+                                                                                                    .ForRawEvent
+                                                                                            ignored -> true;
                                                                                     case EventSequenceResolver
-                                                                                            .ForObjectAndMetaDataAndRawEvent
-                                                                                    esr -> partitionKeyResolver.resolve(
-                                                                                                    esr.sequenceIdFor(
-                                                                                                            event,
-                                                                                                            metadata))
-                                                                                            == partition;
+                                                                                                    .ForObjectAndMetaDataAndRawEvent
+                                                                                            esr ->
+                                                                                        partitionKeyResolver.resolve(
+                                                                                                        esr
+                                                                                                                .sequenceIdFor(
+                                                                                                                        event,
+                                                                                                                        metadata))
+                                                                                                == partition;
                                                                                 };
                                                                         if (convertedEventRelevant) {
                                                                             eventHandlerDefinitions.stream()
@@ -257,22 +259,23 @@ public class EventHandlingProcessor implements Runnable {
                                                                                         try {
                                                                                             switch (ehd.handler()) {
                                                                                                 case EventHandler
-                                                                                                        .ForObject
-                                                                                                handler -> handler
-                                                                                                        .handle(event);
+                                                                                                                .ForObject
+                                                                                                        handler ->
+                                                                                                    handler.handle(
+                                                                                                            event);
                                                                                                 case EventHandler
-                                                                                                        .ForObjectAndMetaData
-                                                                                                handler -> handler
-                                                                                                        .handle(
-                                                                                                                event,
-                                                                                                                metadata);
+                                                                                                                .ForObjectAndMetaData
+                                                                                                        handler ->
+                                                                                                    handler.handle(
+                                                                                                            event,
+                                                                                                            metadata);
                                                                                                 case EventHandler
-                                                                                                        .ForObjectAndMetaDataAndRawEvent
-                                                                                                handler -> handler
-                                                                                                        .handle(
-                                                                                                                event,
-                                                                                                                metadata,
-                                                                                                                raw);
+                                                                                                                .ForObjectAndMetaDataAndRawEvent
+                                                                                                        handler ->
+                                                                                                    handler.handle(
+                                                                                                            event,
+                                                                                                            metadata,
+                                                                                                            raw);
                                                                                             }
                                                                                         } catch (Error
                                                                                                 | RuntimeException e) {
