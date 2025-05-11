@@ -14,6 +14,17 @@ import java.util.function.Consumer;
 public interface Client {
 
     /**
+     * Authenticates against the configured event store, ensuring the correct api token has been configured.
+     *
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code, e.g. 401 if not
+     *     authenticated successfully
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
+    void authenticate() throws ClientException;
+
+    /**
      * Checks the healthiness of the configured event store.
      *
      * @return the health status

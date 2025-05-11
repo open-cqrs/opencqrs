@@ -46,6 +46,15 @@ public final class EsdbClient implements AutoCloseable, Client {
     }
 
     @Override
+    public void authenticate() throws ClientException {
+        HttpRequest httpRequest = newJsonRequest("/api/v1/verify-api-token")
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        httpRequestErrorHandler.handle(httpRequest, headers -> HttpResponse.BodySubscribers.discarding());
+    }
+
+    @Override
     public Health health() throws ClientException {
         HttpRequest httpRequest = newJsonRequest("/api/v1/health").GET().build();
 

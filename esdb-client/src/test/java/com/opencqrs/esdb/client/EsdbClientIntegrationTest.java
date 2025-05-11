@@ -1,8 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -52,7 +51,17 @@ public class EsdbClientIntegrationTest {
                             "subject", "type", Option.FromLatestEvent.IfEventIsMissing.READ_NOTHING));
 
     @Nested
-    @DisplayName("/api/health")
+    @DisplayName("/api/v1/verify-api-token")
+    public class VerifyApiToken {
+
+        @Test
+        public void authenticate() throws ClientException {
+            assertThatCode(() -> client.authenticate()).doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
+    @DisplayName("/api/v1/health")
     public class HealthCheck {
 
         @Test
@@ -65,7 +74,7 @@ public class EsdbClientIntegrationTest {
     }
 
     @Nested
-    @DisplayName("/api/write-events")
+    @DisplayName("/api/v1/write-events")
     public class WriteEvents {
 
         @Test
@@ -234,7 +243,7 @@ public class EsdbClientIntegrationTest {
     }
 
     @Nested
-    @DisplayName("/api/observe-events")
+    @DisplayName("/api/v1/observe-events")
     public class ObserveEvents {
 
         @Test
@@ -382,7 +391,7 @@ public class EsdbClientIntegrationTest {
     }
 
     @Nested
-    @DisplayName("/api/read-events")
+    @DisplayName("/api/v1/read-events")
     public class ReadEvents {
 
         @Test
