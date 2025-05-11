@@ -16,7 +16,7 @@ gradle.beforeProject {
     )
 }
 
-rootProject.name = "open-cqrs"
+rootProject.name = "opencqrs"
 include(
     "esdb-client",
     "esdb-client-spring-boot-autoconfigure",

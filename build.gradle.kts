@@ -30,6 +30,7 @@ subprojects {
     apply(plugin = "org.cyclonedx.bom")
     apply(plugin = "com.diffplug.spotless")
 
+    group = "com.opencqrs"
     version = if (version != "unspecified") version else "1.0.0"
 
     extensions.configure<SpotlessExtension> {
@@ -64,9 +65,16 @@ subprojects {
 
         projectType = "library"
 
+        setVCSGit {
+            it.url = "https://github.com/open-cqrs/opencqrs"
+        }
+
         setOrganizationalEntity {
             it.name = "Digital Frontiers GmbH & Co. KG"
-            it.urls = listOf("https://www.digitalfrontiers.de")
+            it.urls = listOf(
+                "https://opencqrs.com",
+                "https://www.digitalfrontiers.de",
+            )
             it.address = PostalAddress().apply {
                 country = "Germany"
                 locality = "71034 Böblingen"
@@ -74,8 +82,8 @@ subprojects {
             }
             it.contacts = listOf(
                 OrganizationalContact().apply {
-                    name = "Digital Frontiers GmbH & Co. KG"
-                    email = "cqrs@digitalfrontiers.de"
+                    name = "OpenCQRS"
+                    email = "opencqrs@digitalfrontiers.de"
                 }
             )
         }
@@ -95,13 +103,26 @@ subprojects {
         dependsOn("generateBom")
 
         doLast {
-            // TODO: adapt & check (not alle licenses extracted have proper SPDX)
-            val forbiddenLicenses = setOf(
-                "GPL-3.0",
-                "GPL-2.0",
-                "AGPL-3.0",
-                "EUPL-1.2",
+            val allowedLicenses = setOf(
+                // ids
+                // jq ".components[]?.licenses[]?.license.id" */build/reports/bom.json | grep -v "null" | sort | uniq
+                "Apache-2.0",
+                "BSD-2-Clause",
+                "BSD-3-Clause",
+                "CC0-1.0",
+                "EPL-1.0",
+                "EPL-2.0",
+                "GPL-2.0-with-classpath-exception",
+                "LGPL-2.1-only",
+                "MIT",
+                "MIT-0",
+                "MPL-2.0",
+                // names (usually, if they don't habe an id)
+                // jq ".components[]?.licenses[]?.license.name" */build/reports/bom.json | grep -v "null" | sort | uniq
+                "EPL 1.0",
+                "GNU Lesser General Public License",
             )
+
             val bomFile = file("build/reports/bom.json")
 
             if (!bomFile.exists()) {
@@ -111,14 +132,14 @@ subprojects {
             val json = JsonSlurper().parse(bomFile) as Map<*, *>
             val components = json["components"] as? List<Map<String, Any>> ?: emptyList()
 
-            val violations = components.mapNotNull { component ->
-                val licenses = (component["licenses"] as? List<Map<String, Map<String, Any>>>)?.mapNotNull { it["license"]?.get("id") as? String } ?: emptyList()
-                val badLicenses = licenses.filter { it in forbiddenLicenses }
-                if (badLicenses.isNotEmpty()) "${component["name"]}: $badLicenses" else null
-            }
+            val licensesDetected = components.mapNotNull { component ->
+                (component["licenses"] as? List<Map<String, Map<String, Any>>>)?.mapNotNull { it["license"]?.get("id") as? String ?: it["license"]?.get("name") as? String } ?: emptyList()
+            }.flatten().toSet()
+
+            val violations = licensesDetected.filterNot { it in allowedLicenses }
 
             if (violations.isNotEmpty()) {
-                throw GradleException("forbidden licenses found for:\n${violations.joinToString("\n")}")
+                throw GradleException("forbidden licenses found:\n${violations.joinToString("\n")}")
             }
         }
     }
@@ -160,7 +181,6 @@ subprojects {
 
                     artifact(sourcesJar.get())
 
-                    groupId = "com.opencqrs"
                     artifactId = project.name
 
                     versionMapping {
