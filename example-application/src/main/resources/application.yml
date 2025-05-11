@@ -23,6 +23,9 @@ cqrs:
     propagation:
       keys:
         - "request-uri"
+  command-handling:
+    cache:
+      type: in_memory
 
 management:
   endpoint:

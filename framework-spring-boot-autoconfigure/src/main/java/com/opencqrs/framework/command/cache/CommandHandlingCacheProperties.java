@@ -15,7 +15,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  */
 @ConfigurationProperties("cqrs.command-handling.cache")
 public record CommandHandlingCacheProperties(
-        @DefaultValue("in_memory") Type type, @DefaultValue("1000") Integer capacity, String ref) {
+        @DefaultValue("none") Type type, @DefaultValue("1000") Integer capacity, String ref) {
     /** The pre-defined cache type. */
     public enum Type {
         /**
