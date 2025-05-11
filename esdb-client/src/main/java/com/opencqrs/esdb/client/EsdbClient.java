@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-/** {@link Client} implementation for the event sourcing database. */
+/** {@link Client} implementation for the <a href="https://www.eventsourcingdb.io">EventSourcingDB</a>. */
 public final class EsdbClient implements AutoCloseable, Client {
 
     private static final Set<Class<? extends Option>> VALID_READ_OPTIONS = Set.of(
