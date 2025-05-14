@@ -1,7 +1,6 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.command;
 
-import com.opencqrs.esdb.client.Client;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.metadata.PropagationMode;
 import com.opencqrs.framework.metadata.PropagationUtil;
@@ -18,8 +17,9 @@ import java.util.function.Function;
 
 /**
  * Test support for {@link CommandHandler} or {@link CommandHandlerDefinition}. This class can be used in favor of the
- * {@link CommandRouter} to test command handling logic without interacting with the {@linkplain Client event store},
- * solely relying on a set of {@link StateRebuildingHandlerDefinition}s. No {@linkplain EventUpcaster event upcasting},
+ * {@link CommandRouter} to test command handling logic without interacting with the
+ * {@linkplain com.opencqrs.esdb.client.EsdbClient event store}, solely relying on a set of
+ * {@link StateRebuildingHandlerDefinition}s. No {@linkplain EventUpcaster event upcasting},
  * {@linkplain EventTypeResolver event type resolution}, or {@linkplain PropagationUtil#propagateMetaData(Map, Map,
  * PropagationMode) meta-data propagation} is involved during test execution. <strong>Be aware that no
  * {@link Command.SubjectCondition}s will be checked either.</strong>

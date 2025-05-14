@@ -7,7 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-import com.opencqrs.esdb.client.Client;
+import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.BookAddedEvent;
 import com.opencqrs.framework.CqrsFrameworkException;
@@ -52,7 +52,7 @@ public class EventHandlingProcessorTest {
     private EventReader eventReader;
 
     @Mock
-    private Client client;
+    private EsdbClient client;
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
 

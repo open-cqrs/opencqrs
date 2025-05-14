@@ -1,7 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.persistence;
 
-import com.opencqrs.esdb.client.Client;
+import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
 import com.opencqrs.framework.types.EventTypeResolver;
 import com.opencqrs.framework.upcaster.EventUpcasters;
@@ -26,7 +26,7 @@ public class EventPersistenceAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public EventRepository eventRepository(
-            Client client,
+            EsdbClient client,
             EventSource eventSource,
             EventTypeResolver eventTypeResolver,
             EventDataMarshaller eventDataMarshaller,

@@ -12,15 +12,15 @@ import org.springframework.context.annotation.Bean;
 @AutoConfiguration(after = EsdbClientAutoConfiguration.class)
 @ConditionalOnClass({
     HealthContributor.class,
-    Client.class,
+    EsdbClient.class,
 })
-@ConditionalOnBean(Client.class)
+@ConditionalOnBean(EsdbClient.class)
 @ConditionalOnEnabledHealthIndicator("esdb")
 public class EsdbHealthContributorAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(name = {"esdbHealthIndicator", "esdbHealthContributor"})
-    public HealthContributor esdbHealthContributor(Client client) {
+    public HealthContributor esdbHealthContributor(EsdbClient client) {
         return new EsdbHealthIndicator(client);
     }
 }

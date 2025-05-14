@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Candidate event for {@link Client#write(List, List) publication} to an event store.
+ * Candidate event for {@link EsdbClient#write(List, List) publication} to a <a
+ * href="https://github.com/cloudevents/spec">Cloud Events Specification</a> conforming event store.
  *
  * @param source identifies the originating source of publication
  * @param subject an absolute path identifying the subject that the event is related to
@@ -15,7 +16,7 @@ import java.util.Map;
  * @param data a generic map structure containing the event payload, which is going to be stored as JSON within the
  *     event store
  * @see Event
- * @see Client#write(List, List)
+ * @see EsdbClient#write(List, List)
  */
 public record EventCandidate(
         @NotBlank String source, @NotBlank String subject, @NotBlank String type, @NotNull Map<String, ?> data) {}

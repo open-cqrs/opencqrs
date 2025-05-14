@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.opencqrs.esdb.client.Client;
+import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.EsdbClientAutoConfiguration;
 import com.opencqrs.framework.State;
 import java.util.UUID;
@@ -62,7 +62,7 @@ public class CommandHandlingTestSliceTest {
                 CommandRouterAutoConfiguration.class,
                 EsdbClientAutoConfiguration.class,
                 CommandRouter.class,
-                Client.class,
+                EsdbClient.class,
                 ObjectMapper.class
             })
     public void unnecessaryBeansIgnored(Class<?> bean) {

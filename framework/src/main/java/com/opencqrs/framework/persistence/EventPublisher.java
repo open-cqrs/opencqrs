@@ -1,7 +1,6 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.persistence;
 
-import com.opencqrs.esdb.client.Client;
 import com.opencqrs.esdb.client.Precondition;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +8,7 @@ import java.util.Map;
 /**
  * Interface specifying operations for publishing Java event objects. Implementations typically either capture these
  * events in-memory for further (or deferred) processing or immediately convert and pass them to
- * {@link Client#write(List, List)}.
+ * {@link com.opencqrs.esdb.client.EsdbClient#write(List, List)}.
  */
 public interface EventPublisher {
 

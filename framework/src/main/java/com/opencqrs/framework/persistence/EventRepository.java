@@ -3,7 +3,7 @@ package com.opencqrs.framework.persistence;
 
 import static java.util.stream.Collectors.toCollection;
 
-import com.opencqrs.esdb.client.Client;
+import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.esdb.client.EventCandidate;
 import com.opencqrs.esdb.client.Precondition;
@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 public class EventRepository implements EventReader, ImmediateEventPublisher {
 
     private final ClientRequestErrorMapper clientRequestErrorMapper;
-    private final Client client;
+    private final EsdbClient client;
     private final EventSource eventSource;
     private final EventTypeResolver eventTypeResolver;
     private final EventDataMarshaller eventDataMarshaller;
@@ -30,7 +30,7 @@ public class EventRepository implements EventReader, ImmediateEventPublisher {
 
     EventRepository(
             ClientRequestErrorMapper clientRequestErrorMapper,
-            Client client,
+            EsdbClient client,
             EventSource eventSource,
             EventTypeResolver eventTypeResolver,
             EventDataMarshaller eventDataMarshaller,
@@ -44,7 +44,7 @@ public class EventRepository implements EventReader, ImmediateEventPublisher {
     }
 
     public EventRepository(
-            Client client,
+            EsdbClient client,
             EventSource eventSource,
             EventTypeResolver eventTypeResolver,
             EventDataMarshaller eventDataMarshaller,

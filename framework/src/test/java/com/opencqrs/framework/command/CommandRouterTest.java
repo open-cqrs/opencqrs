@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.opencqrs.esdb.client.Client;
+import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.esdb.client.Option;
 import com.opencqrs.esdb.client.Precondition;
@@ -39,7 +39,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class CommandRouterTest {
 
     @Mock
-    private Client client;
+    private EsdbClient client;
 
     @Mock
     private ImmediateEventPublisher immediateEventPublisher;

@@ -1,7 +1,6 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.eventhandler;
 
-import com.opencqrs.esdb.client.Client;
 import com.opencqrs.esdb.client.ClientException;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.esdb.client.Option;
@@ -30,8 +29,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * {@linkplain Runnable#run() Asynchronous} event processor {@linkplain Client#observe(String, Set, Consumer) observing
- * an event stream} to be handled by matching {@link EventHandlerDefinition}s all belonging to the same
+ * {@linkplain Runnable#run() Asynchronous} event processor
+ * {@linkplain com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer) observing an event stream} to be
+ * handled by matching {@link EventHandlerDefinition}s all belonging to the same
  * {@linkplain EventHandlerDefinition#group() processing group and partition} with configurable
  * {@linkplain ProgressTracker progress tracking} and {@linkplain BackOff retry} in case of errors.
  *
@@ -98,7 +98,8 @@ public class EventHandlingProcessor implements Runnable {
      * Creates a pre-configured instance of {@code this}.
      *
      * @param partition the partition number handled by {@code this} with respect to the processing group
-     * @param subject the subject to {@linkplain Client#observe(String, Set, Consumer) observe}
+     * @param subject the subject to {@linkplain com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)
+     *     observe}
      * @param recursive whether the subject should be observed recursively, that is including child subjects
      * @param eventReader the event source
      * @param progressTracker the progress tracker to maintain the progress within the observed event stream
@@ -149,8 +150,8 @@ public class EventHandlingProcessor implements Runnable {
      * <ol>
      *   <li>fetching the {@linkplain ProgressTracker#current(String, long)} current progress} for the configured
      *       processing group and partition
-     *   <li>{@linkplain Client#observe(String, Set, Consumer) observing} the event stream for the configured subject
-     *       starting from the current progress
+     *   <li>{@linkplain com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer) observing} the event stream
+     *       for the configured subject starting from the current progress
      *   <li>checking if the {@linkplain EventSequenceResolver raw event's sequence id} is
      *       {@linkplain PartitionKeyResolver#resolve(String) relevant for this partition}, otherwise skip it
      *   <li>{@linkplain EventUpcasters#upcast(Event) upcasting} any observed event
@@ -445,11 +446,11 @@ public class EventHandlingProcessor implements Runnable {
     }
 
     /**
-     * Internal {@linkplain ClientException exception} used to capture exceptions from the {@link Client}s event
-     * consumer callback.
+     * Internal {@linkplain ClientException exception} used to capture exceptions from the
+     * {@link com.opencqrs.esdb.client.EsdbClient}s event consumer callback.
      *
      * @see com.opencqrs.esdb.client.HttpRequestErrorHandler#handle(HttpRequest, Function)
-     * @see Client#observe(String, Set, Consumer)
+     * @see com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)
      */
     private static class WrappedEventHandlingException extends ClientException {
 

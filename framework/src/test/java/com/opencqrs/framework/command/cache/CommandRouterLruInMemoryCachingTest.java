@@ -89,7 +89,7 @@ public class CommandRouterLruInMemoryCachingTest {
     private CommandRouter commandRouter;
 
     @MockitoSpyBean
-    private Client client;
+    private EsdbClient client;
 
     private final String isbn = UUID.randomUUID().toString();
 

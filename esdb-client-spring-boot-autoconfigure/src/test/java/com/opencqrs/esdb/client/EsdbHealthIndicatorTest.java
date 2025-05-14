@@ -16,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class EsdbHealthIndicatorTest {
 
     @Mock
-    private Client client;
+    private EsdbClient client;
 
     @InjectMocks
     private EsdbHealthIndicator subject;

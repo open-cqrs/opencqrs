@@ -1,7 +1,6 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.command;
 
-import com.opencqrs.esdb.client.Client;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
 import com.opencqrs.framework.upcaster.EventUpcasters;
@@ -23,8 +22,8 @@ import java.util.Map;
  *       converted} to their appropriate Java object type. This phase allows access to the raw {@link Event} read from
  *       the event store.
  *   <li>Any event published during command execution via {@link CommandEventPublisher} will be applied to update the
- *       instance state before the events will {@linkplain Client#write(List, List) be written} to the event store.
- *       Hence, this phase <strong>does not</strong> have access to the raw {@link Event}.
+ *       instance state before the events will {@linkplain com.opencqrs.esdb.client.EsdbClient#write(List, List) be
+ *       written} to the event store. Hence, this phase <strong>does not</strong> have access to the raw {@link Event}.
  * </ol>
  *
  * @param <I> the instance type

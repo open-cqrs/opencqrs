@@ -7,8 +7,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * Sealed interface for options used by {@link Client} implementations to read or observe events from the underlying
- * event store.
+ * Sealed interface for options used by {@link EsdbClient} to read or observe events from the underlying event store.
  */
 public sealed interface Option {
 
@@ -16,9 +15,9 @@ public sealed interface Option {
      * Specifies that events shall be fetched recursively, that is including the requested subject (events) and its
      * hierarchical subject (events).
      *
-     * @see Client#read(String, Set)
-     * @see Client#read(String, Set, Consumer)
-     * @see Client#observe(String, Set, Consumer)
+     * @see EsdbClient#read(String, Set)
+     * @see EsdbClient#read(String, Set, Consumer)
+     * @see EsdbClient#observe(String, Set, Consumer)
      */
     record Recursive() implements Option {}
 
@@ -26,8 +25,8 @@ public sealed interface Option {
      * Encapsulates the type of ordering of the fetched events.
      *
      * @param type the requested event order type
-     * @see Client#read(String, Set)
-     * @see Client#read(String, Set, Consumer)
+     * @see EsdbClient#read(String, Set)
+     * @see EsdbClient#read(String, Set, Consumer)
      */
     record Order(@NotNull Type type) implements Option {
 
@@ -44,9 +43,9 @@ public sealed interface Option {
      * Specifies the lowest inclusive event id to fetch from.
      *
      * @param id the lower bound event id (inclusive)
-     * @see Client#read(String, Set)
-     * @see Client#read(String, Set, Consumer)
-     * @see Client#observe(String, Set, Consumer)
+     * @see EsdbClient#read(String, Set)
+     * @see EsdbClient#read(String, Set, Consumer)
+     * @see EsdbClient#observe(String, Set, Consumer)
      */
     record LowerBoundInclusive(@NotBlank String id) implements Option {}
 
@@ -54,9 +53,9 @@ public sealed interface Option {
      * Specifies the lowest exclusive event id to fetch from.
      *
      * @param id the lower bound event id (inclusive)
-     * @see Client#read(String, Set)
-     * @see Client#read(String, Set, Consumer)
-     * @see Client#observe(String, Set, Consumer)
+     * @see EsdbClient#read(String, Set)
+     * @see EsdbClient#read(String, Set, Consumer)
+     * @see EsdbClient#observe(String, Set, Consumer)
      */
     record LowerBoundExclusive(@NotBlank String id) implements Option {}
 
@@ -64,8 +63,8 @@ public sealed interface Option {
      * Specifies the highest inclusive event id to fetch to.
      *
      * @param id the upper bound event id (inclusive)
-     * @see Client#read(String, Set)
-     * @see Client#read(String, Set, Consumer)
+     * @see EsdbClient#read(String, Set)
+     * @see EsdbClient#read(String, Set, Consumer)
      */
     record UpperBoundInclusive(@NotBlank String id) implements Option {}
 
@@ -73,8 +72,8 @@ public sealed interface Option {
      * Specifies the highest exclusive event id to fetch to.
      *
      * @param id the upper bound event id (inclusive)
-     * @see Client#read(String, Set)
-     * @see Client#read(String, Set, Consumer)
+     * @see EsdbClient#read(String, Set)
+     * @see EsdbClient#read(String, Set, Consumer)
      */
     record UpperBoundExclusive(@NotBlank String id) implements Option {}
 

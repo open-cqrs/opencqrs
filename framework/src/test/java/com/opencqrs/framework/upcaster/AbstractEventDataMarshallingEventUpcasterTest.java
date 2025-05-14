@@ -3,7 +3,7 @@ package com.opencqrs.framework.upcaster;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.opencqrs.esdb.client.Client;
+import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.EsdbClientAutoConfiguration;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.BookAddedEvent;
@@ -59,7 +59,7 @@ public class AbstractEventDataMarshallingEventUpcasterTest {
     }
 
     @MockitoBean
-    private Client notUsed;
+    private EsdbClient notUsed;
 
     @Autowired
     private EventDataMarshaller eventDataMarshaller;

@@ -5,8 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 
 /**
- * Sealed interface for preconditions used for {@link Client#write(List, List) event publication} to ensure consistency
- * within the underlying event store.
+ * Sealed interface for preconditions used for {@link EsdbClient#write(List, List) event publication} to ensure
+ * consistency within the underlying event store.
  */
 public sealed interface Precondition permits Precondition.SubjectIsOnEventId, Precondition.SubjectIsPristine {
 

@@ -1,7 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
-/** Base class for an exception thrown from {@link Client} implementations. */
+/** Base class for an exception thrown from {@link EsdbClient}. */
 public abstract class ClientException extends RuntimeException {
     public ClientException(String message) {
         super(message);
@@ -16,8 +16,8 @@ public abstract class ClientException extends RuntimeException {
     }
 
     /**
-     * Exception class representing errors due to invalid {@link Client client API} usage. This is typically caused by
-     * an invalid combination of {@link Option}s or {@link Precondition}s.
+     * Exception class representing errors due to invalid {@link EsdbClient client API} usage. This is typically caused
+     * by an invalid combination of {@link Option}s or {@link Precondition}s.
      */
     public static class InvalidUsageException extends ClientException {
 

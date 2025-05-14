@@ -1,13 +1,13 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.client;
 
-import com.opencqrs.esdb.client.Client;
 import com.opencqrs.esdb.client.ClientException;
 import com.opencqrs.framework.CqrsFrameworkException;
 import java.util.function.Supplier;
 
 /**
- * Helper class to map errors from {@link Client} operations to {@link CqrsFrameworkException}.
+ * Helper class to map errors from {@link com.opencqrs.esdb.client.EsdbClient} operations to
+ * {@link CqrsFrameworkException}.
  *
  * @see #handleMappingExceptionsIfNecessary(Supplier)
  */
@@ -17,7 +17,7 @@ public final class ClientRequestErrorMapper {
      * Handles and maps suitable {@link ClientException}s thrown from the given handler to suitable subclasses of
      * {@link CqrsFrameworkException}.
      *
-     * @param handler encapsulates calls to {@link Client} operations
+     * @param handler encapsulates calls to {@link com.opencqrs.esdb.client.EsdbClient} operations
      * @return the response from the handler if successful
      * @param <T> generic response type for the handler
      * @throws ConcurrencyException in case of {@link ClientException.HttpException.HttpClientException} with status

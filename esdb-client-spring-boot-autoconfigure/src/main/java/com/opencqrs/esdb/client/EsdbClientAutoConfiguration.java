@@ -16,8 +16,9 @@ import org.springframework.context.annotation.Bean;
 public class EsdbClientAutoConfiguration {
 
     @Bean
-    @ConditionalOnMissingBean(Client.class)
-    public Client esdbClient(EsdbProperties properties, Marshaller marshaller, HttpClient.Builder httpClientBuilder) {
+    @ConditionalOnMissingBean(EsdbClient.class)
+    public EsdbClient esdbClient(
+            EsdbProperties properties, Marshaller marshaller, HttpClient.Builder httpClientBuilder) {
         return new EsdbClient(
                 properties.server().uri(),
                 properties.server().apiToken(),

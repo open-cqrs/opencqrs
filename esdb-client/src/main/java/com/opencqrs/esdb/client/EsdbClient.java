@@ -13,8 +13,8 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-/** {@link Client} implementation for the <a href="https://www.eventsourcingdb.io">EventSourcingDB</a>. */
-public final class EsdbClient implements AutoCloseable, Client {
+/** Client SDK for the <a href="https://www.eventsourcingdb.io">EventSourcingDB</a>. */
+public final class EsdbClient implements AutoCloseable {
 
     private static final Set<Class<? extends Option>> VALID_READ_OPTIONS = Set.of(
             Option.Recursive.class,
@@ -45,7 +45,15 @@ public final class EsdbClient implements AutoCloseable, Client {
         this.httpRequestErrorHandler = new HttpRequestErrorHandler(this.httpClient);
     }
 
-    @Override
+    /**
+     * Authenticates against the configured event store, ensuring the correct api token has been configured.
+     *
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code, e.g. 401 if not
+     *     authenticated successfully
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
     public void authenticate() throws ClientException {
         HttpRequest httpRequest = newJsonRequest("/api/v1/verify-api-token")
                 .POST(HttpRequest.BodyPublishers.noBody())
@@ -54,7 +62,15 @@ public final class EsdbClient implements AutoCloseable, Client {
         httpRequestErrorHandler.handle(httpRequest, headers -> HttpResponse.BodySubscribers.discarding());
     }
 
-    @Override
+    /**
+     * Checks the healthiness of the configured event store.
+     *
+     * @return the health status
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
     public Health health() throws ClientException {
         HttpRequest httpRequest = newJsonRequest("/api/v1/health").GET().build();
 
@@ -63,7 +79,20 @@ public final class EsdbClient implements AutoCloseable, Client {
         return marshaller.fromHealthResponse(response);
     }
 
-    @Override
+    /**
+     * Publishes the given {@link EventCandidate}s to the underlying event store. The given preconditions must be
+     * fulfilled in order for the publication to be applied. The publication is guaranteed to be an atomic operation,
+     * that is event candidates will be published all or nothing, if preconditions hold.
+     *
+     * @param eventCandidates the candidate events to be published together
+     * @param preconditions preconditions that must be fulfilled, otherwise
+     *     {@link ClientException.HttpException.HttpClientException} with status code {@code 409} will be thrown
+     * @return a list of {@link Event}s with all fields populated, except for {@link Event#hash()}
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
     public List<Event> write(List<EventCandidate> eventCandidates, List<Precondition> preconditions)
             throws ClientException {
         HttpRequest httpRequest = newJsonRequest("/api/v1/write-events")
@@ -94,7 +123,23 @@ public final class EsdbClient implements AutoCloseable, Client {
                 .toList();
     }
 
-    @Override
+    /**
+     * Streams existing {@link Event}s from the underlying event store, waiting for any new events to be published.
+     * <i>This method will block infinitely, if no exception or error occurs.</i> Any observed event will be passed the
+     * given event consumer synchronously, to maintain the natural event order.
+     *
+     * <p>In order to observe <b>all</b> events from the underlying event store {@code subject} should be set to
+     * {@code /} together with {@link Option.Recursive}.
+     *
+     * @param subject the subject to observe
+     * @param options a set of options controlling the result set
+     * @param eventConsumer a consumer callback for the observed events
+     * @throws ClientException.InvalidUsageException in case of an invalid {@link Option} used
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
     public void observe(String subject, Set<Option> options, Consumer<Event> eventConsumer) throws ClientException {
         checkValidOptions(VALID_OBSERVE_OPTIONS, options);
 
@@ -102,14 +147,37 @@ public final class EsdbClient implements AutoCloseable, Client {
         throw new ClientException.TransportException("Event observation stopped unexpectedly");
     }
 
-    @Override
+    /**
+     * Reads existing {@link Event}s from the underlying event store. All events will be passed the given event consumer
+     * synchronously, to maintain the natural event order.
+     *
+     * @param subject the subject to read from
+     * @param options a set of options controlling the result set
+     * @param eventConsumer a consumer callback for the read events
+     * @throws ClientException.InvalidUsageException in case of an invalid {@link Option} used
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
     public void read(String subject, Set<Option> options, Consumer<Event> eventConsumer) throws ClientException {
         checkValidOptions(VALID_READ_OPTIONS, options);
 
         readOrObserve("/api/v1/read-events", subject, options, eventConsumer);
     }
 
-    @Override
+    /**
+     * Reads existing {@link Event}s from the underlying event store.
+     *
+     * @param subject the subject to read from
+     * @param options a set of options controlling the result set
+     * @return a list of {@link Event}s, may be empty
+     * @throws ClientException.InvalidUsageException in case of an invalid {@link Option} used
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
     public List<Event> read(String subject, Set<Option> options) throws ClientException {
         var consumed = new ArrayList<Event>();
         read(subject, options, consumed::add);

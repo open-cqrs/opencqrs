@@ -19,7 +19,7 @@ public class EsdbHealthContributorAutoConfigurationTest {
     @Test
     public void healthContributorCreated() {
         runner.withConfiguration(AutoConfigurations.of(EsdbHealthContributorAutoConfiguration.class))
-                .withBean(Client.class, Mockito::mock)
+                .withBean(EsdbClient.class, Mockito::mock)
                 .run(context -> {
                     assertThat(context)
                             .hasNotFailed()
@@ -32,11 +32,11 @@ public class EsdbHealthContributorAutoConfigurationTest {
     @ValueSource(
             classes = {
                 HealthContributor.class,
-                Client.class,
+                EsdbClient.class,
             })
     public void conditionallyDisabledByMissingClass(Class<?> clazz) {
         runner.withConfiguration(AutoConfigurations.of(EsdbHealthContributorAutoConfiguration.class))
-                .withBean(Client.class, Mockito::mock)
+                .withBean(EsdbClient.class, Mockito::mock)
                 .withClassLoader(new FilteredClassLoader(clazz))
                 .run(context -> {
                     assertThat(context).hasNotFailed().doesNotHaveBean(EsdbHealthContributorAutoConfiguration.class);
@@ -54,7 +54,7 @@ public class EsdbHealthContributorAutoConfigurationTest {
     @Test
     public void conditionallyDisabledByProperty() {
         runner.withConfiguration(AutoConfigurations.of(EsdbHealthContributorAutoConfiguration.class))
-                .withBean(Client.class, Mockito::mock)
+                .withBean(EsdbClient.class, Mockito::mock)
                 .withPropertyValues("management.health.esdb.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed().doesNotHaveBean(EsdbHealthContributorAutoConfiguration.class);
@@ -65,7 +65,7 @@ public class EsdbHealthContributorAutoConfigurationTest {
     @ValueSource(strings = {"esdbHealthIndicator", "esdbHealthContributor"})
     public void conditionallyDisabledHealthContributorByExistingBean(String beanName) {
         runner.withConfiguration(AutoConfigurations.of(EsdbHealthContributorAutoConfiguration.class))
-                .withBean(Client.class, Mockito::mock)
+                .withBean(EsdbClient.class, Mockito::mock)
                 .withBean(beanName, HealthContributor.class, Mockito::mock)
                 .run(context -> {
                     assertThat(context)

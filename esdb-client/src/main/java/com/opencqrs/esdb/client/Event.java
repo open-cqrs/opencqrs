@@ -23,9 +23,9 @@ import java.util.function.Consumer;
  * @param hash the hash of this event
  * @param predecessorHash the hash of the preceding event in the event store
  * @see EventCandidate
- * @see Client#read(String, Set)
- * @see Client#read(String, Set, Consumer)
- * @see Client#observe(String, Set, Consumer)
+ * @see EsdbClient#read(String, Set)
+ * @see EsdbClient#read(String, Set, Consumer)
+ * @see EsdbClient#observe(String, Set, Consumer)
  */
 public record Event(
         @NotBlank String source,

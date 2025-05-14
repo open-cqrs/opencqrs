@@ -46,7 +46,7 @@ public class EventRepositoryTest {
     private ClientRequestErrorMapper clientRequestErrorMapper;
 
     @Mock
-    private Client client;
+    private EsdbClient client;
 
     @Mock
     private EventTypeResolver eventTypeResolver;

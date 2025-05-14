@@ -31,7 +31,7 @@ public class EsdbClientIntegrationTest {
     private static final String TEST_SOURCE = "tag://test-execution";
 
     @Autowired
-    private Client client;
+    private EsdbClient client;
 
     @Autowired
     private ObjectMapper objectMapper;

@@ -4,7 +4,7 @@ package com.opencqrs.framework.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import com.opencqrs.esdb.client.Client;
+import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.esdb.client.EventCandidate;
 import com.opencqrs.esdb.client.Precondition;
@@ -196,7 +196,7 @@ public class CommandAndEventHandlingIntegrationTest {
     private CommandRouter commandRouter;
 
     @Autowired
-    private Client client;
+    private EsdbClient client;
 
     @Autowired
     private ApplicationContext applicationContext;

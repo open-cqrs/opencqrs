@@ -1,7 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.persistence;
 
-import com.opencqrs.esdb.client.Client;
+import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.esdb.client.Option;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
@@ -15,8 +15,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Interface specifying operations for reading events from a {@link Client}. This includes reading raw {@link Event}s,
- * upcasted {@link Event}s, or events converted to Java {@link Object}s and meta-data.
+ * Interface specifying operations for reading events from an {@link EsdbClient}. This includes reading raw
+ * {@link Event}s, upcasted {@link Event}s, or events converted to Java {@link Object}s and meta-data.
  */
 public interface EventReader {
 
@@ -120,17 +120,17 @@ public interface EventReader {
         return result;
     }
 
-    /** Generically wraps {@link Client} calls to consume {@link Event}s. */
+    /** Generically wraps {@link EsdbClient} calls to consume {@link Event}s. */
     @FunctionalInterface
     interface ClientRequestor {
 
         /**
-         * Encapsulates a {@link Client} call to fetch raw {@link Event}s passed to the given consumer.
+         * Encapsulates an {@link EsdbClient} call to fetch raw {@link Event}s passed to the given consumer.
          *
          * @param client the client to fetch from
          * @param eventConsumer the raw {@link Event} consumer
          */
-        void request(Client client, Consumer<Event> eventConsumer);
+        void request(EsdbClient client, Consumer<Event> eventConsumer);
     }
 
     /**

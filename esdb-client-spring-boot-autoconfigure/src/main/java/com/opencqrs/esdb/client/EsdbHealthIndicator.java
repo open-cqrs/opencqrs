@@ -4,13 +4,14 @@ package com.opencqrs.esdb.client;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 
 /**
- * {@link org.springframework.boot.actuate.health.HealthContributor} implementation based on {@link Client#health()}.
+ * {@link org.springframework.boot.actuate.health.HealthContributor} implementation based on
+ * {@link EsdbClient#health()}.
  */
 public class EsdbHealthIndicator extends AbstractHealthIndicator {
 
-    private final Client client;
+    private final EsdbClient client;
 
-    public EsdbHealthIndicator(Client client) {
+    public EsdbHealthIndicator(EsdbClient client) {
         this.client = client;
     }
 
