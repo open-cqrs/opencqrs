@@ -1,7 +1,7 @@
 version: '3'
 services:
     event-store:
-        image: docker.io/thenativeweb/eventsourcingdb:1.0.0
+        image: docker.io/thenativeweb/eventsourcingdb:1.0.1
         user: "root:root"
         volumes:
             - event-data:/events
