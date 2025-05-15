@@ -1,3 +1,5 @@
+description = "Spring Boot auto configurations for OpenCQRS framework"
+
 dependencies {
     api(project(":framework"))
     compileOnly("jakarta.validation:jakarta.validation-api")

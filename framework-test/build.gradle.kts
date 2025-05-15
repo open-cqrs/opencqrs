@@ -1,3 +1,5 @@
+description = "OpenCQRS Framework Test Support"
+
 dependencies {
     api(project(":framework"))
     implementation("org.springframework.boot:spring-boot-starter-test")

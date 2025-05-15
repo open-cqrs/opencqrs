@@ -25,12 +25,12 @@ and testing OpenCQRS applications:
     <dependency>
         <groupId>com.opencqrs</groupId>
         <artifactId>framework-spring-boot-starter</artifactId>
-        <version>1.0-rc1</version>
+        <version>{{version}}</version>
     </dependency>
     <dependency>
         <groupId>com.opencqrs</groupId>
         <artifactId>framework-test</artifactId>
-        <version>1.0-rc1</version>
+        <version>{{version}}</version>
         <scope>test</scope>
     </dependency>
 </dependencies>
@@ -40,8 +40,8 @@ and testing OpenCQRS applications:
 
 ```kotlin
 dependencies {
-    implementation("com.opencqrs:framework-spring-boot-starter:1.0-rc1")
-    testImplementation("com.opencqrs:framework-test:1.0-rc1")
+    implementation("com.opencqrs:framework-spring-boot-starter:{{version}}")
+    testImplementation("com.opencqrs:framework-test:{{version}}")
 }
 ```
 

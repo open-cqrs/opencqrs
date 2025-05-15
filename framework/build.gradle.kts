@@ -1,3 +1,5 @@
+description = "OpenCQRS Java CQRS/ES Core Framework"
+
 dependencies {
     api(project(":esdb-client"))
     compileOnly("jakarta.validation:jakarta.validation-api")

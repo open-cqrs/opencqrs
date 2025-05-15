@@ -1,3 +1,5 @@
+description = "Client SDK for the EventSourcingDB"
+
 dependencies {
     compileOnly("jakarta.validation:jakarta.validation-api")
     implementation("com.fasterxml.jackson.core:jackson-databind")

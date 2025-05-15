@@ -1,3 +1,5 @@
+description = "Spring Boot auto configurations for the ESDB client SDK"
+
 dependencies {
     api(project(":esdb-client"))
     compileOnly("com.fasterxml.jackson.core:jackson-databind")

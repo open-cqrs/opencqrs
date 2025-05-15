@@ -5,12 +5,14 @@ import org.cyclonedx.model.AttachmentText
 import org.cyclonedx.model.License
 import org.cyclonedx.model.OrganizationalContact
 import org.cyclonedx.model.organization.PostalAddress
+import java.util.Base64
 
 val frameworkVersions: Map<String, String> by extra
 val memorySettings: Map<String, String> by extra
 
 plugins {
     id("maven-publish")
+    id("signing")
     id("org.cyclonedx.bom") version "2.3.0" apply false
     id("io.spring.dependency-management") version "1.1.7"
     id("com.github.ben-manes.versions") version "0.52.0"
@@ -25,6 +27,7 @@ allprojects {
 
 subprojects {
     apply(plugin = "maven-publish")
+    apply(plugin = "signing")
     apply(plugin = "java-library")
     apply(plugin = "io.spring.dependency-management")
     apply(plugin = "org.cyclonedx.bom")
@@ -45,15 +48,21 @@ subprojects {
     extensions.configure<JavaPluginExtension> {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+
+        withSourcesJar()
+        withJavadocJar()
     }
 
-    // Zugriff auf sourceSets über die JavaPluginExtension
-    val javaExt = extensions.getByType<JavaPluginExtension>()
+    tasks.withType<Javadoc>().configureEach {
+        isFailOnError = true
 
-    // Task für sources.jar hinzufügen
-    val sourcesJar = tasks.register<Jar>("sourcesJar") {
-        from(javaExt.sourceSets.getByName("main").allSource)
-        archiveClassifier.set("sources")
+        options {
+            encoding = "UTF-8"
+
+            // WARNUNGEN deaktivieren, z. B. fehlende @param etc.
+            // Fehler wie Syntax- oder Formatfehler werden weiterhin gemeldet
+            (this as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
+        }
     }
 
     tasks.register<CycloneDxTask>("generateBom") {
@@ -174,12 +183,45 @@ subprojects {
             maxHeapSize = memorySettings.getValue("test.max-heap-size")
         }
 
+        extensions.configure<SigningExtension>("signing") {
+            isRequired = System.getenv().containsKey("SIGNING_PASSWORD")
+
+            useInMemoryPgpKeys(
+                String(Base64.getDecoder().decode(System.getenv("SIGNING_KEY"))),
+                System.getenv("SIGNING_PASSWORD")
+            )
+            sign(extensions.getByType<PublishingExtension>().publications)
+        }
+
         publishing {
             publications {
                 create<MavenPublication>("mavenJava") {
-                    from(components["java"])
+                    pom {
+                        url = "https://www.opencqrs.com"
+                        name = project.description
+                        description = project.description
 
-                    artifact(sourcesJar.get())
+                        scm {
+                            url = "https://github.com/open-cqrs/opencqrs"
+                        }
+
+                        developers {
+                            developer {
+                                id = "open-cqrs"
+                                name = "OpenCQRS"
+                                email = "opencqrs@digitalfrontiers.de"
+                            }
+                        }
+
+                        licenses {
+                            license {
+                                name = "Apache-2.0"
+                                url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                            }
+                        }
+                    }
+
+                    from(components["java"])
 
                     artifactId = project.name
 
@@ -191,6 +233,13 @@ subprojects {
                             fromResolutionResult()
                         }
                     }
+                }
+            }
+
+            repositories {
+                maven {
+                    name = "staging"
+                    url = uri(layout.buildDirectory.dir("staging-deploy"))
                 }
             }
         }

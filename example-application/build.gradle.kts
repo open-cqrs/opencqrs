@@ -1,3 +1,5 @@
+description = "OpenCQRS Library Example Application"
+
 plugins {
     id("java")
     id("org.springframework.boot") version "3.4.5"

@@ -1,0 +1,21 @@
+project:
+  name: opencqrs
+  languages:
+    java:
+      groupId: com.opencqrs
+
+deploy:
+  maven:
+    mavenCentral:
+      sonatype:
+        active: ALWAYS
+        sign: false
+        url: https://central.sonatype.com/api/v1/publisher
+        stagingRepositories:
+          - esdb-client/build/staging-deploy
+          - esdb-client-spring-boot-autoconfigure/build/staging-deploy
+          - esdb-client-spring-boot-starter/build/staging-deploy
+          - framework/build/staging-deploy
+          - framework-test/build/staging-deploy
+          - framework-spring-boot-autoconfigure/build/staging-deploy
+          - framework-spring-boot-starter/build/staging-deploy
