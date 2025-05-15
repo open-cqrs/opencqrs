@@ -46,6 +46,27 @@ public final class EsdbClient implements AutoCloseable {
     }
 
     /**
+     * Pings the configured event store, ensuring the server is running
+     *
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
+    public void ping() throws ClientException {
+        HttpRequest httpRequest =
+                HttpRequest.newBuilder(serverUri.resolve("/api/v1/ping")).GET().build();
+
+        var response = httpRequestErrorHandler.handle(
+                httpRequest, headers -> HttpResponse.BodySubscribers.ofString(Util.fromHttpHeaders(headers)));
+
+        if (!"io.eventsourcingdb.api.ping-received"
+                .equals(marshaller.fromJsonResponse(response).get("type"))) {
+            throw new ClientException.HttpException.HttpClientException("no ping received", 200);
+        }
+    }
+
+    /**
      * Authenticates against the configured event store, ensuring the correct api token has been configured.
      *
      * @throws ClientException.TransportException in case of connection or network errors
@@ -59,7 +80,13 @@ public final class EsdbClient implements AutoCloseable {
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
 
-        httpRequestErrorHandler.handle(httpRequest, headers -> HttpResponse.BodySubscribers.discarding());
+        var response = httpRequestErrorHandler.handle(
+                httpRequest, headers -> HttpResponse.BodySubscribers.ofString(Util.fromHttpHeaders(headers)));
+
+        if (!"io.eventsourcingdb.api.api-token-verified"
+                .equals(marshaller.fromJsonResponse(response).get("type"))) {
+            throw new ClientException.HttpException.HttpClientException("api token could not be verified", 200);
+        }
     }
 
     /**

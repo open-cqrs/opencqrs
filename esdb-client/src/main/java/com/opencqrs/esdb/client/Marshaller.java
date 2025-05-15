@@ -3,6 +3,7 @@ package com.opencqrs.esdb.client;
 
 import com.opencqrs.esdb.client.jackson.JacksonMarshaller;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -12,6 +13,14 @@ import java.util.function.Consumer;
  * @see JacksonMarshaller
  */
 public interface Marshaller {
+
+    /**
+     * Used by {@link EsdbClient} operations to transform any generic HTTP JSON response.
+     *
+     * @param response the JSON HTTP response body as string
+     * @return a map representing the JSON response content
+     */
+    Map<String, Object> fromJsonResponse(String response);
 
     /**
      * Used by {@link EsdbClient#health()} to transform the HTTP response body to a {@link Health}.

@@ -26,6 +26,15 @@ public class JacksonMarshaller implements Marshaller {
     }
 
     @Override
+    public Map<String, Object> fromJsonResponse(String response) {
+        try {
+            return objectMapper.readValue(response, Map.class);
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
     public Health fromHealthResponse(String response) {
         try {
             return objectMapper.readValue(response, Health.class);

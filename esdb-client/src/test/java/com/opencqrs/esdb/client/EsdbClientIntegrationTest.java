@@ -51,6 +51,16 @@ public class EsdbClientIntegrationTest {
                             "subject", "type", Option.FromLatestEvent.IfEventIsMissing.READ_NOTHING));
 
     @Nested
+    @DisplayName("/api/v1/ping")
+    public class Ping {
+
+        @Test
+        public void ping() throws ClientException {
+            assertThatCode(() -> client.ping()).doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
     @DisplayName("/api/v1/verify-api-token")
     public class VerifyApiToken {
 
