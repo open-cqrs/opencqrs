@@ -184,13 +184,15 @@ subprojects {
         }
 
         extensions.configure<SigningExtension>("signing") {
-            isRequired = System.getenv().containsKey("SIGNING_PASSWORD")
+            val isSigningRequired = System.getenv().containsKey("SIGNING_PASSWORD")
 
-            useInMemoryPgpKeys(
-                String(Base64.getDecoder().decode(System.getenv("SIGNING_KEY"))),
-                System.getenv("SIGNING_PASSWORD")
-            )
-            sign(extensions.getByType<PublishingExtension>().publications)
+            if (isSigningRequired) {
+                useInMemoryPgpKeys(
+                    String(Base64.getDecoder().decode(System.getenv("SIGNING_KEY"))),
+                    System.getenv("SIGNING_PASSWORD")
+                )
+                sign(extensions.getByType<PublishingExtension>().publications)
+            }
         }
 
         publishing {
