@@ -24,7 +24,7 @@ dependencies {
 
 jib {
     container {
-        mainClass = "de.dxfrontiers.cqrs.example.BookApplication"
+        mainClass = "com.opencqrs.example.LibraryApplication"
     }
     from {
         image = when (System.getProperty("os.arch")) {
@@ -33,6 +33,6 @@ jib {
         }
     }
     to {
-        image = "dxfrontiers/cqrs-example-application:latest"
+        image = "opencqrs/example-application:latest"
     }
 }

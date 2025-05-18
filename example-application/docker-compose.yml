@@ -18,7 +18,7 @@ services:
             H2_OPTIONS: "-ifNotExists"
 
     application:
-        image: "dxfrontiers/cqrs-example-application:latest"
+        image: "opencqrs/example-application:latest"
         ports:
             - "8080"
         environment:
