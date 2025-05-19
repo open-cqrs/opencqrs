@@ -1,8 +1,8 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.example.rest;
 
-import com.opencqrs.framework.command.CommandRouter;
 import com.opencqrs.example.domain.reader.api.RegisterReaderCommand;
+import com.opencqrs.framework.command.CommandRouter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.Map;

@@ -1,8 +1,8 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.example.projection.reader;
 
-import com.opencqrs.framework.eventhandler.EventHandling;
 import com.opencqrs.example.domain.reader.api.ReaderRegisteredEvent;
+import com.opencqrs.framework.eventhandler.EventHandling;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;

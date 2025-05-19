@@ -5,10 +5,9 @@ import com.opencqrs.example.domain.reader.api.ReaderRegisteredEvent;
 import com.opencqrs.example.domain.reader.api.RegisterReaderCommand;
 import com.opencqrs.framework.command.CommandHandlingTest;
 import com.opencqrs.framework.command.CommandHandlingTestFixture;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.UUID;
 
 @CommandHandlingTest
 public class ReaderHandlingTest {

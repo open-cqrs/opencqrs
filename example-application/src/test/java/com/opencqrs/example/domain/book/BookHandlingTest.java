@@ -1,18 +1,17 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.example.domain.book;
 
+import static org.mockito.Mockito.doReturn;
+
 import com.opencqrs.example.domain.book.api.*;
 import com.opencqrs.example.projection.reader.ReaderRepository;
 import com.opencqrs.framework.command.CommandHandlingTest;
 import com.opencqrs.framework.command.CommandHandlingTestFixture;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
-import java.util.Set;
-import java.util.UUID;
-
-import static org.mockito.Mockito.doReturn;
 
 @CommandHandlingTest
 public class BookHandlingTest {

@@ -5,9 +5,8 @@ import com.opencqrs.example.domain.book.api.*;
 import com.opencqrs.example.domain.reader.api.NoSuchReaderException;
 import com.opencqrs.example.projection.reader.ReaderRepository;
 import com.opencqrs.framework.command.*;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @CommandHandlerConfiguration
 public class BookHandling {

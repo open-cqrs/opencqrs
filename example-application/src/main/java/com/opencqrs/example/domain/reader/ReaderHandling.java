@@ -1,12 +1,12 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.example.domain.reader;
 
+import com.opencqrs.example.domain.reader.api.ReaderRegisteredEvent;
+import com.opencqrs.example.domain.reader.api.RegisterReaderCommand;
 import com.opencqrs.framework.command.CommandEventPublisher;
 import com.opencqrs.framework.command.CommandHandlerConfiguration;
 import com.opencqrs.framework.command.CommandHandling;
 import com.opencqrs.framework.command.StateRebuilding;
-import com.opencqrs.example.domain.reader.api.ReaderRegisteredEvent;
-import com.opencqrs.example.domain.reader.api.RegisterReaderCommand;
 import java.util.UUID;
 
 @CommandHandlerConfiguration

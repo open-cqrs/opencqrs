@@ -1,11 +1,11 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.example.projection.book.verifier;
 
-import com.opencqrs.framework.command.CommandRouter;
-import com.opencqrs.framework.command.CommandSubjectAlreadyExistsException;
 import com.opencqrs.example.domain.book.api.BookPurchasedEvent;
 import com.opencqrs.example.domain.book.api.BookReturnedEvent;
 import com.opencqrs.example.domain.book.api.MarkBookPageDamagedCommand;
+import com.opencqrs.framework.command.CommandRouter;
+import com.opencqrs.framework.command.CommandSubjectAlreadyExistsException;
 import java.util.Random;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
