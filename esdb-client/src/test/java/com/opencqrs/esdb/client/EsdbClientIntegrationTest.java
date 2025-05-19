@@ -4,13 +4,16 @@ package com.opencqrs.esdb.client;
 import static org.assertj.core.api.Assertions.*;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.opencqrs.esdb.client.eventql.ErrorHandler;
+import com.opencqrs.esdb.client.eventql.RowHandler;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -19,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -488,7 +492,7 @@ public class EsdbClientIntegrationTest {
                                     TEST_SOURCE,
                                     subject + "/pages/42",
                                     "com.opencqrs.books-page-damaged.v1",
-                                    objectMapper.convertValue(new BookPageDamagedEvent(), Map.class)),
+                                    objectMapper.convertValue(new BookPageDamagedEvent(42L), Map.class)),
                             new EventCandidate(
                                     TEST_SOURCE,
                                     subject,
@@ -526,6 +530,160 @@ public class EsdbClientIntegrationTest {
         }
     }
 
+    @Nested
+    @DisplayName("/api/v1/run-eventql-query")
+    public class Query {
+
+        String subject = randomSubject();
+
+        @MockitoBean
+        ErrorHandler errorHandler;
+
+        @BeforeEach
+        @Timeout(2) // deadlock may occur when writing after querying
+        public void setup() {
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            subject,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
+                    List.of(new Precondition.SubjectIsPristine(subject)));
+        }
+
+        @Test
+        public void queryForEventSuccessfully() {
+            var ref = new AtomicReference<Event>();
+
+            client.query(
+                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e",
+                    (RowHandler.AsEvent) ref::set,
+                    errorHandler);
+
+            assertThat(ref)
+                    .hasValueSatisfying(event -> assertThat(event.subject()).isEqualTo(subject));
+            verifyNoInteractions(errorHandler);
+        }
+
+        @Test
+        public void queryForEventDeserializationFailing() {
+            RowHandler.AsEvent rowHandler = mock();
+
+            client.query(
+                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { time: e.subject }",
+                    rowHandler,
+                    errorHandler);
+
+            verifyNoInteractions(rowHandler);
+            verify(errorHandler).marshallingError(isA(ClientException.MarshallingException.class), anyString());
+        }
+
+        @Test
+        public void queryForMapSuccessfully() {
+            var ref = new AtomicReference<Map<String, ?>>();
+
+            client.query(
+                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data",
+                    (RowHandler.AsMap) ref::set,
+                    errorHandler);
+
+            assertThat(ref).hasValueSatisfying(map -> {
+                assertThat(map).hasEntrySatisfying("author", s -> assertThat(s).isEqualTo("JRR Tolkien"));
+            });
+            verifyNoInteractions(errorHandler);
+        }
+
+        @Test
+        public void queryForMapDeserializationFailing() {
+            RowHandler.AsMap rowHandler = mock();
+
+            client.query(
+                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id",
+                    rowHandler,
+                    errorHandler);
+
+            verifyNoInteractions(rowHandler);
+            verify(errorHandler).marshallingError(isA(ClientException.MarshallingException.class), anyString());
+        }
+
+        @Test
+        public void queryForObjectSuccessfully() {
+            var ref = new AtomicReference<BookAddedEvent>();
+
+            client.query(
+                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data",
+                    new RowHandler.AsObject<BookAddedEvent>() {
+                        @Override
+                        public void accept(BookAddedEvent bookAddedEvent) {
+                            ref.set(bookAddedEvent);
+                        }
+
+                        @Override
+                        public Class<BookAddedEvent> type() {
+                            return BookAddedEvent.class;
+                        }
+                    },
+                    errorHandler);
+
+            assertThat(ref).hasValueSatisfying(e -> assertThat(e.author).isEqualTo("JRR Tolkien"));
+            verifyNoInteractions(errorHandler);
+        }
+
+        @Test
+        public void queryForObjectDeserializationFailing() {
+            RowHandler.AsObject<BookPageDamagedEvent> rowHandler = mock();
+            doReturn(BookPageDamagedEvent.class).when(rowHandler).type();
+
+            client.query(
+                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { page : e.subject }",
+                    rowHandler,
+                    errorHandler);
+
+            verify(rowHandler, never()).accept(any());
+            verify(errorHandler).marshallingError(isA(ClientException.MarshallingException.class), anyString());
+        }
+
+        @Test
+        public void queryForScalarStringSuccessfully() {
+            var ref = new AtomicReference<String>();
+
+            client.query(
+                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id",
+                    (RowHandler.AsScalar<String>) ref::set,
+                    errorHandler);
+
+            assertThat(ref).hasValueSatisfying(id -> assertThat(id).isNotBlank());
+            verifyNoInteractions(errorHandler);
+        }
+
+        @Test
+        public void queryForScalarIntSuccessfully() {
+            var ref = new AtomicReference<Integer>();
+
+            client.query(
+                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id AS INT",
+                    (RowHandler.AsScalar<Integer>) ref::set,
+                    errorHandler);
+
+            assertThat(ref).hasValueSatisfying(id -> assertThat(id).isPositive());
+            verifyNoInteractions(errorHandler);
+        }
+
+        @Test
+        public void queryForScalarDeserializationFailing() {
+            var ref = new AtomicReference<Integer>();
+            RowHandler.AsScalar<Integer> rowHandler = ref::set;
+
+            client.query(
+                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.time",
+                    rowHandler,
+                    errorHandler);
+
+            assertThat(ref.get()).isNull();
+            verify(errorHandler).marshallingError(isA(ClientException.MarshallingException.class), anyString());
+        }
+    }
+
     private String randomSubject() {
         return "/books/" + UUID.randomUUID();
     }
@@ -550,7 +708,7 @@ public class EsdbClientIntegrationTest {
 
     public record BookAddedEvent(String author, String title) {}
 
-    public record BookPageDamagedEvent() {}
+    public record BookPageDamagedEvent(Long page) {}
 
     public record BookRemovedEvent(String reason) {}
 }

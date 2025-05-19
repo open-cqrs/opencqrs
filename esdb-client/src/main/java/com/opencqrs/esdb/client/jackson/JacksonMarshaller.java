@@ -7,6 +7,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.*;
+import com.opencqrs.esdb.client.eventql.QueryProcessingError;
+import com.opencqrs.esdb.client.eventql.RowHandler;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
@@ -218,5 +220,75 @@ public class JacksonMarshaller implements Marshaller {
                     @NotBlank String hash,
                     @NotBlank String predecessorhash) {}
         }
+    }
+
+    @Override
+    public String toQueryRequest(String query) {
+        try {
+            return objectMapper.writeValueAsString(Map.of("query", query));
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public QueryResponseElement fromQueryResponseLine(String line) {
+        try {
+            JacksonQueryResponseElement jacksonResponseElement =
+                    objectMapper.readValue(line, JacksonQueryResponseElement.class);
+            return switch (jacksonResponseElement) {
+                case JacksonQueryResponseElement.Row row ->
+                    new QueryResponseElement.Row((rowHandler, errorHandler) -> {
+                        try {
+                            switch (rowHandler) {
+                                case RowHandler.AsEvent consumer -> {
+                                    var jacksonEvent = objectMapper.convertValue(
+                                            row.payload(), JacksonResponseElement.Event.Payload.class);
+                                    consumer.accept(new Event(
+                                            jacksonEvent.source,
+                                            jacksonEvent.subject,
+                                            jacksonEvent.type,
+                                            jacksonEvent.data,
+                                            jacksonEvent.specversion,
+                                            jacksonEvent.id,
+                                            jacksonEvent.time,
+                                            jacksonEvent.datacontenttype,
+                                            jacksonEvent.hash,
+                                            jacksonEvent.predecessorhash));
+                                }
+                                case RowHandler.AsMap consumer -> consumer.accept((Map<String, ?>) row.payload);
+                                case RowHandler.AsObject consumer -> {
+                                    var object = objectMapper.convertValue(row.payload(), consumer.type());
+                                    consumer.accept(object);
+                                }
+                                case RowHandler.AsScalar consumer -> consumer.accept(row.payload());
+                            }
+                        } catch (ClassCastException e) {
+                            errorHandler.marshallingError(new ClientException.MarshallingException(e), line);
+                        } catch (IllegalArgumentException e) {
+                            errorHandler.marshallingError(new ClientException.MarshallingException(e.getCause()), line);
+                        }
+                    });
+                case JacksonQueryResponseElement.Error error -> new QueryResponseElement.Error(error.payload());
+            };
+
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @JsonTypeInfo(
+            use = JsonTypeInfo.Id.NAME,
+            include = JsonTypeInfo.As.EXISTING_PROPERTY,
+            property = "type",
+            visible = true)
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = JacksonQueryResponseElement.Row.class, name = "row"),
+        @JsonSubTypes.Type(value = JacksonQueryResponseElement.Error.class, name = "error"),
+    })
+    sealed interface JacksonQueryResponseElement {
+        record Row(Object payload) implements JacksonQueryResponseElement {}
+
+        record Error(QueryProcessingError payload) implements JacksonQueryResponseElement {}
     }
 }

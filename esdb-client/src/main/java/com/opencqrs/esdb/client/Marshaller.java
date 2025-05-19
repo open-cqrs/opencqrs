@@ -1,10 +1,14 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
+import com.opencqrs.esdb.client.eventql.ErrorHandler;
+import com.opencqrs.esdb.client.eventql.QueryProcessingError;
+import com.opencqrs.esdb.client.eventql.RowHandler;
 import com.opencqrs.esdb.client.jackson.JacksonMarshaller;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -82,5 +86,48 @@ public interface Marshaller {
          * Represents a heart beat returned from the event store to ensure the underlying HTTP connection is kept alive.
          */
         record Heartbeat() implements ResponseElement {}
+    }
+
+    /**
+     * Used by {@link EsdbClient} to transform the given parameters into a valid HTTP request body to be sent to the
+     * event store for query operations.
+     *
+     * @param query the query
+     * @return the JSON HTTP request body as string
+     * @see EsdbClient#query(String, RowHandler, ErrorHandler)
+     */
+    String toQueryRequest(String query);
+
+    /**
+     * Used by {@link EsdbClient} to transform an ND-JSON line from the HTTP response stream to a
+     * {@link QueryResponseElement}.
+     *
+     * @param line the ND-JSON element as string
+     * @return an unmarshalled {@link QueryResponseElement}
+     */
+    QueryResponseElement fromQueryResponseLine(String line);
+
+    /**
+     * Sealed interface representing a deserialized ND-JSON response line transformed via
+     * {@link #fromQueryResponseLine(String)}.
+     */
+    sealed interface QueryResponseElement {
+
+        /**
+         * Represents a <code>row</code> returned from the event store, which may be processed by the deferred
+         * {@link BiConsumer}. The consumer is needed, because rows returned from the event store may still fail to
+         * deserialize correctly to the target type, as defined by {@link RowHandler}.
+         *
+         * @param deferredHandler the deferred bi-consumer
+         */
+        record Row(BiConsumer<RowHandler, ErrorHandler> deferredHandler) implements QueryResponseElement {}
+
+        /**
+         * Represents an <code>error</code> returned from the event store, typically caused by an invalid query or
+         * missing data in the result set.
+         *
+         * @param payload the error payload
+         */
+        record Error(QueryProcessingError payload) implements QueryResponseElement {}
     }
 }

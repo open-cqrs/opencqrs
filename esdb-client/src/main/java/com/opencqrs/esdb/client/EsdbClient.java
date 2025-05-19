@@ -1,6 +1,8 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
+import com.opencqrs.esdb.client.eventql.ErrorHandler;
+import com.opencqrs.esdb.client.eventql.RowHandler;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -211,6 +213,44 @@ public final class EsdbClient implements AutoCloseable {
         return consumed;
     }
 
+    /**
+     * Queries the underlying event store using <a
+     * href="https://docs.eventsourcingdb.io/reference/eventql/">EventQL</a>.
+     *
+     * @param query a valid query
+     * @param rowHandler callback for successfully queried and transformed rows (called per row)
+     * @param errorHandler callback for non successfully queried or transformed rows (called per row)
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code
+     * @throws ClientException.MarshallingException in case of serialization errors <strong>regarding the request not
+     *     the individual row</strong>, typically caused by the associated {@link Marshaller}
+     * @see RowHandler
+     * @see ErrorHandler
+     */
+    public void query(String query, RowHandler rowHandler, ErrorHandler errorHandler) throws ClientException {
+        var httpRequest = newJsonRequest("/api/v1/run-eventql-query")
+                .POST(HttpRequest.BodyPublishers.ofString(marshaller.toQueryRequest(query)))
+                .build();
+
+        httpRequestErrorHandler.handle(
+                httpRequest,
+                headers -> HttpResponse.BodySubscribers.fromLineSubscriber(
+                        new AbstractLineSubscriber() {
+                            @Override
+                            public void onNext(String item) {
+                                switch (marshaller.fromQueryResponseLine(item)) {
+                                    case Marshaller.QueryResponseElement.Error error ->
+                                        errorHandler.queryProcessingError(error.payload());
+                                    case Marshaller.QueryResponseElement.Row row ->
+                                        row.deferredHandler().accept(rowHandler, errorHandler);
+                                }
+                            }
+                        },
+                        s -> null,
+                        Util.fromHttpHeaders(headers),
+                        null));
+    }
+
     private void checkValidOptions(Set<Class<? extends Option>> supported, Set<Option> requested) {
         Set<Class<? extends Option>> requestedOptionClasses =
                 requested.stream().map(Option::getClass).collect(Collectors.toSet());
@@ -248,28 +288,13 @@ public final class EsdbClient implements AutoCloseable {
         httpRequestErrorHandler.handle(
                 httpRequest,
                 headers -> HttpResponse.BodySubscribers.fromLineSubscriber(
-                        new Flow.Subscriber<String>() {
-                            @Override
-                            public void onSubscribe(Flow.Subscription subscription) {
-                                subscription.request(Long.MAX_VALUE);
-                            }
-
+                        new AbstractLineSubscriber() {
                             @Override
                             public void onNext(String item) {
                                 Marshaller.ResponseElement element = marshaller.fromReadOrObserveResponseLine(item);
                                 if (element instanceof Event) {
                                     eventConsumer.accept((Event) element);
                                 }
-                            }
-
-                            @Override
-                            public void onError(Throwable throwable) {
-                                // intentionally left blank
-                            }
-
-                            @Override
-                            public void onComplete() {
-                                // intentionally left blank
                             }
                         },
                         s -> null,
@@ -280,5 +305,23 @@ public final class EsdbClient implements AutoCloseable {
     @Override
     public void close() throws Exception {
         httpClient.shutdownNow();
+    }
+
+    private abstract static class AbstractLineSubscriber implements Flow.Subscriber<String> {
+
+        @Override
+        public final void onSubscribe(Flow.Subscription subscription) {
+            subscription.request(Long.MAX_VALUE);
+        }
+
+        @Override
+        public final void onError(Throwable throwable) {
+            // intentionally left blank
+        }
+
+        @Override
+        public final void onComplete() {
+            // intentionally left blank
+        }
     }
 }
