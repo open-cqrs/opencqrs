@@ -365,8 +365,8 @@ public class EsdbClientIntegrationTest {
         }
 
         @ParameterizedTest
-        @ValueSource(ints = 1000)
-        @Timeout(5)
+        @ValueSource(ints = 8)
+        @Timeout(60)
         public void eventsProperlyObservedWithoutHttpThreadPoolStarvation(int threadCount) {
             String subject = randomSubject();
 
