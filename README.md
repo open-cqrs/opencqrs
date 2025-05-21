@@ -2,7 +2,7 @@
 
 <!-- BADGES_START -->
 ![Java](https://img.shields.io/badge/Java-21%2B-blue.svg)
-![EventSourcingDB](https://img.shields.io/badge/EventSourcingDB-1.0.1-orange.svg)
+![EventSourcingDB](https://img.shields.io/badge/EventSourcingDB-1.0.2-orange.svg)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.5-brightgreen.svg)
 <!-- BADGES_END -->
 
