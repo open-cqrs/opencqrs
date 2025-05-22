@@ -22,7 +22,7 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Assemble
-        run: nix develop --impure --command ./gradlew --no-daemon clean assemble
+        run: nix develop --impure --command ./gradlew --no-daemon -Pversion=${{ github.sha }} clean assemble
 
       - name: Archive Jars
         uses: actions/upload-artifact@v4

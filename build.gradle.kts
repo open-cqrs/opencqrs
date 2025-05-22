@@ -34,7 +34,7 @@ subprojects {
     apply(plugin = "com.diffplug.spotless")
 
     group = "com.opencqrs"
-    version = if (version != "unspecified") version else "1.0.0"
+    version = if (version != "unspecified") version else "undefined"
 
     extensions.configure<SpotlessExtension> {
         java {
