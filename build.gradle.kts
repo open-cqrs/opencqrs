@@ -25,6 +25,28 @@ allprojects {
     }
 }
 
+tasks.register<Javadoc>("aggregateJavadoc") {
+    description = "Generates aggregated Javadoc for all subprojects."
+    group = JavaBasePlugin.DOCUMENTATION_GROUP
+
+    val javadocTasks = subprojects
+        .filterNot { it.name == "example-application" }
+        .mapNotNull { subproject ->
+            subproject.tasks.findByName("javadoc") as? Javadoc
+        }
+
+    dependsOn(javadocTasks)
+
+    source(javadocTasks.flatMap { it.source })
+    classpath = files(javadocTasks.flatMap { it.classpath })
+
+    (options as StandardJavadocDocletOptions).run {
+        addBooleanOption("html5", true)
+    }
+
+    destinationDir = file("$buildDir/javadoc")
+}
+
 subprojects {
     apply(plugin = "maven-publish")
     apply(plugin = "signing")
