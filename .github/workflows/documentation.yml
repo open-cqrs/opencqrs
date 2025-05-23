@@ -1,0 +1,36 @@
+name: Documentation Pipeline
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    name: GitHub Pages Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy MkDocs
+        run: nix develop --impure --command env -C mkdocs mkdocs gh-deploy -f mkdocs.yml --no-history
+
+      - name: Aggregate JavaDoc
+        run: nix develop --impure --command ./gradlew clean aggregateJavadoc
+
+      - name: Deploy JavaDoc
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: build/javadoc
+          publish_branch: gh-pages
+          destination_dir: javadoc
+          commit_message: "Deployed JavaDoc"
