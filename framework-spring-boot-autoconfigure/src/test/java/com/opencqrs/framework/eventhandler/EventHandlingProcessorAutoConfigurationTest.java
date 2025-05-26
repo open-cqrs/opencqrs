@@ -61,8 +61,8 @@ class EventHandlingProcessorAutoConfigurationTest {
             ApplicationContextRunner runner, Consumer<AssertableApplicationContext> context) {
         runner.run(parent -> {
             parent.start();
-            context.accept(AssertableApplicationContext.get(
-                    () -> parent.getBean("eventHandlingProcessorContext", ConfigurableApplicationContext.class)));
+            context.accept(AssertableApplicationContext.get(() ->
+                    parent.getBean("openCqrsEventHandlingProcessorContext", ConfigurableApplicationContext.class)));
         });
     }
 

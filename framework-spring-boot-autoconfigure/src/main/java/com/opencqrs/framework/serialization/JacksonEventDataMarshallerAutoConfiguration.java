@@ -20,7 +20,7 @@ public class JacksonEventDataMarshallerAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventDataMarshaller.class)
-    public JacksonEventDataMarshaller jacksonEventSerializer(ObjectMapper objectMapper) {
+    public JacksonEventDataMarshaller openCqrsJacksonEventSerializer(ObjectMapper objectMapper) {
         return new JacksonEventDataMarshaller(objectMapper);
     }
 }

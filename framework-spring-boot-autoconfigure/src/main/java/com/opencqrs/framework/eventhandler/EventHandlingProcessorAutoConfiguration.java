@@ -186,7 +186,7 @@ public class EventHandlingProcessorAutoConfiguration {
                             .orElse(standardSettings);
 
                     var fallbackLifecycleRegistration = parentContext.getBean(
-                            "smartLifecycleEventHandlingProcessorLifecycleControllerRegistration",
+                            "openCqrsSmartLifecycleEventHandlingProcessorLifecycleControllerRegistration",
                             EventHandlingProcessorLifecycleRegistration.class);
                     var lifecycleRegistration =
                             switch (processorSettings.lifeCycle().controllerRegistration()) {
@@ -246,7 +246,7 @@ public class EventHandlingProcessorAutoConfiguration {
                             };
 
                     var defaultProgressTracker =
-                            parentContext.getBean("inMemoryProgressTracker", ProgressTracker.class);
+                            parentContext.getBean("openCqrsInMemoryProgressTracker", ProgressTracker.class);
                     var progressTracker =
                             switch (processorSettings.progress().trackerRef()) {
                                 case null ->
@@ -275,7 +275,7 @@ public class EventHandlingProcessorAutoConfiguration {
                             };
 
                     var defaultSequenceResolver = parentContext.getBean(
-                            "perSecondLevelSubjectEventSequenceResolver",
+                            "openCqrsPerSecondLevelSubjectEventSequenceResolver",
                             PerConfigurableLevelSubjectEventSequenceResolver.class);
                     var sequenceResolver =
                             switch (processorSettings.sequence().resolverRef()) {
@@ -284,11 +284,11 @@ public class EventHandlingProcessorAutoConfiguration {
                                         case PER_SECOND_LEVEL_SUBJECT -> defaultSequenceResolver;
                                         case PER_SUBJECT ->
                                             parentContext.getBean(
-                                                    "perSubjectEventSequenceResolver",
+                                                    "openCqrsPerSubjectEventSequenceResolver",
                                                     PerSubjectEventSequenceResolver.class);
                                         case NO_SEQUENCE ->
                                             parentContext.getBean(
-                                                    "noEventSequenceResolver", NoEventSequenceResolver.class);
+                                                    "openCqrsNoEventSequenceResolver", NoEventSequenceResolver.class);
                                         case null -> defaultSequenceResolver;
                                     };
                                 default ->
@@ -322,7 +322,7 @@ public class EventHandlingProcessorAutoConfiguration {
                         values.addGenericArgumentValue(ehds);
                         processor.setConstructorArgumentValues(values);
 
-                        var beanName = "eventHandlingProcessor_" + group + "_" + partition;
+                        var beanName = "openCqrsEventHandlingProcessor_" + group + "_" + partition;
                         registry.registerBeanDefinition(beanName, processor);
 
                         Settings settings = new Settings(
@@ -351,7 +351,7 @@ public class EventHandlingProcessorAutoConfiguration {
             EventHandlingProperties.ProcessorSettings.Retry retry) {}
 
     @Bean(initMethod = "refresh")
-    public GenericApplicationContext eventHandlingProcessorContext(
+    public GenericApplicationContext openCqrsEventHandlingProcessorContext(
             ApplicationContext applicationContext,
             EventHandlingProperties eventHandlingProperties,
             List<EventHandlerDefinition> eventHandlerDefinitions) {
@@ -363,7 +363,7 @@ public class EventHandlingProcessorAutoConfiguration {
 
     @Bean
     public EventHandlingProcessorLifecycleRegistration
-            smartLifecycleEventHandlingProcessorLifecycleControllerRegistration() {
+            openCqrsSmartLifecycleEventHandlingProcessorLifecycleControllerRegistration() {
         return (registry, eventHandlingProcessorBeanName, processorSettings) -> {
             RootBeanDefinition processorLifecycle = new RootBeanDefinition();
             processorLifecycle.setBeanClass(SmartLifecycleEventHandlingProcessorLifecycleController.class);
@@ -426,29 +426,29 @@ public class EventHandlingProcessorAutoConfiguration {
 
         @Bean
         @Scope("prototype")
-        public Registration leaderElectionEventHandlingProcessorLifecycleControllerRegistration(
+        public Registration openCqrsLeaderElectionEventHandlingProcessorLifecycleControllerRegistration(
                 LockRegistry lockRegistry) {
             return new Registration(lockRegistry);
         }
     }
 
     @Bean
-    public InMemoryProgressTracker inMemoryProgressTracker() {
+    public InMemoryProgressTracker openCqrsInMemoryProgressTracker() {
         return new InMemoryProgressTracker();
     }
 
     @Bean
-    public PerSubjectEventSequenceResolver perSubjectEventSequenceResolver() {
+    public PerSubjectEventSequenceResolver openCqrsPerSubjectEventSequenceResolver() {
         return new PerSubjectEventSequenceResolver();
     }
 
     @Bean
-    public PerConfigurableLevelSubjectEventSequenceResolver perSecondLevelSubjectEventSequenceResolver() {
+    public PerConfigurableLevelSubjectEventSequenceResolver openCqrsPerSecondLevelSubjectEventSequenceResolver() {
         return new PerConfigurableLevelSubjectEventSequenceResolver(2);
     }
 
     @Bean
-    public NoEventSequenceResolver noEventSequenceResolver() {
+    public NoEventSequenceResolver openCqrsNoEventSequenceResolver() {
         return new NoEventSequenceResolver();
     }
 }

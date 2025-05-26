@@ -47,7 +47,7 @@ public class StateRebuildingAnnotationProcessingAutoConfiguration {
     }
 
     @Bean
-    public static BeanDefinitionRegistryPostProcessor stateRebuildingAnnotatedMethodBeanRegistration() {
+    public static BeanDefinitionRegistryPostProcessor openCqrsStateRebuildingAnnotatedMethodBeanRegistration() {
         return registry -> {
             for (String beanName : registry.getBeanDefinitionNames()) {
                 BeanDefinition bd = registry.getBeanDefinition(beanName);

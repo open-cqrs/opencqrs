@@ -44,7 +44,7 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
     }
 
     @Bean
-    public static BeanDefinitionRegistryPostProcessor commandHandlingAnnotatedMethodBeanRegistration() {
+    public static BeanDefinitionRegistryPostProcessor openCqrsCommandHandlingAnnotatedMethodBeanRegistration() {
         return registry -> {
             for (String beanName : registry.getBeanDefinitionNames()) {
                 BeanDefinition bd = registry.getBeanDefinition(beanName);

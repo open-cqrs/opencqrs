@@ -22,7 +22,7 @@ public class ClassNameEventTypeResolverAutoConfiguration implements BeanClassLoa
 
     @Bean
     @ConditionalOnMissingBean
-    public EventTypeResolver classNameEventTypeResolver() {
+    public EventTypeResolver openCqrsClassNameEventTypeResolver() {
         return new ClassNameEventTypeResolver(beanClassLoader);
     }
 }
