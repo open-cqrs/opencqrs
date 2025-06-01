@@ -18,6 +18,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class CommandHandlingTestFixtureTest {
@@ -229,6 +231,138 @@ public class CommandHandlingTestFixtureTest {
                         .expectSuccessfulExecution();
 
                 assertThat(slot.get()).isSameAs(s);
+            }
+        }
+
+        @Nested
+        @DisplayName("usingSubject/usingCommandSubject")
+        public class UsingSubject {
+
+            @Test
+            public void subjectAppliedToGivenEvents() {
+                AtomicReference<String> subjectA = new AtomicReference<>();
+                AtomicReference<String> subjectB = new AtomicReference<>();
+
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                                new StateRebuildingHandlerDefinition<>(
+                                        State.class,
+                                        EventA.class,
+                                        (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<
+                                                        State, EventA>)
+                                                (i, e, m, s, r) -> {
+                                                    subjectA.set(s);
+                                                    return new State(true);
+                                                }),
+                                new StateRebuildingHandlerDefinition<>(
+                                        State.class,
+                                        EventB.class,
+                                        (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<
+                                                        State, EventB>)
+                                                (i, e, m, s, r) -> {
+                                                    subjectB.set(s);
+                                                    return new State(true);
+                                                }))
+                        .using(State.class, (CommandHandler.ForInstanceAndCommand<State, DummyCommand, Void>)
+                                (i, c, p) -> null)
+                        .usingSubject("/test-subject/a")
+                        .andGiven(new EventA("test"))
+                        .usingSubject("/test-subject/b")
+                        // no (null) subject explicitly specified
+                        .andGiven(given -> given.subject(null).payload(new EventB(42L)))
+                        .when(new DummyCommand())
+                        .expectNoEvents();
+
+                assertThat(subjectA).hasValue("/test-subject/a");
+                assertThat(subjectB).hasValue("/test-subject/b");
+            }
+
+            @Test
+            public void subjectNotAppliedToGivenEventsIfExplicitlySpecified() {
+                AtomicReference<String> subject = new AtomicReference<>();
+
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                                State.class,
+                                EventA.class,
+                                (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<State, EventA>)
+                                        (i, e, m, s, r) -> {
+                                            subject.set(s);
+                                            return new State(true);
+                                        }))
+                        .using(State.class, (CommandHandler.ForInstanceAndCommand<State, DummyCommand, Void>)
+                                (i, c, p) -> null)
+                        .usingSubject("/test-subject")
+                        .andGiven(given -> given.subject("/explicit-subject").payload(new EventA("test")))
+                        .when(new DummyCommand())
+                        .expectNoEvents();
+
+                assertThat(subject).hasValue("/explicit-subject");
+            }
+
+            @Test
+            public void subjectNotAppliedToEventsPublishedByGivenCommand() {
+                AtomicReference<String> subject = new AtomicReference<>();
+
+                CommandHandlingTestFixture.Builder<State> fixtureBuilder =
+                        CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                                new StateRebuildingHandlerDefinition<>(
+                                        State.class,
+                                        EventA.class,
+                                        (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<
+                                                        State, EventA>)
+                                                (i, e, m, s, r) -> {
+                                                    subject.set(s);
+                                                    return new State(true);
+                                                }));
+
+                CommandHandlingTestFixture<State, DummyCommand, Void> givenCommandFixture = fixtureBuilder.using(
+                        State.class, (CommandHandler.ForInstanceAndCommand<State, DummyCommand, Void>) (i, c, p) -> {
+                            p.publish(new EventA("test"));
+                            return null;
+                        });
+
+                fixtureBuilder
+                        .using(State.class, (CommandHandler.ForInstanceAndCommand<State, DummyCommand, Void>)
+                                (i, c, p) -> null)
+                        .usingSubject("/test-subject")
+                        .andGivenCommand(givenCommandFixture, new DummyCommand())
+                        .when(new DummyCommand())
+                        .expectNoEvents();
+
+                assertThat(subject).hasValue(new DummyCommand().getSubject());
+            }
+
+            @Test
+            public void commandSubjectAppliedToEvent() {
+                AtomicReference<String> subject = new AtomicReference<>();
+
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                                new StateRebuildingHandlerDefinition<>(
+                                        State.class,
+                                        EventA.class,
+                                        (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<
+                                                        State, EventA>)
+                                                (i, e, m, s, r) -> {
+                                                    return new State(true);
+                                                }),
+                                new StateRebuildingHandlerDefinition<>(
+                                        State.class,
+                                        EventB.class,
+                                        (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<
+                                                        State, EventB>)
+                                                (i, e, m, s, r) -> {
+                                                    subject.set(s);
+                                                    return new State(true);
+                                                }))
+                        .using(State.class, (CommandHandler.ForInstanceAndCommand<State, DummyCommand, Void>)
+                                (i, c, p) -> null)
+                        .usingSubject("/test-subject/a")
+                        .andGiven(new EventA("test"))
+                        .usingCommandSubject()
+                        .andGiven(new EventB(42L))
+                        .when(new DummyCommand())
+                        .expectNoEvents();
+
+                assertThat(subject).hasValue(new DummyCommand().getSubject());
             }
         }
 
@@ -742,6 +876,167 @@ public class CommandHandlingTestFixtureTest {
                                         .expectExceptionSatisfying(e -> {}))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("No exception occurred");
+            }
+        }
+
+        @Nested
+        @DisplayName("expectCommandSubjectConditionViolated")
+        public class ExpectCommandSubjectConditionViolated {
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            public void commandSubjectionConditionPristineViolated_byCommand_successfully(boolean specified) {
+                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                        subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
+                            p.publish(new EventA("test"));
+                            return null;
+                        });
+                assertThatCode(() -> {
+                            var f = fixture.givenCommand(fixture, new DummyCommand())
+                                    .when(new DummyCommand(Command.SubjectCondition.PRISTINE));
+                            if (specified) {
+                                f.expectCommandSubjectConditionViolated(Command.SubjectCondition.PRISTINE);
+                            } else {
+                                f.expectCommandSubjectConditionViolated();
+                            }
+                        })
+                        .doesNotThrowAnyException();
+            }
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            public void commandSubjectionConditionPristineViolated_byStubbing_successfully(boolean specified) {
+                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                        subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
+                            p.publish(new EventA("test"));
+                            return null;
+                        });
+                assertThatCode(() -> {
+                            var f = fixture.usingSubject(new DummyCommand().getSubject())
+                                    .andGiven(new EventA("test"))
+                                    .when(new DummyCommand(Command.SubjectCondition.PRISTINE));
+                            if (specified) {
+                                f.expectCommandSubjectConditionViolated(Command.SubjectCondition.PRISTINE);
+                            } else {
+                                f.expectCommandSubjectConditionViolated();
+                            }
+                        })
+                        .doesNotThrowAnyException();
+            }
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            public void commandSubjectionConditionPristineNotViolated_failing(boolean specified) {
+                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                        subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
+                            p.publish(new EventA("test"));
+                            return null;
+                        });
+                assertThatThrownBy(() -> {
+                            var f = fixture.givenNothing().when(new DummyCommand(Command.SubjectCondition.PRISTINE));
+                            if (specified) {
+                                f.expectCommandSubjectConditionViolated(Command.SubjectCondition.PRISTINE);
+                            } else {
+                                f.expectCommandSubjectConditionViolated();
+                            }
+                        })
+                        .isInstanceOf(AssertionError.class)
+                        .hasMessageContaining("Expected command subject condition not violated");
+            }
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            public void commandSubjectionConditionExistsViolated_successfully(boolean specified) {
+                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                        subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
+                            p.publish(new EventA("test"));
+                            return null;
+                        });
+                assertThatCode(() -> {
+                            var f = fixture.givenNothing().when(new DummyCommand(Command.SubjectCondition.EXISTS));
+                            if (specified) {
+                                f.expectCommandSubjectConditionViolated(Command.SubjectCondition.EXISTS);
+                            } else {
+                                f.expectCommandSubjectConditionViolated();
+                            }
+                        })
+                        .doesNotThrowAnyException();
+            }
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            public void commandSubjectionConditionExistsNotViolated_byCommand_failing(boolean specified) {
+                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                        subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
+                            p.publish(new EventA("test"));
+                            return null;
+                        });
+                assertThatThrownBy(() -> {
+                            var f = fixture.givenCommand(fixture, new DummyCommand())
+                                    .when(new DummyCommand(Command.SubjectCondition.EXISTS));
+                            if (specified) {
+                                f.expectCommandSubjectConditionViolated(Command.SubjectCondition.EXISTS);
+                            } else {
+                                f.expectCommandSubjectConditionViolated();
+                            }
+                        })
+                        .isInstanceOf(AssertionError.class)
+                        .hasMessageContaining("Expected command subject condition not violated");
+            }
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            public void commandSubjectionConditionExistsNotViolated_byStubbing_failing(boolean specified) {
+                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                        subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
+                            p.publish(new EventA("test"));
+                            return null;
+                        });
+                assertThatThrownBy(() -> {
+                            var f = fixture.usingSubject(new DummyCommand().getSubject())
+                                    .andGiven(new EventA("test"))
+                                    .when(new DummyCommand(Command.SubjectCondition.EXISTS));
+                            if (specified) {
+                                f.expectCommandSubjectConditionViolated(Command.SubjectCondition.EXISTS);
+                            } else {
+                                f.expectCommandSubjectConditionViolated();
+                            }
+                        })
+                        .isInstanceOf(AssertionError.class)
+                        .hasMessageContaining("Expected command subject condition not violated");
+            }
+
+            @Test
+            public void commandSubjectConditionNone_mustNotBeSpecified() {
+                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                        subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
+                            p.publish(new EventA("test"));
+                            return null;
+                        });
+                assertThatThrownBy(() -> fixture.givenNothing()
+                                .when(new DummyCommand(Command.SubjectCondition.EXISTS))
+                                .expectCommandSubjectConditionViolated(Command.SubjectCondition.NONE))
+                        .isInstanceOf(IllegalArgumentException.class);
+            }
+
+            @ParameterizedTest
+            @EnumSource(value = Command.SubjectCondition.class, mode = EnumSource.Mode.EXCLUDE, names = "NONE")
+            @NullSource
+            public void commandSubjectConditionMustNotBeUsedWithStateStubbing(Command.SubjectCondition condition) {
+                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                        subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
+                            p.publish(new EventA("test"));
+                            return null;
+                        });
+                assertThatThrownBy(() -> {
+                            var f = fixture.givenState(new State(true)).when(new DummyCommand());
+                            if (condition != null) {
+                                f.expectCommandSubjectConditionViolated(condition);
+                            } else {
+                                f.expectCommandSubjectConditionViolated();
+                            }
+                        })
+                        .isInstanceOf(IllegalStateException.class);
             }
         }
 
@@ -2757,9 +3052,25 @@ public class CommandHandlingTestFixtureTest {
     }
 
     static class DummyCommand implements Command {
+
+        private final SubjectCondition subjectCondition;
+
+        DummyCommand() {
+            this(SubjectCondition.NONE);
+        }
+
+        DummyCommand(SubjectCondition subjectCondition) {
+            this.subjectCondition = subjectCondition;
+        }
+
         @Override
         public String getSubject() {
             return "dummy";
+        }
+
+        @Override
+        public SubjectCondition getSubjectCondition() {
+            return subjectCondition;
         }
     }
 
