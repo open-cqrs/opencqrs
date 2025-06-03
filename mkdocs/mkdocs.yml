@@ -11,7 +11,7 @@ plugins:
 extra:
   custom:
     esdb_homepage: https://to.be.defined
-    esdb_version: 1.0.2
+    esdb_version: 1.0.3
     framework_version: 1.0.0
   homepage: https://www.opencqrs.com
   social:
