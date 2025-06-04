@@ -13,7 +13,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param capacity The cache capacity, if "in_memory" is used.
  * @param ref Custom cache to use.
  */
-@ConfigurationProperties("cqrs.command-handling.cache")
+@ConfigurationProperties("opencqrs.command-handling.cache")
 public record CommandHandlingCacheProperties(
         @DefaultValue("none") Type type, @DefaultValue("1000") Integer capacity, String ref) {
     /** The pre-defined cache type. */

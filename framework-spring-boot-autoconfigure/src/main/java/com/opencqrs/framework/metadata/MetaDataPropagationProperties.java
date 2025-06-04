@@ -14,6 +14,6 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param mode The propagation mode to use.
  * @param keys The meta-data keys to propagate.
  */
-@ConfigurationProperties("cqrs.metadata.propagation")
+@ConfigurationProperties("opencqrs.metadata.propagation")
 public record MetaDataPropagationProperties(
         @DefaultValue("keep_if_present") PropagationMode mode, @DefaultValue Set<String> keys) {}

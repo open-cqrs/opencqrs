@@ -21,7 +21,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param standard Default settings valid for all event processing groups, unless overridden using "groups".
  * @param groups Event processing group specific override settings. Merged with "standard" settings.
  */
-@ConfigurationProperties("cqrs.event-handling")
+@ConfigurationProperties("opencqrs.event-handling")
 public record EventHandlingProperties(ProcessorSettings standard, Map<String, ProcessorSettings> groups) {
 
     /**

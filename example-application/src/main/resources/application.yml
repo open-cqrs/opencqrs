@@ -6,7 +6,7 @@ esdb:
     uri: http://localhost:3000
     api-token: secret
 
-cqrs:
+opencqrs:
   event-handling:
     standard:
       life-cycle.partitions: 2
