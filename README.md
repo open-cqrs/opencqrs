@@ -1,9 +1,11 @@
 # OpenCQRS - Java CQRS Framework for the [EventSourcingDB](https://www.eventsourcingdb.io)
 
 <!-- BADGES_START -->
-![Java](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-cqrs%2Fopencqrs%2Frefs%2Fheads%2Fgh-pages%2Fbadges%2Fjdk.json)
-![EventSourcingDB](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-cqrs%2Fopencqrs%2Frefs%2Fheads%2Fgh-pages%2Fbadges%2Fesdb.json)
-![Spring Boot](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-cqrs%2Fopencqrs%2Frefs%2Fheads%2Fgh-pages%2Fbadges%2Fspring.json)
+[![Java](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-cqrs%2Fopencqrs%2Frefs%2Fheads%2Fgh-pages%2Fbadges%2Fjdk.json)](https://openjdk.org)
+[![EventSourcingDB](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-cqrs%2Fopencqrs%2Frefs%2Fheads%2Fgh-pages%2Fbadges%2Fesdb.json)](https://www.eventsourcingdb.io)
+[![Spring Boot](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-cqrs%2Fopencqrs%2Frefs%2Fheads%2Fgh-pages%2Fbadges%2Fspring.json)](https://spring.io/projects/spring-boot)
+[![JavaDoc](https://img.shields.io/badge/JavaDoc-click%20here-lightgrey?logo=readthedocs)](https://docs.opencqrs.com/javadoc)
+![Documentation](https://img.shields.io/badge/Documentation-coming%20soon-blue?logo=materialformkdocs)
 <!-- BADGES_END -->
 
 ![OpenCQRS](banner.png)
