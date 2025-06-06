@@ -7,6 +7,7 @@ import org.cyclonedx.model.OrganizationalContact
 import org.cyclonedx.model.organization.PostalAddress
 import java.util.Base64
 
+val javaVersion = JavaVersion.VERSION_21
 val frameworkVersions: Map<String, String> by extra
 val memorySettings: Map<String, String> by extra
 
@@ -47,6 +48,66 @@ tasks.register<Javadoc>("aggregateJavadoc") {
     destinationDir = file("$buildDir/javadoc")
 }
 
+tasks.register("generateBadges") {
+    group = "documentation"
+    description = "Exports badges as JSON for shields.io"
+
+    doLast {
+        layout
+            .buildDirectory
+            .file("badges/jdk.json")
+            .get()
+            .asFile
+            .also {  it.parentFile.mkdirs() }
+            .writeText(
+                """
+                    {
+                        "schemaVersion": 1,
+                         "label": "Java",
+                         "message": "${javaVersion.name.substringAfter("VERSION_")}",
+                         "color": "blue",
+                         "namedLogo": "OpenJDK"
+                    }
+                """.trimIndent()
+            )
+
+        layout
+            .buildDirectory
+            .file("badges/spring.json")
+            .get()
+            .asFile
+            .also {  it.parentFile.mkdirs() }
+            .writeText(
+                """
+                    {
+                        "schemaVersion": 1,
+                         "label": "Spring Boot",
+                         "message": "${frameworkVersions["spring.boot.version"]}",
+                         "color": "brightgreen",
+                         "namedLogo": "Spring Boot"
+                    }
+                """.trimIndent()
+            )
+
+        layout
+            .buildDirectory
+            .file("badges/esdb.json")
+            .get()
+            .asFile
+            .also {  it.parentFile.mkdirs() }
+            .writeText(
+                """
+                    {
+                        "schemaVersion": 1,
+                         "label": "EventSourcingDB",
+                         "message": "${frameworkVersions["esdb.version"]}",
+                         "color": "orange"
+                    }
+                """.trimIndent()
+            )
+    }
+}
+
 subprojects {
     apply(plugin = "maven-publish")
     apply(plugin = "signing")
@@ -68,8 +129,8 @@ subprojects {
     }
 
     extensions.configure<JavaPluginExtension> {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = javaVersion
+        targetCompatibility = javaVersion
 
         withSourcesJar()
         withJavadocJar()

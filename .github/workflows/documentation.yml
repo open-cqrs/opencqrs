@@ -34,3 +34,15 @@ jobs:
           publish_branch: gh-pages
           destination_dir: javadoc
           commit_message: "Deployed JavaDoc"
+
+      - name: Generate Badges
+        run: nix develop --impure --command ./gradlew clean generateBadges
+
+      - name: Deploy Badges
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: build/badges
+          publish_branch: gh-pages
+          destination_dir: badges
+          commit_message: "Deployed Shield.IO Badges"

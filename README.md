@@ -1,9 +1,9 @@
 # OpenCQRS - Java CQRS Framework for the [EventSourcingDB](https://www.eventsourcingdb.io)
 
 <!-- BADGES_START -->
-![Java](https://img.shields.io/badge/Java-21%2B-blue.svg)
-![EventSourcingDB](https://img.shields.io/badge/EventSourcingDB-1.0.3-orange.svg)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.5-brightgreen.svg)
+![Java](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-cqrs%2Fopencqrs%2Frefs%2Fheads%2Fgh-pages%2Fbadges%2Fjdk.json)
+![EventSourcingDB](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-cqrs%2Fopencqrs%2Frefs%2Fheads%2Fgh-pages%2Fbadges%2Fesdb.json)
+![Spring Boot](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-cqrs%2Fopencqrs%2Frefs%2Fheads%2Fgh-pages%2Fbadges%2Fspring.json)
 <!-- BADGES_END -->
 
 ![OpenCQRS](banner.png)
