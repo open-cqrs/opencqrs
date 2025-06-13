@@ -7,6 +7,7 @@ import org.cyclonedx.model.OrganizationalContact
 import org.cyclonedx.model.organization.PostalAddress
 import java.util.Base64
 
+val javaVersion = JavaVersion.VERSION_21
 val frameworkVersions: Map<String, String> by extra
 val memorySettings: Map<String, String> by extra
 
@@ -25,6 +26,88 @@ allprojects {
     }
 }
 
+tasks.register<Javadoc>("aggregateJavadoc") {
+    description = "Generates aggregated Javadoc for all subprojects."
+    group = JavaBasePlugin.DOCUMENTATION_GROUP
+
+    val javadocTasks = subprojects
+        .filterNot { it.name == "example-application" }
+        .mapNotNull { subproject ->
+            subproject.tasks.findByName("javadoc") as? Javadoc
+        }
+
+    dependsOn(javadocTasks)
+
+    source(javadocTasks.flatMap { it.source })
+    classpath = files(javadocTasks.flatMap { it.classpath })
+
+    (options as StandardJavadocDocletOptions).run {
+        addBooleanOption("html5", true)
+    }
+
+    destinationDir = file("$buildDir/javadoc")
+}
+
+tasks.register("generateBadges") {
+    group = "documentation"
+    description = "Exports badges as JSON for shields.io"
+
+    doLast {
+        layout
+            .buildDirectory
+            .file("badges/jdk.json")
+            .get()
+            .asFile
+            .also {  it.parentFile.mkdirs() }
+            .writeText(
+                """
+                    {
+                        "schemaVersion": 1,
+                         "label": "Java",
+                         "message": "${javaVersion.name.substringAfter("VERSION_")}",
+                         "color": "blue",
+                         "namedLogo": "OpenJDK"
+                    }
+                """.trimIndent()
+            )
+
+        layout
+            .buildDirectory
+            .file("badges/spring.json")
+            .get()
+            .asFile
+            .also {  it.parentFile.mkdirs() }
+            .writeText(
+                """
+                    {
+                        "schemaVersion": 1,
+                         "label": "Spring Boot",
+                         "message": "${frameworkVersions["spring.boot.version"]}",
+                         "color": "brightgreen",
+                         "namedLogo": "Spring Boot"
+                    }
+                """.trimIndent()
+            )
+
+        layout
+            .buildDirectory
+            .file("badges/esdb.json")
+            .get()
+            .asFile
+            .also {  it.parentFile.mkdirs() }
+            .writeText(
+                """
+                    {
+                        "schemaVersion": 1,
+                         "label": "EventSourcingDB",
+                         "message": "${frameworkVersions["esdb.version"]}",
+                         "color": "orange"
+                    }
+                """.trimIndent()
+            )
+    }
+}
+
 subprojects {
     apply(plugin = "maven-publish")
     apply(plugin = "signing")
@@ -34,7 +117,7 @@ subprojects {
     apply(plugin = "com.diffplug.spotless")
 
     group = "com.opencqrs"
-    version = if (version != "unspecified") version else "1.0.0"
+    version = if (version != "unspecified") version else "undefined"
 
     extensions.configure<SpotlessExtension> {
         java {
@@ -46,8 +129,8 @@ subprojects {
     }
 
     extensions.configure<JavaPluginExtension> {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = javaVersion
+        targetCompatibility = javaVersion
 
         withSourcesJar()
         withJavadocJar()

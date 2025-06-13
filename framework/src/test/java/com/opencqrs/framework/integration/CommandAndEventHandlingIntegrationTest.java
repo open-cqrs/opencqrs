@@ -202,7 +202,8 @@ public class CommandAndEventHandlingIntegrationTest {
     private ApplicationContext applicationContext;
 
     private ConfigurableApplicationContext getEventHandlerContext() {
-        return applicationContext.getBean("eventHandlingProcessorContext", ConfigurableApplicationContext.class);
+        return applicationContext.getBean(
+                "openCqrsEventHandlingProcessorContext", ConfigurableApplicationContext.class);
     }
 
     @Test

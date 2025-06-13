@@ -25,7 +25,7 @@ echo $VERSION_TAG
 
 ./gradlew -Pversion=$VERSION_TAG clean build publishAllPublicationsToStagingRepository
 
-jreleaser-cli deploy -od build -Djreleaser.project.version=$VERSION_TAG
+jreleaser-cli deploy --output-directory build -Djreleaser.project.version=$VERSION_TAG
 ```
 
 ## Publish

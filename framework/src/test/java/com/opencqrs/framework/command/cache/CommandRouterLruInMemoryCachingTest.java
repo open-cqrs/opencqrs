@@ -29,8 +29,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(
         properties = {
-            "cqrs.command-handling.cache.type=in-memory",
-            "cqrs.command-handling.cache.capacity=5",
+            "opencqrs.command-handling.cache.type=in-memory",
+            "opencqrs.command-handling.cache.capacity=5",
         })
 @Testcontainers
 public class CommandRouterLruInMemoryCachingTest {

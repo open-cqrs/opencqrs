@@ -15,7 +15,7 @@ public class EventUpcasterAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public EventUpcasters eventUpcasterChain(List<EventUpcaster> eventUpcasters) {
+    public EventUpcasters openCqrsEventUpcasterChain(List<EventUpcaster> eventUpcasters) {
         return new EventUpcasters(eventUpcasters);
     }
 }

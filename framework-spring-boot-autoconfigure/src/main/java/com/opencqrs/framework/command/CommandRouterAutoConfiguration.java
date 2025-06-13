@@ -28,7 +28,7 @@ public class CommandRouterAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public CommandRouter commandRouter(
+    public CommandRouter openCqrsCommandRouter(
             EventReader eventReader,
             ImmediateEventPublisher immediateEventPublisher,
             @SuppressWarnings("rawtypes") List<CommandHandlerDefinition> commandHandlerDefinitions,
@@ -40,8 +40,8 @@ public class CommandRouterAutoConfiguration {
                 switch (cacheProperties.ref()) {
                     case null ->
                         switch (cacheProperties.type()) {
-                            case NONE -> "noStateRebuildingCache";
-                            case IN_MEMORY -> "lruInMemoryStateRebuildingCache";
+                            case NONE -> "openCqrsNoStateRebuildingCache";
+                            case IN_MEMORY -> "openCqrsLruInMemoryStateRebuildingCache";
                         };
                     default -> cacheProperties.ref();
                 };
@@ -57,12 +57,13 @@ public class CommandRouterAutoConfiguration {
     }
 
     @Bean
-    public NoStateRebuildingCache noStateRebuildingCache() {
+    public NoStateRebuildingCache openCqrsNoStateRebuildingCache() {
         return new NoStateRebuildingCache();
     }
 
     @Bean
-    public LruInMemoryStateRebuildingCache lruInMemoryStateRebuildingCache(CommandHandlingCacheProperties properties) {
+    public LruInMemoryStateRebuildingCache openCqrsLruInMemoryStateRebuildingCache(
+            CommandHandlingCacheProperties properties) {
         return new LruInMemoryStateRebuildingCache(properties.capacity());
     }
 }

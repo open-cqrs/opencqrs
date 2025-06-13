@@ -19,13 +19,13 @@ public class EventPersistenceAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public EventSource eventSource(Environment environment) {
+    public EventSource openCqrsEventSource(Environment environment) {
         return new EventSource("tag://" + environment.getProperty("spring.application.name"));
     }
 
     @Bean
     @ConditionalOnMissingBean
-    public EventRepository eventRepository(
+    public EventRepository openCqrsEventRepository(
             EsdbClient client,
             EventSource eventSource,
             EventTypeResolver eventTypeResolver,

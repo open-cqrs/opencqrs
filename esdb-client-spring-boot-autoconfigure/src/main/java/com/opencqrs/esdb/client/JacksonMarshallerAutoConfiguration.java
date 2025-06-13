@@ -19,7 +19,7 @@ public class JacksonMarshallerAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(Marshaller.class)
-    public JacksonMarshaller jacksonMarshaller(ObjectMapper objectMapper) {
+    public JacksonMarshaller esdbJacksonMarshaller(ObjectMapper objectMapper) {
         return new JacksonMarshaller(objectMapper);
     }
 }

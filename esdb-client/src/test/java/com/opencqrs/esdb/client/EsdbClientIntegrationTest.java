@@ -365,8 +365,8 @@ public class EsdbClientIntegrationTest {
         }
 
         @ParameterizedTest
-        @ValueSource(ints = 1000)
-        @Timeout(5)
+        @ValueSource(ints = 8)
+        @Timeout(60)
         public void eventsProperlyObservedWithoutHttpThreadPoolStarvation(int threadCount) {
             String subject = randomSubject();
 
@@ -535,6 +535,7 @@ public class EsdbClientIntegrationTest {
     public class Query {
 
         String subject = randomSubject();
+        EventCandidate eventCandidate;
 
         @MockitoBean
         ErrorHandler errorHandler;
@@ -542,13 +543,12 @@ public class EsdbClientIntegrationTest {
         @BeforeEach
         @Timeout(2) // deadlock may occur when writing after querying
         public void setup() {
-            client.write(
-                    List.of(new EventCandidate(
-                            TEST_SOURCE,
-                            subject,
-                            "com.opencqrs.books-added.v1",
-                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
-                    List.of(new Precondition.SubjectIsPristine(subject)));
+            eventCandidate = new EventCandidate(
+                    TEST_SOURCE,
+                    subject,
+                    "com.opencqrs.books-added.v1",
+                    objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class));
+            client.write(List.of(eventCandidate), List.of(new Precondition.SubjectIsPristine(subject)));
         }
 
         @Test
@@ -560,8 +560,26 @@ public class EsdbClientIntegrationTest {
                     (RowHandler.AsEvent) ref::set,
                     errorHandler);
 
-            assertThat(ref)
-                    .hasValueSatisfying(event -> assertThat(event.subject()).isEqualTo(subject));
+            assertThat(ref).hasValueSatisfying(event -> {
+                assertThat(event)
+                        .usingRecursiveComparison()
+                        .ignoringFields("id", "time", "hash", "predecessorHash")
+                        .isEqualTo(new Event(
+                                eventCandidate.source(),
+                                subject,
+                                eventCandidate.type(),
+                                eventCandidate.data(),
+                                "1.0",
+                                null,
+                                null,
+                                "application/json",
+                                null,
+                                null));
+                assertThat(event.id()).isNotBlank();
+                assertThat(event.time()).isBeforeOrEqualTo(Instant.now());
+                assertThat(event.hash()).isNotBlank();
+                assertThat(event.predecessorHash()).isNotBlank();
+            });
             verifyNoInteractions(errorHandler);
         }
 

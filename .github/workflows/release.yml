@@ -1,0 +1,44 @@
+name: Release Pipeline
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  maven:
+    name: Maven Central
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: nix develop --impure --command ./gradlew -Pversion=${{ github.ref_name }} clean publishAllPublicationsToStagingRepository
+
+      - name: Bundle
+        env:
+          JRELEASER_MAVENCENTRAL_USERNAME: dry-run
+          JRELEASER_MAVENCENTRAL_PASSWORD: dry-run
+        run: nix develop --impure --command jreleaser-cli deploy --output-directory build -Djreleaser.project.version=${{ github.ref_name }} --dry-run
+
+      - name: Archive Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-bundle
+          path: build/jreleaser/deploy/mavenCentral/sonatype/*.zip
+          if-no-files-found: error
+
+      - name: Deploy
+        env:
+          JRELEASER_MAVENCENTRAL_STAGE: UPLOAD
+          JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+          JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+        run: nix develop --impure --command jreleaser-cli deploy --output-directory build -Djreleaser.project.version=${{ github.ref_name }}

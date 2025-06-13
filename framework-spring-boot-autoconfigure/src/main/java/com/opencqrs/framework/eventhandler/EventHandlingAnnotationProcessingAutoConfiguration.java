@@ -53,7 +53,7 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
     }
 
     @Bean
-    public static BeanDefinitionRegistryPostProcessor eventHandlingAnnotatedMethodBeanRegistration() {
+    public static BeanDefinitionRegistryPostProcessor openCqrsEventHandlingAnnotatedMethodBeanRegistration() {
         return registry -> {
             for (String beanName : registry.getBeanDefinitionNames()) {
                 BeanDefinition bd = registry.getBeanDefinition(beanName);
