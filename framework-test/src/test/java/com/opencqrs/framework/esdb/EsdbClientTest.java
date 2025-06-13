@@ -1,12 +1,10 @@
 package com.opencqrs.framework.esdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.opencqrs.esdb.client.EsdbClient;
-import com.opencqrs.esdb.client.Event;
-import com.opencqrs.esdb.client.EventCandidate;
-import com.opencqrs.esdb.client.Precondition;
+import com.opencqrs.esdb.client.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,6 +23,9 @@ public class EsdbClientTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private Marshaller marshaller;
 
     @Test
     public void singleEventPublishedForPristineSubject() {
