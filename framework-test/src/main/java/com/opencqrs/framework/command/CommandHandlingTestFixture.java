@@ -7,7 +7,8 @@ import com.opencqrs.framework.metadata.PropagationUtil;
 import com.opencqrs.framework.persistence.CapturedEvent;
 import com.opencqrs.framework.types.EventTypeResolver;
 import com.opencqrs.framework.upcaster.EventUpcaster;
-import java.lang.annotation.*;
+import com.opencqrs.framework.command.ExpectDsl.*;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -41,7 +42,7 @@ import java.util.function.Function;
  *     {@literal @Test}
  *     public void bookAdded() {
  *          UUID bookId = UUID.randomUUID();
- *          CommandHandlingTestFixture
+ *          CommandHandlingTestFixtureNew
  *              // specify state rebuilding handler definitions to use
  *              .withStateRebuildingHandlerDefinitions(...)
  *              // specify command handler (definition) to test
@@ -692,9 +693,9 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
                         switch (commandHandler) {
                             case CommandHandler.ForCommand<I, C, R> handler -> handler.handle(command, eventCapturer);
                             case CommandHandler.ForInstanceAndCommand<I, C, R> handler ->
-                                handler.handle(currentState, command, eventCapturer);
+                                    handler.handle(currentState, command, eventCapturer);
                             case CommandHandler.ForInstanceAndCommandAndMetaData<I, C, R> handler ->
-                                handler.handle(currentState, command, metaData, eventCapturer);
+                                    handler.handle(currentState, command, metaData, eventCapturer);
                         };
                 return new Expect(
                         command, eventCapturer.previousInstance.get(), eventCapturer.getEvents(), result, null);
@@ -710,21 +711,8 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
      *
      * <p>This class provides stateful event assertions, effectively iterating through the events published during a
      * {@linkplain Given#when(Command) command handler execution}. Methods within {@code this} annotated using
-     * {@link StatefulAssertion} represent stateful assertions and thus both rely on previous stateful assertions and
-     * proceed through the captured event stream, if invoked.
      */
-    public class Expect {
-
-        /**
-         * Marker annotation for assertion methods within {@link CommandHandlingTestFixture.Expect} which proceed
-         * through the captured event stream, if invoked.
-         */
-        @Documented
-        @Target(ElementType.METHOD)
-        @Retention(RetentionPolicy.SOURCE)
-        public @interface StatefulAssertion {}
-
-        private boolean eventVerified = false;
+    public class Expect implements Initializing {
         private final Command command;
         private final I state;
         private final List<CapturedEvent> capturedEvents;
@@ -741,608 +729,261 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             this.throwable = throwable;
         }
 
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) executed} non exceptionally.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the {@link CommandHandler} terminated exceptionally
-         */
-        public Expect expectSuccessfulExecution() throws AssertionError {
-            if (throwable != null) throw new AssertionError("Failed execution, due to", throwable);
+        @Override
+        public Succeeds succeeds() {
+            if(throwable != null) {
+                throw new AssertionError("Expected successful execution but got exception", throwable);
+            }
 
-            return this;
+            return new Succeeds(this);
         }
 
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) executed} exceptionally, irrespective
-         * of the exception type.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the {@link CommandHandler} terminated non exceptionally
-         */
-        public Expect expectUnsuccessfulExecution() throws AssertionError {
-            return expectException(Throwable.class);
+        @Override
+        public Failing fails() {
+            if (throwable == null) {
+                throw new AssertionError("Expected failed execution but command succeeded");
+            }
+            return new Fails();
+        }
+    }
+
+    public class Common implements ExpectDsl.Common<I, R> {
+
+        @Override
+        public All allEvents() {
+            return null;
         }
 
-        public Expect expectResult(R expected) throws AssertionError {
-            if (expected == null && result == null) return this;
+        @Override
+        public Next nextEvents() {
+            return null;
+        }
+    }
 
-            if (expected == null || !expected.equals(result)) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("Command handler result expected to be equal, but captured result:\n");
-                builder.append(result);
-                builder.append("\n");
-                builder.append("differs from:\n");
-                builder.append(expected);
+    public class Succeeds implements Succeeding<I, R> {
 
-                throw new AssertionError(builder.toString());
+        private final Expect expect;
+
+        Succeeds(Expect expect) {
+            this.expect = expect;
+        }
+
+        @Override
+        public Succeeding<I, R> withNoEvents() {
+            if (!this.expect.capturedEvents.isEmpty()) {
+                throw new AssertionError("Expected no events, but found " + this.expect.capturedEvents.size());
             }
             return this;
         }
 
-        public Expect expectResultSatisfying(Consumer<R> assertion) throws AssertionError {
-            assertion.accept(result);
-            return this;
+        @Override
+        public Common and() {
+            return null;
         }
 
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) executed} exceptionally by throwing
-         * an exception of the given class.
-         *
-         * @param t the expected exception class
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the {@link CommandHandler} executed non exceptionally or an exception was thrown
-         *     that is not assignable to the requested type
-         * @param <T> the generic exception type
-         */
-        public <T extends Throwable> Expect expectException(Class<T> t) throws AssertionError {
-            if (throwable == null) throw new AssertionError("No exception occurred, as expected");
-            if (!t.isAssignableFrom(throwable.getClass()))
-                throw new AssertionError(
-                        "Captured exception has wrong type: "
-                                + throwable.getClass().getSimpleName(),
-                        throwable);
-
-            return this;
+        @Override
+        public Succeeds havingResult(R expected) {
+            return null;
         }
 
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) executed} exceptionally and allows
-         * for further custom assertions using the provided {@link Consumer}.
-         *
-         * @param assertion a consumer for custom assertions of the captured exception
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the {@link CommandHandler} executed non exceptionally or if thrown by the given
-         *     consumer
-         * @param <T> the generic exception type
-         */
-        public <T extends Throwable> Expect expectExceptionSatisfying(Consumer<T> assertion) throws AssertionError {
-            if (throwable == null) throw new AssertionError("No exception occurred, as expected");
-
-            assertion.accept((T) throwable);
-
-            return this;
+        @Override
+        public <T> Succeeding<I, R> stateExtracting(Function<I, T> extractor, T expected) {
+            return null;
         }
 
-        /**
-         * Asserts that the (potentially altered) state resulting from the @link CommandHandler}
-         * {@linkplain Given#when(Command) execution} {@linkplain Object#equals(Object) is equal} to the given state.
-         *
-         * @param state the expected state
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the captured state is {@code null} or not equal to the expected state
-         */
-        public Expect expectState(I state) throws AssertionError {
-            if (this.state == null) throw new AssertionError("No state captured");
-            if (!state.equals(this.state)) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("State expected to be equal, but captured state:\n");
-                builder.append(this.state.toString());
-                builder.append("\n");
-                builder.append("differs from:\n");
-                builder.append(state);
-
-                throw new AssertionError(builder.toString());
-            }
-
-            return this;
+        @Override
+        public Succeeds stateSatisfying(Consumer<I> assertion) {
+            return null;
         }
 
-        /**
-         * Asserts that the (potentially altered) state resulting from the @link CommandHandler}
-         * {@linkplain Given#when(Command) execution} {@linkplain Object#equals(Object) is equal} to the given state
-         * using the extractor function.
-         *
-         * @param extractor extractor function applied to the state before comparison
-         * @param expected the extracted state expected, may be {@code null} if needed
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the captured state is {@code null} or the extracted state is not as expected
-         * @param <R> the result type of the extractor function
-         */
-        public <R> Expect expectStateExtracting(Function<I, R> extractor, R expected) throws AssertionError {
-            if (state == null) throw new AssertionError("No state captured");
-            R extracted = extractor.apply(state);
-
-            if (expected == null && extracted == null) return this;
-
-            if (expected == null || !expected.equals(extracted)) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("Extracted state expected to be equal, but captured extracted state:\n");
-                builder.append(extracted);
-                builder.append("\n");
-                builder.append("differs from:\n");
-                builder.append(expected);
-
-                throw new AssertionError(builder.toString());
-            }
-
-            return this;
+        @Override
+        public Succeeds havingState(I state) {
+            return null;
         }
 
-        /**
-         * Asserts the (potentially altered) state resulting from the @link CommandHandler}
-         * {@linkplain Given#when(Command) execution} using the given {@link Consumer}.
-         *
-         * @param assertion the consumer used for custom state assertions
-         * @return {@code this} for further assertions
-         * @throws AssertionError if thrown by the given consumer
-         */
-        public Expect expectStateSatisfying(Consumer<I> assertion) throws AssertionError {
-            assertion.accept(this.state);
-            return this;
+        @Override
+        public Succeeds resultSatisfying(Consumer<R> assertion) {
+            return null;
+        }
+    }
+
+    public class Fails implements Failing<I, R> {
+
+        @Override
+        public <T> Failing<I, R> throwing(Class<T> t) {
+            return null;
         }
 
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream
-         * {@linkplain Object#equals(Object) are equal} to the given events in order.
-         *
-         * @param events the expected events
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less captured events remain than expected or any of the expected events is not
-         *     equal
-         */
-        @StatefulAssertion
-        public Expect expectEvents(Object... events) throws AssertionError {
-            Arrays.stream(events).forEach(this::expectNextEvent);
-
-            return this;
+        @Override
+        public <T> Failing<I, R> throwsSatisfying(Consumer<T> assertion) {
+            return null;
         }
 
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream
-         * {@linkplain Class#isAssignableFrom(Class)} are assignable} to the given event types in order.
-         *
-         * @param types the expected event types
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less captured events remain than expected or any of the expected event types is not
-         *     assignable
-         */
-        @StatefulAssertion
-        public Expect expectEventTypes(Class<?>... types) throws AssertionError {
-            Arrays.stream(types).forEach(this::expectNextEventType);
-
-            return this;
+        @Override
+        public Failing<I, R> violatingAnyCondition() {
+            return null;
         }
 
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream are
-         * successfully asserted by the given consumer.
-         *
-         * @param assertion consumer asserting the remaining events
-         * @return {@code this} for further assertions
-         * @throws AssertionError if thrown by the consumer
-         */
-        @StatefulAssertion
-        public Expect expectEventsSatisfying(Consumer<List<Object>> assertion) throws AssertionError {
-            eventVerified = true;
+        @Override
+        public Failing<I, R> violatingExactly(Command.SubjectCondition condition) {
+            return null;
+        }
+    }
 
-            ArrayList<Object> events = new ArrayList<>();
-            nextEvent.forEachRemaining(next -> events.add(next.event()));
-            assertion.accept(events);
+    public class All implements ExpectDsl.All<I, R> {
 
-            return this;
+        @Override
+        public All count(int count) {
+            return null;
         }
 
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream
-         * {@linkplain Object#equals(Object) are equal} to the given events in <b>any</b> order.
-         *
-         * @param events the expected events (in any order)
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less captured events remain than expected or any of the expected events is not
-         *     equal
-         */
-        @StatefulAssertion
-        public Expect expectEventsInAnyOrder(Object... events) throws AssertionError {
-            eventVerified = true;
-
-            ArrayList<Object> capturedEvents = new ArrayList<>();
-            for (int i = 0; i < events.length; i++) {
-                if (!nextEvent.hasNext())
-                    throw new AssertionError(
-                            "No more events captured, expected " + (events.length - i) + " more events");
-                capturedEvents.add(nextEvent.next().event());
-            }
-            capturedEvents.removeAll(Arrays.stream(events).toList());
-
-            if (!capturedEvents.isEmpty()) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("The following events were captured, but did not match the expected events:\n");
-                capturedEvents.forEach(e -> {
-                    builder.append(e.toString());
-                    builder.append("\n");
-                });
-
-                throw new AssertionError(builder.toString());
-            }
-
-            return this;
+        @Override
+        public <E> All single(E payload) {
+            return null;
         }
 
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream
-         * {@linkplain Class#isAssignableFrom(Class)} are assignable} to the given event types in <b>any</b> order.
-         *
-         * @param types the expected event types (in any order)
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less captured events remain than expected or any of the expected event type is not
-         *     assignable
-         */
-        @StatefulAssertion
-        public Expect expectEventTypesInAnyOrder(Class<?>... types) throws AssertionError {
-            eventVerified = true;
-
-            ArrayList<Class<?>> capturedEventTypes = new ArrayList<>();
-            for (int i = 0; i < types.length; i++) {
-                if (!nextEvent.hasNext())
-                    throw new AssertionError(
-                            "No more events captured, expected " + (types.length - i) + " more events");
-                capturedEventTypes.add(nextEvent.next().event().getClass());
-            }
-            capturedEventTypes.removeAll(Arrays.stream(types).toList());
-
-            if (!capturedEventTypes.isEmpty()) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("The following events were captured, but did not match the expected event types:\n");
-                capturedEventTypes.forEach(e -> {
-                    builder.append(e.getSimpleName());
-                    builder.append("\n");
-                });
-
-                throw new AssertionError(builder.toString());
-            }
-
-            return this;
+        @Override
+        public All singleAsserting(Consumer<EventAsserting> assertion) {
+            return null;
         }
 
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next payload payload} within the captured payload stream
-         * {@linkplain Object#equals(Object) is equal} to the given payload.
-         *
-         * @param payload the expected payload
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no captured events remain or the next payload does not equal the expected one
-         * @param <E> the generic payload type
-         */
-        @StatefulAssertion
-        public <E> Expect expectNextEvent(E payload) throws AssertionError {
-            if (!nextEvent.hasNext())
-                throw new AssertionError("No more events captured, but expected payload of type: "
-                        + payload.getClass().getSimpleName());
-
-            return expectNextEvent(it -> it.payload(payload));
+        @Override
+        public All singleType(Class<?> type) {
+            return null;
         }
 
-        /**
-         * Asserts the {@linkplain StatefulAssertion next event} within the captured event stream using the given
-         * {@linkplain EventAsserter event asserting consumer}.
-         *
-         * @param assertion consumer for further event assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no captured events remain or if thrown by the event assertion consumer
-         */
-        @StatefulAssertion
-        public Expect expectNextEvent(Consumer<EventAsserter> assertion) {
-            eventVerified = true;
-
-            if (!nextEvent.hasNext()) throw new AssertionError("No more events captured.");
-
-            CapturedEvent next = nextEvent.next();
-            assertion.accept(new EventAsserter(command, next));
-            return this;
+        @Override
+        public <E> All singleSatisfying(Consumer<E> assertion) {
+            return null;
         }
 
-        /**
-         * Asserts that {@linkplain StatefulAssertion next event} within the captured event stream
-         * {@linkplain Class#isAssignableFrom(Class)} is assignable} to the given event type.
-         *
-         * @param type the expected event type
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no captured events remain or the next event is not assignable to the expected type
-         */
-        @StatefulAssertion
-        public Expect expectNextEventType(Class<?> type) throws AssertionError {
-            if (!nextEvent.hasNext())
-                throw new AssertionError(
-                        "No more events captured, but expected event of type: " + type.getSimpleName());
-
-            return expectNextEvent(it -> it.payloadType(type));
+        @Override
+        public All exactly(Object event, Object... events) {
+            return null;
         }
 
-        /**
-         * Asserts that {@linkplain StatefulAssertion next event} within the captured event stream is successfully
-         * asserted by the given {@link Consumer}.
-         *
-         * @param assertion custom assertion applied to the next event
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no captured events remain or if thrown by the custom assertion
-         * @param <E> the generic event type
-         */
-        @StatefulAssertion
-        public <E> Expect expectNextEventSatisfying(Consumer<E> assertion) throws AssertionError {
-            return expectNextEvent(it -> it.payloadSatisfying(assertion));
+        @Override
+        public All inAnyOrder(Object... events) {
+            return null;
         }
 
-        /**
-         * Asserts that no more events have been captured.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if there are any remaining events
-         */
-        public Expect expectNoMoreEvents() throws AssertionError {
-            if (nextEvent.hasNext()) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("No more events expected, but got:\n");
-                nextEvent.forEachRemaining(e -> {
-                    builder.append(e.event().toString());
-                    builder.append("\n");
-                });
-                throw new AssertionError(builder.toString());
-            }
-
-            return this;
+        @Override
+        public All expectAnyEvent(Consumer<EventAsserting> assertion) {
+            return null;
         }
 
-        /**
-         * Asserts that a single payload was captured as part of the published payload stream whose payload
-         * {@linkplain Object#equals(Object) is equal} to the expected one.
-         *
-         * @param payload the expected payload type
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or the captured payload does not equal the expected
-         *     one
-         * @param <E> the generic payload type
-         */
-        public <E> Expect expectSingleEvent(E payload) throws AssertionError {
-            if (eventVerified)
-                throw new Error("Cannot expect single payload, if previous events have already been verified.");
-            return expectNextEvent(payload).expectNoMoreEvents();
+        @Override
+        public <E> All any(E payload) {
+            return null;
         }
 
-        /**
-         * Asserts that a single event was captured as part of the published event stream which using the given
-         * {@linkplain EventAsserter event asserting consumer}.
-         *
-         * @param assertion consumer for further event assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or if thrown by the event assertion consumer
-         */
-        public Expect expectSingleEvent(Consumer<EventAsserter> assertion) {
-            if (eventVerified)
-                throw new Error("Cannot expect single event, if previous events have already been verified.");
-            return expectNextEvent(assertion).expectNoMoreEvents();
+        @Override
+        public All anySatisfying(Consumer<EventAsserting> assertion) {
+            return null;
         }
 
-        /**
-         * Asserts that a single event was captured as part of the published event stream which
-         * {@linkplain Class#isAssignableFrom(Class)} is assignable} to the given event type.
-         *
-         * @param type the expected event type
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or the captured event is not assignable to the
-         *     expected type
-         */
-        public Expect expectSingleEventType(Class<?> type) throws AssertionError {
-            if (eventVerified)
-                throw new Error("Cannot expect single event, if previous events have already been verified.");
-            return expectNextEventType(type).expectNoMoreEvents();
+        @Override
+        public All anyType(Class<?> type) {
+            return null;
         }
 
-        /**
-         * Asserts that a single event was captured as part of the published event stream which matches the custom
-         * assertion provided as {@link Consumer}.
-         *
-         * @param assertion the custom assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or if thrown by the custom assertion
-         * @param <E> the generic payload type
-         */
-        public <E> Expect expectSingleEventSatisfying(Consumer<E> assertion) throws AssertionError {
-            if (eventVerified)
-                throw new Error("Cannot expect single event, if previous events have already been verified.");
-            return expectNextEventSatisfying(assertion).expectNoMoreEvents();
+        @Override
+        public All none() {
+            return null;
         }
 
-        /**
-         * Asserts that number of events captured as part of the published event stream matches the given number.
-         *
-         * @param num the number of expected events, may be zero
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the number of published events differs
-         */
-        public Expect expectNumEvents(int num) throws AssertionError {
-            if (num < 0) throw new IllegalArgumentException("Num must be zero or positive");
-
-            if (capturedEvents.size() != num)
-                throw new AssertionError("Number of expected events differs, expected " + num + " but captured: "
-                        + capturedEvents.size());
-
-            return this;
+        @Override
+        public All notContaining(Consumer<EventAsserting> assertion) {
+            return null;
         }
 
-        /**
-         * Asserts that no event was captured as part of the published event stream.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if any event was published
-         */
-        public Expect expectNoEvents() throws AssertionError {
-            return expectNumEvents(0);
+        @Override
+        public All notContainingType(Class<?> type) {
+            return null;
         }
 
-        /**
-         * Skips the given number of {@linkplain StatefulAssertion next events} for upcoming assertions.
-         *
-         * @param num the number of events to skip
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less events were captured than the requested number to skip
-         */
-        @StatefulAssertion
-        public Expect skipEvents(int num) throws AssertionError {
-            if (num <= 0) throw new IllegalArgumentException("Num must be positive");
-
-            for (int i = 0; i < num; i++) {
-                if (!nextEvent.hasNext()) throw new AssertionError("Not enough events captured for skipping");
-                nextEvent.next();
-            }
-
-            return this;
+        @Override
+        public All allSatisfying(Consumer<List<Object>> assertion, Consumer<List<Object>>... assertions) {
+            return null;
         }
 
-        /**
-         * Asserts that any event's payload in the remaining set of captured events {@linkplain Object#equals(Object) is
-         * equal} to the given payload.
-         *
-         * @param payload the expected payload
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no events were captured or none of them does equal the expected one
-         * @param <E> the generic payload type
-         */
-        public <E> Expect expectAnyEvent(E payload) throws AssertionError {
-            return expectAnyEvent(it -> it.payload(payload));
+        @Override
+        public Common and() {
+            return null;
+        }
+    }
+
+    public class Next implements ExpectDsl.Next {
+
+        @Override
+        public Next skip(int num) {
+            return null;
         }
 
-        /**
-         * Asserts that any of the remaining events in the set of captured events asserts successfully using the given
-         * {@linkplain EventAsserter event asserting consumer}.
-         *
-         * @param assertion consumer for further event assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or if thrown by the event assertion consumer
-         */
-        public Expect expectAnyEvent(Consumer<EventAsserter> assertion) throws AssertionError {
-            if (!nextEvent.hasNext()) throw new AssertionError("No more events captured to assert on");
-
-            ArrayList<AssertionError> capturedErrors = new ArrayList<>();
-            boolean anySuccessfullyAsserts =
-                    capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()).stream()
-                            .map(e -> {
-                                try {
-                                    assertion.accept(new EventAsserter(command, e));
-                                } catch (AssertionError error) {
-                                    capturedErrors.add(error);
-                                    return false;
-                                }
-                                return true;
-                            })
-                            .reduce(false, (a, b) -> a || b);
-
-            if (!anySuccessfullyAsserts) {
-                StringBuilder builder = new StringBuilder();
-                builder.append(
-                        "None of the remaining captured events matched the given assertion, the following assertion errors have been captured:\n");
-                capturedErrors.forEach(error -> builder.append(error.getMessage() + "\n"));
-                throw new AssertionError(builder.toString());
-            }
-
-            return this;
+        @Override
+        public Next andNoMore() {
+            return null;
         }
 
-        /**
-         * Asserts that none of the remaining events in the captured event stream satisfies the given assertion
-         * criteria. This is the inverse of {@link #expectAnyEvent(Consumer)}.
-         *
-         * <p>This method looks through all remaining events from the current iterator position and verifies that none
-         * of them passes the provided assertion. If any event passes the assertion, an AssertionError is thrown.
-         *
-         * @param assertion consumer specifying the event assertion criteria that should not be satisfied
-         * @return {@code this} for further assertions
-         * @throws AssertionError if any remaining event satisfies the assertion criteria
-         */
-        public Expect expectNoEvent(Consumer<EventAsserter> assertion) throws AssertionError {
-            if (!nextEvent.hasNext()) throw new AssertionError("No more events captured to assert on");
-
-            ArrayList<CapturedEvent> matchingEvents = new ArrayList<>();
-            boolean anySuccessfullyAsserts =
-                    capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()).stream()
-                            .map(e -> {
-                                try {
-                                    assertion.accept(new EventAsserter(command, e));
-                                    matchingEvents.add(e);
-                                } catch (AssertionError error) {
-                                    return false;
-                                }
-                                return true;
-                            })
-                            .reduce(false, (a, b) -> a || b);
-
-            if (anySuccessfullyAsserts) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("The following remaining captured events matched the given assertion:\n");
-                matchingEvents.forEach(event -> builder.append(event.event().toString() + "\n"));
-                System.out.println("builder:" + builder);
-                throw new AssertionError(builder.toString());
-            }
-
-            return this;
+        @Override
+        public Next exactly(Object event, Object... events) {
+            return null;
         }
 
-        /**
-         * Asserts that any event in the remaining set of captured events {@linkplain Class#isAssignableFrom(Class)} is
-         * assignable} to the given event type.
-         *
-         * @param type the expected event type
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no events were captured or none of them is assignable to the expected type
-         */
-        public Expect expectAnyEventType(Class<?> type) throws AssertionError {
-            return expectAnyEvent(it -> it.payloadType(type));
+        @Override
+        public Next inAnyOrder(Object event, Object... events) {
+            return null;
         }
 
-        /**
-         * Verifies that any event in the remaining set of captured events asserts using the given custom assertion
-         * {@link Consumer}.
-         *
-         * @param assertion custom assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no events were captured or none of them was successfully asserted by the custom
-         *     assertion
-         * @param <E> the generic payload type
-         */
-        public <E> Expect expectAnyEventSatisfying(Consumer<E> assertion) throws AssertionError {
-            return expectAnyEvent(it -> it.payloadSatisfying(assertion));
+        @Override
+        public Next any(Object e) {
+            return null;
         }
 
-        /**
-         * Asserts that none of the remaining events in the captured event stream is assignable to the given type.
-         *
-         * @param type the event type that should not be present in the remaining events
-         * @return {@code this} for further assertions
-         * @throws AssertionError if any remaining event of the given type is found
-         */
-        public Expect expectNoEventOfType(Class<?> type) throws AssertionError {
-            return expectNoEvent(it -> it.payloadType(type));
+        @Override
+        public Next satisfying(Consumer assertion) {
+            return null;
+        }
+
+        @Override
+        public Next comparingType(Class type) {
+            return null;
+        }
+
+        @Override
+        public Next comparing(Consumer assertion) {
+            return null;
+        }
+
+        @Override
+        public Next comparing(Object payload) {
+            return null;
+        }
+
+        @Override
+        public Next matchingTypesInAnyOrder(Class type, Class[] types) {
+            return null;
+        }
+
+        @Override
+        public Next matchingTypes(Class type, Class[] types) {
+            return null;
+        }
+
+        @Override
+        public Common and() {
+            return null;
         }
     }
 
     /**
-     * Fluent API helper class for asserting a captured events.
+     * Fluent API helper class for asserting a captured event.
      *
      * @see CommandHandlingTestFixture.Expect#expectNextEvent(Consumer)
      * @see CommandHandlingTestFixture.Expect#expectSingleEvent(Consumer)
      * @see CommandHandlingTestFixture.Expect#expectAnyEvent(Consumer)
      */
-    public static class EventAsserter {
+    public static class EventAsserter implements EventAsserting {
 
         private final Command command;
         private final CapturedEvent captured;
@@ -1359,6 +1000,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @param type the assignable type
          * @return {@code this} for further assertions
          */
+        @Override
         public EventAsserter payloadType(Class<?> type) {
             return payloadSatisfying(payload -> {
                 if (!type.isAssignableFrom(payload.getClass()))
@@ -1375,6 +1017,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @throws AssertionError if the captured event payload is not equal to the expected one
          * @param <E> the generic payload type
          */
+        @Override
         public <E> EventAsserter payload(E expected) throws AssertionError {
             return payloadSatisfying(payload -> {
                 if (!payload.equals(expected)) {
@@ -1401,6 +1044,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @param <E> the generic payload type
          * @param <R> the generic extraction result type
          */
+        @Override
         public <E, R> EventAsserter payloadExtracting(Function<E, R> extractor, R expected) throws AssertionError {
             return payloadSatisfying((E payload) -> {
                 R extracted = extractor.apply(payload);
@@ -1428,6 +1072,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @throws AssertionError if thrown by the custom assertion
          * @param <E> the generic payload type
          */
+        @Override
         public <E> EventAsserter payloadSatisfying(Consumer<E> assertion) throws AssertionError {
             assertion.accept((E) captured.event());
             return this;
@@ -1440,6 +1085,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return {@code this} for further assertions
          * @throws AssertionError if the meta-data of the event is not as expected
          */
+        @Override
         public EventAsserter metaData(Map<String, ?> expected) throws AssertionError {
             return metaDataSatisfying(metaData -> {
                 if (!metaData.equals(expected)) {
@@ -1462,6 +1108,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return {@code this} for further assertions
          * @throws AssertionError if thrown by the custom assertion
          */
+        @Override
         public EventAsserter metaDataSatisfying(Consumer<Map<String, ?>> assertion) throws AssertionError {
             assertion.accept(captured.metaData());
             return this;
@@ -1473,6 +1120,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return {@code this} for further assertions
          * @throws AssertionError if the meta-data is not empty
          */
+        @Override
         public EventAsserter noMetaData() throws AssertionError {
             metaDataSatisfying(metaData -> {
                 if (!metaData.isEmpty()) {
@@ -1493,6 +1141,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return {@code this} for further assertions
          * @throws AssertionError if the event subject is not as expected
          */
+        @Override
         public EventAsserter subject(String expected) throws AssertionError {
             return subjectSatisfying(subject -> {
                 if (!subject.equals(expected)) {
@@ -1515,6 +1164,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return {@code this} for further assertions
          * @throws AssertionError if thrown by the custom assertion
          */
+        @Override
         public EventAsserter subjectSatisfying(Consumer<String> assertion) throws AssertionError {
             assertion.accept(captured.subject());
             return this;
@@ -1526,6 +1176,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return {@code this} for further assertions
          * @throws AssertionError if the published event subject differs from the command's subject
          */
+        @Override
         public EventAsserter commandSubject() throws AssertionError {
             return subject(command.getSubject());
         }
