@@ -2,116 +2,119 @@ package com.opencqrs.framework.command;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
-public interface ExpectDsl {
+public interface ExpectDsl<I, R> {
 
-    Initial when(Object command);
+    Initializing<I, R> when(Object command);
 
-    interface Common {
-        All allEvents();
-        Next nextEvents();
+    interface Common<I, R> {
+        All<I, R> allEvents();
+        Next<I, R> nextEvents();
     }
 
-    interface Initial extends Common{
+    interface Initializing<I, R> {
         // expectSuccessfulExecution
-        Succeeds succeeds();
+        Succeeding<I, R> succeeds();
         // expectUnsuccessfulExecution
         // Terminating
-        Fails fails();
+        Failing<I, R> fails();
     }
 
-    interface Succeeds {
-        Succeeds withNoEvents();
+    interface Succeeding<I, R> {
+        Succeeding<I, R> withNoEvents();
         // expectResult
-        Succeeds returning(Object result);
+        Succeeding<I, R> havingResult(R expected);
         // expectResultSatisfying
-        Succeeds returnsSatisfying(Consumer<Object> result);
+        Succeeding<I, R> resultSatisfying(Consumer<R> assertion);
         // expectState
-        Succeeds withState(Object state);
+        Succeeding<I, R> havingState(I state);
         // expectStateSatisfying
-        Succeeds withStateSatisfying(Consumer<Object> assertion);
+        Succeeding<I, R> stateSatisfying(Consumer<I> assertion);
+        // expectStateExtracting
+        <T> Succeeding<I, R> stateExtracting(Function<I, T> extractor, T expected);
         // chain function
-        Common and();
+        Common<I, R> and();
     }
 
-    interface Fails {
+    interface Failing<I, R> {
         // expectException
         // Terminating
-        Fails throwing(Class<? extends Throwable> exception);
+        <T> Failing<I, R> throwing(Class<T> t);
         // expectExceptionSatisfying
         // Terminating
-        Fails throwsSatisfying(Consumer<Throwable> assertion);
-        // subject violation
-        Fails violatingCommandSubjectCondition();
-        Fails violatingCommandSubjectCondition(Command.SubjectCondition);
+        <T> Failing<I, R> throwsSatisfying(Consumer<T> assertion);
+        // violatingCommandSubjectCondition()
+        // Terminating
+        Failing<I, R> violatingAnyCondition();
+        // violatingCommandSubjectCondition(Command.SubjectCondition condition)
+        // Terminating
+        Failing<I, R> violatingExactly(Command.SubjectCondition condition);
     }
 
 
-    interface All {
+    interface All<I, R> { // Schaut immer auf alle, nicht auf alle verbleibenden
 
         // expectNumEvents
-        All count(int count);
+        All<I, R> count(int count);
+        // expectSingleEvent(E payload)
+        <E> All<I, R> single(E payload);
+        // expectSingleEvent(Consumer<EventAsserter> assertion)
+        All<I, R> singleAsserting(Consumer<EventAsserting> assertion);
+        // expectSingleEventType
+        All<I, R> singleType(Class<?> type);
+        // expectSingleEventSatisfying(Consumer<E> assertion)
+        <E> All<I, R> singleSatisfying(Consumer<E> assertion);
         // ? - Doppelt mit Next exactly?
-        All exactly(Object... events);
+        All<I, R> exactly(Object event, Object... events); // in Order und exakte Anzahl
         // ? - Doppelt mit Next inAnyOrder?
-        All inAnyOrder(Object... events);
-        // expectAnyEvent
-        All any(Object e);
+        All<I, R> inAnyOrder(Object... events);
+        // expectAnyEvent(Consumer<EventAsserter> assertion)
+        All<I, R> expectAnyEvent(Consumer<EventAsserting> assertion);
+        // expectAnyEvent(E payload)
+        <E> All<I, R> any(E payload);
         // expectAnyEventSatisfying
-        All anySatisfying(Consumer<Object> assertion);
+        All<I, R> anySatisfying(Consumer<EventAsserting> assertion);
         // expectAnyEventType
-        All anyType(Class<?> type);
+        All<I, R> anyType(Class<?> type);
         // expectNoEvents
-        All none();
+        All<I, R> none(); // name doof - falscher Name für die Semantik die ausgedrückt werden soll
         // expectNoEvent(Consumer<EventAsserter> assertion)
-        All notContaining(Consumer<Object> assertion);
+        All<I, R> notContaining(Consumer<EventAsserting> assertion);
         // expectNoEventOfType(Class<?> type)
-        All notContainingType(Class<?> type);
-
+        All<I, R> notContainingType(Class<?> type);
+        // expectEventsSatisfying(Consumer<List<Object>> assertion)
+        All<I, R> allSatisfying(Consumer<List<Object>> assertion, Consumer<List<Object>>... assertions);
 
         // chain function
-        Common and();
+        Common<I, R> and();
     }
 
-    interface Next {
+    interface Next<I, R> {
         // skipEvents
-        Next skip(int num);
+        Next<I, R> skip(int num);
         // expectNoMoreEvents
-        Next andNoMore();
+        Next<I, R> andNoMore();
         // expectEvents (in order)
-        Next exactly(Object... events);
+        Next<I, R> exactly(Object event, Object... events); // wenn 2 events übergeben aber 10 da, dann schaue ich nur auf die nächsten 2
         // expectEventTypes (in order)
-        Next matching(Object... eventTypes);
+        Next<I, R> matchingTypes(Class<?> type, Class<?>... types);
         // expectEventsInAnyOrder
-        Next inAnyOrder(Object... events);
+        Next<I, R> inAnyOrder(Object event, Object... events); // Was ist Abgrenzung zu All<I, R> inAnyOrder(Object... events)? - beide implementieren?
         // expectEventTypesInAnyOrder
-        Next matchingInAnyOrder(Object... events);
-        // expectNextEvent(E payload)
-        Next comparing(Object event);
+        Next<I, R> matchingTypesInAnyOrder(Class<?> type, Class<?>... types);
         // expectNextEvent(Consumer<EventAsserter> assertion)
-        Next comparing(Consumer<Object> assertion);
+        <E> Next<I, R> comparing(E payload);
+        // expectNextEvent(Consumer<EventAsserter> assertion)
+        Next<I, R> comparing(Consumer<EventAsserting> assertion);
         // expectNextEventType(Class<?> type)
-        Next comparingType(Class<?> type);
-        // expectEventsSatisfying
-        Next satisfying(Consumer<Object> consumer);
-        // ?
-        Next any(Object e);
+        Next<I, R> comparingType(Class<?> type);
+        // expectNextEventSatisfying(Consumer<E> assertion)
+        <E> Next<I, R> satisfying(Consumer<E> assertion);
+        // ? - kann hier weg, oder?
+        Next<I, R> any(Object e);
 
-        Common and();
-
-        // exactly, comparing und matching überarbeiten/abgrenzen/konsolidieren (für all und für next)
-
-        // single shortcuts? Oder über chaining.
-
-        // Tendenz: withState() bleibt
-
-        // To be discussed:
-        // TODO - Was war hier gemeint?
-        // Alle Events haben ein subject usw...
-        // All allSatisfying(Consumer<Object> assertion);
-
-
-        // Liste mit Events und ich schaue in jedes einzeln und mache assertion auf einzelnem Event
-        // All satisfying(Consumer<List<Object>> assertion);
+        // chain function
+        Common<I, R> and();
     }
 }
