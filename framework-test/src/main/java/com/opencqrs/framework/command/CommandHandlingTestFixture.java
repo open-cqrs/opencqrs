@@ -769,7 +769,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         }
 
         @Override
-        public Succeeding<I, R> withNoEvents() {
+        public Succeeding<I, R> withoutEvents() {
             if (!this.expect.capturedEvents.isEmpty()) {
                 throw new AssertionError("Expected no events, but found " + this.expect.capturedEvents.size());
             }
