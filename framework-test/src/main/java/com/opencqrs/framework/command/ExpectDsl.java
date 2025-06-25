@@ -22,7 +22,7 @@ public interface ExpectDsl<I, R> {
     }
 
     interface Succeeding<I, R> {
-        Succeeding<I, R> withNoEvents();
+        Succeeding<I, R> withoutEvents();
         // expectResult
         Succeeding<I, R> havingResult(R expected);
         // expectResultSatisfying
@@ -53,11 +53,14 @@ public interface ExpectDsl<I, R> {
     }
 
 
-    interface All<I, R> { // Schaut immer auf alle, nicht auf alle verbleibenden
+    interface All<I, R> {
 
         // expectNumEvents
         All<I, R> count(int count);
         // expectSingleEvent(E payload)
+        All<I, R> single(Consumer<Foo3<I, R>> c);
+        Foo<I, R, All<I, R>> any();
+        Foo<I, R, All<I, R>> none();
         <E> All<I, R> single(E payload);
         // expectSingleEvent(Consumer<EventAsserter> assertion)
         All<I, R> singleAsserting(Consumer<EventAsserting> assertion);
@@ -66,28 +69,49 @@ public interface ExpectDsl<I, R> {
         // expectSingleEventSatisfying(Consumer<E> assertion)
         <E> All<I, R> singleSatisfying(Consumer<E> assertion);
         // ? - Doppelt mit Next exactly?
+        Foo2<I, R, All<I, R>> exactly();
         All<I, R> exactly(Object event, Object... events); // in Order und exakte Anzahl
         // ? - Doppelt mit Next inAnyOrder?
         All<I, R> inAnyOrder(Object... events);
         // expectAnyEvent(Consumer<EventAsserter> assertion)
-        All<I, R> expectAnyEvent(Consumer<EventAsserting> assertion);
+        All<I, R> expectAnyEvent(Consumer<EventAsserting> assertion); // kann weg da any().asserting()
         // expectAnyEvent(E payload)
         <E> All<I, R> any(E payload);
         // expectAnyEventSatisfying
         All<I, R> anySatisfying(Consumer<EventAsserting> assertion);
         // expectAnyEventType
         All<I, R> anyType(Class<?> type);
-        // expectNoEvents
-        All<I, R> none(); // name doof - falscher Name für die Semantik die ausgedrückt werden soll
-        // expectNoEvent(Consumer<EventAsserter> assertion)
-        All<I, R> notContaining(Consumer<EventAsserting> assertion);
         // expectNoEventOfType(Class<?> type)
         All<I, R> notContainingType(Class<?> type);
         // expectEventsSatisfying(Consumer<List<Object>> assertion)
         All<I, R> allSatisfying(Consumer<List<Object>> assertion, Consumer<List<Object>>... assertions);
-
         // chain function
         Common<I, R> and();
+
+        // and().single().asserting().
+        // and()
+    }
+
+    interface Foo<I, R, Parent> {
+        Parent comparing(Object event);
+        <E> Parent satisfying(Consumer<E> assertion);
+        Parent asserting(Consumer<EventAsserting> asserting);
+        Parent ofType(Class<?> type);
+    }
+
+    interface Foo2<I, R, Parent> {
+        Foo2<I, R, Parent> comparing(Object... events);
+        Foo2<I, R, Parent> ofType(Class<?>... types);
+        <E> Foo2<I, R, Parent> satisfying(Consumer<E>... assertions);
+        Foo2<I, R, Parent> asserting(Consumer<EventAsserting>... assertings);
+        Parent and();
+    }
+
+    interface Foo3<I, R> {
+        Foo3<I, R> comparing(Object event);
+        <E> Foo3<I, R> satisfying(Consumer<E> assertion);
+        Foo3<I, R> asserting(Consumer<EventAsserting> asserting);
+        Foo3<I, R> ofType(Class<?> type);
     }
 
     interface Next<I, R> {
@@ -111,7 +135,7 @@ public interface ExpectDsl<I, R> {
         Next<I, R> comparingType(Class<?> type);
         // expectNextEventSatisfying(Consumer<E> assertion)
         <E> Next<I, R> satisfying(Consumer<E> assertion);
-        // ? - kann hier weg, oder?
+        // ? - kann hier weg, oder? // Lookahead ob any noch erfüllt wird (ohne steps)
         Next<I, R> any(Object e);
 
         // chain function
