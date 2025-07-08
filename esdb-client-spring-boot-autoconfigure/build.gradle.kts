@@ -10,6 +10,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator")
     testImplementation("com.fasterxml.jackson.core:jackson-databind")
+    // https://github.com/gradle/gradle/issues/33950
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 }

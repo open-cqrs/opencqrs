@@ -12,6 +12,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-data-jdbc")
     testImplementation("org.springframework.integration:spring-integration-core")
     testRuntimeOnly("com.h2database:h2")
+    // https://github.com/gradle/gradle/issues/33950
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 }
