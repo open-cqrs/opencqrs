@@ -7,29 +7,30 @@ import java.util.function.Consumer;
 
 /**
  * Sealed base interface for handlers capable of processing
- * {@linkplain com.opencqrs.esdb.client.EsdbClient#query(String, RowHandler, ErrorHandler) query} result rows.
+ * {@linkplain com.opencqrs.esdb.client.EsdbClient#query(EventQuery, EventQueryRowHandler, EventQueryErrorHandler)
+ * query} result rows.
  */
-public sealed interface RowHandler {
+public sealed interface EventQueryRowHandler {
 
     /**
      * {@link FunctionalInterface} to be implemented for consuming query result rows as {@link Event}. This can be used
      * for queries similar to {@code FROM e IN events ... PROJECT INTO e}.
      */
     @FunctionalInterface
-    non-sealed interface AsEvent extends RowHandler, Consumer<Event> {}
+    non-sealed interface AsEvent extends EventQueryRowHandler, Consumer<Event> {}
 
     /**
      * {@link FunctionalInterface} to be implemented for consuming query result rows as JSON maps. This can be used for
      * queries similar to {@code FROM e IN events ... PROJECT INTO { id: e.id, ... }}.
      */
     @FunctionalInterface
-    non-sealed interface AsMap extends RowHandler, Consumer<Map<String, ?>> {}
+    non-sealed interface AsMap extends EventQueryRowHandler, Consumer<Map<String, ?>> {}
 
     /**
      * Interface to be implemented for consuming query result rows as JSON objects. This can be used for queries similar
      * to {@code FROM e IN events ... PROJECT INTO { id: e.id, ... }}.
      */
-    non-sealed interface AsObject<T> extends RowHandler, Consumer<T> {
+    non-sealed interface AsObject<T> extends EventQueryRowHandler, Consumer<T> {
 
         Class<T> type();
     }
@@ -39,5 +40,5 @@ public sealed interface RowHandler {
      * used for queries similar to {@code FROM e IN events ... PROJECT INTO e.time }.
      */
     @FunctionalInterface
-    non-sealed interface AsScalar<T> extends RowHandler, Consumer<T> {}
+    non-sealed interface AsScalar<T> extends EventQueryRowHandler, Consumer<T> {}
 }

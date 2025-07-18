@@ -7,8 +7,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.*;
-import com.opencqrs.esdb.client.eventql.QueryProcessingError;
-import com.opencqrs.esdb.client.eventql.RowHandler;
+import com.opencqrs.esdb.client.eventql.EventQueryProcessingError;
+import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
@@ -241,7 +241,7 @@ public class JacksonMarshaller implements Marshaller {
                     new QueryResponseElement.Row((rowHandler, errorHandler) -> {
                         try {
                             switch (rowHandler) {
-                                case RowHandler.AsEvent consumer -> {
+                                case EventQueryRowHandler.AsEvent consumer -> {
                                     var jacksonEvent = objectMapper.convertValue(
                                             row.payload(), JacksonResponseElement.Event.Payload.class);
                                     consumer.accept(new Event(
@@ -256,12 +256,13 @@ public class JacksonMarshaller implements Marshaller {
                                             jacksonEvent.hash,
                                             jacksonEvent.predecessorhash));
                                 }
-                                case RowHandler.AsMap consumer -> consumer.accept((Map<String, ?>) row.payload);
-                                case RowHandler.AsObject consumer -> {
+                                case EventQueryRowHandler.AsMap consumer ->
+                                    consumer.accept((Map<String, ?>) row.payload);
+                                case EventQueryRowHandler.AsObject consumer -> {
                                     var object = objectMapper.convertValue(row.payload(), consumer.type());
                                     consumer.accept(object);
                                 }
-                                case RowHandler.AsScalar consumer -> consumer.accept(row.payload());
+                                case EventQueryRowHandler.AsScalar consumer -> consumer.accept(row.payload());
                             }
                         } catch (ClassCastException e) {
                             errorHandler.marshallingError(new ClientException.MarshallingException(e), line);
@@ -289,6 +290,6 @@ public class JacksonMarshaller implements Marshaller {
     sealed interface JacksonQueryResponseElement {
         record Row(Object payload) implements JacksonQueryResponseElement {}
 
-        record Error(QueryProcessingError payload) implements JacksonQueryResponseElement {}
+        record Error(EventQueryProcessingError payload) implements JacksonQueryResponseElement {}
     }
 }

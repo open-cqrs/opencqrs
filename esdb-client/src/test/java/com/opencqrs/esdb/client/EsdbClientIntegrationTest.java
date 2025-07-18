@@ -7,8 +7,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.opencqrs.esdb.client.eventql.ErrorHandler;
-import com.opencqrs.esdb.client.eventql.RowHandler;
+import com.opencqrs.esdb.client.eventql.EventQueryBuilder;
+import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
+import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -538,7 +539,7 @@ public class EsdbClientIntegrationTest {
         EventCandidate eventCandidate;
 
         @MockitoBean
-        ErrorHandler errorHandler;
+        EventQueryErrorHandler errorHandler;
 
         @BeforeEach
         @Timeout(2) // deadlock may occur when writing after querying
@@ -556,8 +557,9 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<Event>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e",
-                    (RowHandler.AsEvent) ref::set,
+                    EventQueryBuilder.fromEventQlString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e"),
+                    (EventQueryRowHandler.AsEvent) ref::set,
                     errorHandler);
 
             assertThat(ref).hasValueSatisfying(event -> {
@@ -585,10 +587,11 @@ public class EsdbClientIntegrationTest {
 
         @Test
         public void queryForEventDeserializationFailing() {
-            RowHandler.AsEvent rowHandler = mock();
+            EventQueryRowHandler.AsEvent rowHandler = mock();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { time: e.subject }",
+                    EventQueryBuilder.fromEventQlString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { time: e.subject }"),
                     rowHandler,
                     errorHandler);
 
@@ -601,8 +604,9 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<Map<String, ?>>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data",
-                    (RowHandler.AsMap) ref::set,
+                    EventQueryBuilder.fromEventQlString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data"),
+                    (EventQueryRowHandler.AsMap) ref::set,
                     errorHandler);
 
             assertThat(ref).hasValueSatisfying(map -> {
@@ -613,10 +617,11 @@ public class EsdbClientIntegrationTest {
 
         @Test
         public void queryForMapDeserializationFailing() {
-            RowHandler.AsMap rowHandler = mock();
+            EventQueryRowHandler.AsMap rowHandler = mock();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id",
+                    EventQueryBuilder.fromEventQlString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id"),
                     rowHandler,
                     errorHandler);
 
@@ -629,8 +634,9 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<BookAddedEvent>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data",
-                    new RowHandler.AsObject<BookAddedEvent>() {
+                    EventQueryBuilder.fromEventQlString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data"),
+                    new EventQueryRowHandler.AsObject<BookAddedEvent>() {
                         @Override
                         public void accept(BookAddedEvent bookAddedEvent) {
                             ref.set(bookAddedEvent);
@@ -649,11 +655,12 @@ public class EsdbClientIntegrationTest {
 
         @Test
         public void queryForObjectDeserializationFailing() {
-            RowHandler.AsObject<BookPageDamagedEvent> rowHandler = mock();
+            EventQueryRowHandler.AsObject<BookPageDamagedEvent> rowHandler = mock();
             doReturn(BookPageDamagedEvent.class).when(rowHandler).type();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { page : e.subject }",
+                    EventQueryBuilder.fromEventQlString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { page : e.subject }"),
                     rowHandler,
                     errorHandler);
 
@@ -666,8 +673,9 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<String>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id",
-                    (RowHandler.AsScalar<String>) ref::set,
+                    EventQueryBuilder.fromEventQlString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id"),
+                    (EventQueryRowHandler.AsScalar<String>) ref::set,
                     errorHandler);
 
             assertThat(ref).hasValueSatisfying(id -> assertThat(id).isNotBlank());
@@ -679,8 +687,9 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<Integer>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id AS INT",
-                    (RowHandler.AsScalar<Integer>) ref::set,
+                    EventQueryBuilder.fromEventQlString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id AS INT"),
+                    (EventQueryRowHandler.AsScalar<Integer>) ref::set,
                     errorHandler);
 
             assertThat(ref).hasValueSatisfying(id -> assertThat(id).isPositive());
@@ -690,10 +699,11 @@ public class EsdbClientIntegrationTest {
         @Test
         public void queryForScalarDeserializationFailing() {
             var ref = new AtomicReference<Integer>();
-            RowHandler.AsScalar<Integer> rowHandler = ref::set;
+            EventQueryRowHandler.AsScalar<Integer> rowHandler = ref::set;
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.time",
+                    EventQueryBuilder.fromEventQlString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.time"),
                     rowHandler,
                     errorHandler);
 

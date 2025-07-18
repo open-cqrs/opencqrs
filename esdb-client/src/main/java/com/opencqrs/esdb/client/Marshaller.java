@@ -1,9 +1,10 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
-import com.opencqrs.esdb.client.eventql.ErrorHandler;
-import com.opencqrs.esdb.client.eventql.QueryProcessingError;
-import com.opencqrs.esdb.client.eventql.RowHandler;
+import com.opencqrs.esdb.client.eventql.EventQuery;
+import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
+import com.opencqrs.esdb.client.eventql.EventQueryProcessingError;
+import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
 import com.opencqrs.esdb.client.jackson.JacksonMarshaller;
 import java.util.List;
 import java.util.Map;
@@ -92,9 +93,9 @@ public interface Marshaller {
      * Used by {@link EsdbClient} to transform the given parameters into a valid HTTP request body to be sent to the
      * event store for query operations.
      *
-     * @param query the query
+     * @param query the query as string
      * @return the JSON HTTP request body as string
-     * @see EsdbClient#query(String, RowHandler, ErrorHandler)
+     * @see EsdbClient#query(EventQuery, EventQueryRowHandler, EventQueryErrorHandler)
      */
     String toQueryRequest(String query);
 
@@ -116,11 +117,12 @@ public interface Marshaller {
         /**
          * Represents a <code>row</code> returned from the event store, which may be processed by the deferred
          * {@link BiConsumer}. The consumer is needed, because rows returned from the event store may still fail to
-         * deserialize correctly to the target type, as defined by {@link RowHandler}.
+         * deserialize correctly to the target type, as defined by {@link EventQueryRowHandler}.
          *
          * @param deferredHandler the deferred bi-consumer
          */
-        record Row(BiConsumer<RowHandler, ErrorHandler> deferredHandler) implements QueryResponseElement {}
+        record Row(BiConsumer<EventQueryRowHandler, EventQueryErrorHandler> deferredHandler)
+                implements QueryResponseElement {}
 
         /**
          * Represents an <code>error</code> returned from the event store, typically caused by an invalid query or
@@ -128,6 +130,6 @@ public interface Marshaller {
          *
          * @param payload the error payload
          */
-        record Error(QueryProcessingError payload) implements QueryResponseElement {}
+        record Error(EventQueryProcessingError payload) implements QueryResponseElement {}
     }
 }

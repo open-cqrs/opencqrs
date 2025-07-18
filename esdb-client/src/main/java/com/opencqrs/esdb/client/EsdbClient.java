@@ -1,8 +1,9 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
-import com.opencqrs.esdb.client.eventql.ErrorHandler;
-import com.opencqrs.esdb.client.eventql.RowHandler;
+import com.opencqrs.esdb.client.eventql.EventQuery;
+import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
+import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -217,19 +218,20 @@ public final class EsdbClient implements AutoCloseable {
      * Queries the underlying event store using <a
      * href="https://docs.eventsourcingdb.io/reference/eventql/">EventQL</a>.
      *
-     * @param query a valid query
+     * @param query the {@link EventQuery} to execute
      * @param rowHandler callback for successfully queried and transformed rows (called per row)
      * @param errorHandler callback for non successfully queried or transformed rows (called per row)
      * @throws ClientException.TransportException in case of connection or network errors
      * @throws ClientException.HttpException in case of errors depending on the HTTP status code
      * @throws ClientException.MarshallingException in case of serialization errors <strong>regarding the request not
      *     the individual row</strong>, typically caused by the associated {@link Marshaller}
-     * @see RowHandler
-     * @see ErrorHandler
+     * @see EventQueryRowHandler
+     * @see EventQueryErrorHandler
      */
-    public void query(String query, RowHandler rowHandler, ErrorHandler errorHandler) throws ClientException {
+    public void query(EventQuery query, EventQueryRowHandler rowHandler, EventQueryErrorHandler errorHandler)
+            throws ClientException {
         var httpRequest = newJsonRequest("/api/v1/run-eventql-query")
-                .POST(HttpRequest.BodyPublishers.ofString(marshaller.toQueryRequest(query)))
+                .POST(HttpRequest.BodyPublishers.ofString(marshaller.toQueryRequest(query.queryString())))
                 .build();
 
         httpRequestErrorHandler.handle(
