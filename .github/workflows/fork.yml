@@ -1,0 +1,78 @@
+name: Fork
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assemble
+        run: nix develop --impure --command ./gradlew --no-daemon -Pversion=${{ github.sha }} clean assemble
+
+      - name: Archive Jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: jars
+          path: |
+            */build/libs/*.jar
+          include-hidden-files: true
+          if-no-files-found: error
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lint
+        run: nix develop --impure --command ./gradlew --no-daemon clean spotlessCheck
+
+  test:
+    name: Test
+    # if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Tests
+        run: nix develop --impure --command ./gradlew --no-daemon clean test
+
+      - name: Publish Test Results
+        uses: mikepenz/action-junit-report@v5
+        if: success() || failure()
+        with:
+          report_paths: '*/build/test-results/test/TEST-*.xml'
+          include_passed: false
+          include_time_in_summary: true
+          detailed_summary: true
+          group_suite: true
+          truncate_stack_traces: false
+          comment: false
