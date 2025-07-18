@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 /**
  * Encapsulates a {@linkplain ErrorHandler#queryProcessingError(QueryProcessingError) query processing error} caused by
- * {@link com.opencqrs.esdb.client.EsdbClient#query(String, RowHandler, ErrorHandler)}.
+ * {@link com.opencqrs.esdb.client.EsdbClient#query(EventQLQuery, RowHandler, ErrorHandler)}.
  *
  * @param error error descriptions
  * @param startToken optional start token regarding the query input string

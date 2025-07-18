@@ -2,6 +2,7 @@
 package com.opencqrs.esdb.client;
 
 import com.opencqrs.esdb.client.eventql.ErrorHandler;
+import com.opencqrs.esdb.client.eventql.EventQLQuery;
 import com.opencqrs.esdb.client.eventql.QueryProcessingError;
 import com.opencqrs.esdb.client.eventql.RowHandler;
 import com.opencqrs.esdb.client.jackson.JacksonMarshaller;
@@ -92,9 +93,9 @@ public interface Marshaller {
      * Used by {@link EsdbClient} to transform the given parameters into a valid HTTP request body to be sent to the
      * event store for query operations.
      *
-     * @param query the query
+     * @param query the query as string
      * @return the JSON HTTP request body as string
-     * @see EsdbClient#query(String, RowHandler, ErrorHandler)
+     * @see EsdbClient#query(EventQLQuery, RowHandler, ErrorHandler)
      */
     String toQueryRequest(String query);
 

@@ -2,6 +2,7 @@
 package com.opencqrs.esdb.client;
 
 import com.opencqrs.esdb.client.eventql.ErrorHandler;
+import com.opencqrs.esdb.client.eventql.EventQLQuery;
 import com.opencqrs.esdb.client.eventql.RowHandler;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -217,7 +218,7 @@ public final class EsdbClient implements AutoCloseable {
      * Queries the underlying event store using <a
      * href="https://docs.eventsourcingdb.io/reference/eventql/">EventQL</a>.
      *
-     * @param query a valid query
+     * @param query the {@link EventQLQuery} to execute
      * @param rowHandler callback for successfully queried and transformed rows (called per row)
      * @param errorHandler callback for non successfully queried or transformed rows (called per row)
      * @throws ClientException.TransportException in case of connection or network errors
@@ -227,9 +228,9 @@ public final class EsdbClient implements AutoCloseable {
      * @see RowHandler
      * @see ErrorHandler
      */
-    public void query(String query, RowHandler rowHandler, ErrorHandler errorHandler) throws ClientException {
+    public void query(EventQLQuery query, RowHandler rowHandler, ErrorHandler errorHandler) throws ClientException {
         var httpRequest = newJsonRequest("/api/v1/run-eventql-query")
-                .POST(HttpRequest.BodyPublishers.ofString(marshaller.toQueryRequest(query)))
+                .POST(HttpRequest.BodyPublishers.ofString(marshaller.toQueryRequest(query.queryString())))
                 .build();
 
         httpRequestErrorHandler.handle(
