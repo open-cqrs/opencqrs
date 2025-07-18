@@ -7,7 +7,7 @@ import java.util.function.Consumer;
 
 /**
  * Sealed base interface for handlers capable of processing
- * {@linkplain com.opencqrs.esdb.client.EsdbClient#query(String, RowHandler, ErrorHandler) query} result rows.
+ * {@linkplain com.opencqrs.esdb.client.EsdbClient#query(EventQLQuery, RowHandler, ErrorHandler) query} result rows.
  */
 public sealed interface RowHandler {
 

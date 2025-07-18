@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.eventql.ErrorHandler;
+import com.opencqrs.esdb.client.eventql.EventQLQueryBuilder;
 import com.opencqrs.esdb.client.eventql.RowHandler;
 import java.time.Instant;
 import java.util.*;
@@ -556,7 +557,8 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<Event>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e",
+                    EventQLQueryBuilder.fromQueryString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e"),
                     (RowHandler.AsEvent) ref::set,
                     errorHandler);
 
@@ -588,7 +590,8 @@ public class EsdbClientIntegrationTest {
             RowHandler.AsEvent rowHandler = mock();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { time: e.subject }",
+                    EventQLQueryBuilder.fromQueryString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { time: e.subject }"),
                     rowHandler,
                     errorHandler);
 
@@ -601,7 +604,8 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<Map<String, ?>>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data",
+                    EventQLQueryBuilder.fromQueryString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data"),
                     (RowHandler.AsMap) ref::set,
                     errorHandler);
 
@@ -616,7 +620,8 @@ public class EsdbClientIntegrationTest {
             RowHandler.AsMap rowHandler = mock();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id",
+                    EventQLQueryBuilder.fromQueryString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id"),
                     rowHandler,
                     errorHandler);
 
@@ -629,7 +634,8 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<BookAddedEvent>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data",
+                    EventQLQueryBuilder.fromQueryString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.data"),
                     new RowHandler.AsObject<BookAddedEvent>() {
                         @Override
                         public void accept(BookAddedEvent bookAddedEvent) {
@@ -653,7 +659,8 @@ public class EsdbClientIntegrationTest {
             doReturn(BookPageDamagedEvent.class).when(rowHandler).type();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { page : e.subject }",
+                    EventQLQueryBuilder.fromQueryString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO { page : e.subject }"),
                     rowHandler,
                     errorHandler);
 
@@ -666,7 +673,8 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<String>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id",
+                    EventQLQueryBuilder.fromQueryString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id"),
                     (RowHandler.AsScalar<String>) ref::set,
                     errorHandler);
 
@@ -679,7 +687,8 @@ public class EsdbClientIntegrationTest {
             var ref = new AtomicReference<Integer>();
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id AS INT",
+                    EventQLQueryBuilder.fromQueryString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.id AS INT"),
                     (RowHandler.AsScalar<Integer>) ref::set,
                     errorHandler);
 
@@ -693,7 +702,8 @@ public class EsdbClientIntegrationTest {
             RowHandler.AsScalar<Integer> rowHandler = ref::set;
 
             client.query(
-                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.time",
+                    EventQLQueryBuilder.fromQueryString(
+                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO e.time"),
                     rowHandler,
                     errorHandler);
 
