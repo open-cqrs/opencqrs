@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
         properties = {
             "server.servlet.context-path=/",
         })
-public class HttpRequestErrorHandlerTest {
+public class HttpRequestEventQueryErrorHandlerTest {
 
     static final String RESPONSE_MESSAGE = "test message";
 
