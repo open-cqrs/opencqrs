@@ -23,8 +23,8 @@ public record EventCandidate(
         @NotBlank String subject,
         @NotBlank String type,
         @NotNull Map<String, ?> data,
-        String traceparent,
-        String tracestate) {
+        String traceParent,
+        String traceState) {
 
     public EventCandidate(@NotBlank String source, @NotBlank String subject, @NotBlank String type, @NotNull Map<String, ?> data) {
         this(source, subject, type, data, null, null);

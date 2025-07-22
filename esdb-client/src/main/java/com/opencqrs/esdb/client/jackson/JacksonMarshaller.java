@@ -154,8 +154,8 @@ public class JacksonMarshaller implements Marshaller {
                 c.subject(),
                 c.type(),
                 c.data(),
-                c.traceparent(),
-                c.tracestate()
+                c.traceParent(),
+                c.traceState()
         );
     }
 
