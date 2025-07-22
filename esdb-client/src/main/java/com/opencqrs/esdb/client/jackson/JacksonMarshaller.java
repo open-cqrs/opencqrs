@@ -47,7 +47,8 @@ public class JacksonMarshaller implements Marshaller {
 
     @Override
     public String toWriteEventsRequest(List<EventCandidate> eventCandidates, List<Precondition> preconditions) {
-        var jacksonEventCandidates = eventCandidates.stream().map(this::toJackson).toList();
+        var jacksonEventCandidates =
+                eventCandidates.stream().map(this::toJackson).toList();
         var jacksonPreconditions = preconditions.stream().map(this::toJackson).toList();
 
         try {
@@ -149,14 +150,7 @@ public class JacksonMarshaller implements Marshaller {
     }
 
     private JacksonEventCandidate toJackson(EventCandidate c) {
-        return new JacksonEventCandidate(
-                c.source(),
-                c.subject(),
-                c.type(),
-                c.data(),
-                c.traceparent(),
-                c.tracestate()
-        );
+        return new JacksonEventCandidate(c.source(), c.subject(), c.type(), c.data(), c.traceParent(), c.traceState());
     }
 
     private JacksonPrecondition toJackson(Precondition precondition) {
