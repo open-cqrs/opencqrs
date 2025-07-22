@@ -6,7 +6,7 @@ import com.opencqrs.esdb.client.Precondition;
 import com.opencqrs.framework.command.Command;
 import com.opencqrs.framework.command.CommandHandler;
 import com.opencqrs.framework.command.CommandHandlerDefinition;
-import com.opencqrs.framework.command.SourcingMode;
+import com.opencqrs.framework.command.CommandHandling.UsingSubject.SourcingMode;
 import com.opencqrs.framework.command.StateRebuildingHandlerDefinition;
 import com.opencqrs.framework.persistence.EventReader;
 import jakarta.annotation.Nonnull;
@@ -49,7 +49,7 @@ public interface StateRebuildingCache {
      * @param subject the corresponding {@link Command#getSubject()}
      * @param instanceClass the corresponding {@link CommandHandlerDefinition#instanceClass()} and those of its
      *     {@link StateRebuildingHandlerDefinition}s.
-     * @param sourcingMode the corresponding {@link CommandHandlerDefinition#sourcingMode()}
+     * @param sourcingMode the corresponding {@link com.opencqrs.framework.command.CommandHandling.UsingSubject#sourcingMode()}
      * @param <I> the generic instance type being cached
      */
     record CacheKey<I>(@Nonnull String subject, @Nonnull Class<I> instanceClass, @Nonnull SourcingMode sourcingMode) {}

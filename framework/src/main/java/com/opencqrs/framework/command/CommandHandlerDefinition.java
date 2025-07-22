@@ -13,17 +13,4 @@ package com.opencqrs.framework.command;
  * @param <R> the command execution result type
  */
 public record CommandHandlerDefinition<I, C extends Command, R>(
-        Class<I> instanceClass, Class<C> commandClass, CommandHandler<I, C, R> handler, SourcingMode sourcingMode) {
-
-    /**
-     * Convenience constructor using {@link SourcingMode#RECURSIVE}.
-     *
-     * @param instanceClazz instance type used for state rebuilding
-     * @param commandClazz command type to be executed
-     * @param commandHandler command handler to be executed
-     */
-    public CommandHandlerDefinition(
-            Class<I> instanceClazz, Class<C> commandClazz, CommandHandler<I, C, R> commandHandler) {
-        this(instanceClazz, commandClazz, commandHandler, SourcingMode.RECURSIVE);
-    }
-}
+        Class<I> instanceClass, Class<C> commandClass, CommandHandler<I, C, R> handler, CommandHandling commandHandlingMode) { }
