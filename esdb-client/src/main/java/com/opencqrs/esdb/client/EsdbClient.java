@@ -153,7 +153,9 @@ public final class EsdbClient implements AutoCloseable {
                             eventResponse.time(),
                             eventResponse.dataContentType(),
                             eventResponse.hash(),
-                            eventResponse.predecessorHash());
+                            eventResponse.predecessorHash(),
+                            eventResponse.traceParent(),
+                            eventResponse.traceState());
                 })
                 .toList();
     }
