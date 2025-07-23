@@ -576,6 +576,8 @@ public class EsdbClientIntegrationTest {
                                 null,
                                 "application/json",
                                 null,
+                                null,
+                                null,
                                 null));
                 assertThat(event.id()).isNotBlank();
                 assertThat(event.time()).isBeforeOrEqualTo(Instant.now());

@@ -37,5 +37,7 @@ public record Event(
         @NotNull Instant time,
         @NotBlank String dataContentType,
         String hash,
-        @NotBlank String predecessorHash)
+        @NotBlank String predecessorHash,
+        String traceParent,
+        String traceState)
         implements Marshaller.ResponseElement {}

@@ -78,7 +78,9 @@ public class JacksonMarshaller implements Marshaller {
                             e.time,
                             e.datacontenttype,
                             e.hash,
-                            e.predecessorhash))
+                            e.predecessorhash,
+                            e.traceparent,
+                            e.tracestate))
                     .toList();
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
@@ -142,7 +144,9 @@ public class JacksonMarshaller implements Marshaller {
                             event.payload.time,
                             event.payload.datacontenttype,
                             event.payload.hash,
-                            event.payload.predecessorhash);
+                            event.payload.predecessorhash,
+                            event.payload.traceparent,
+                            event.payload.tracestate);
             };
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
@@ -233,7 +237,9 @@ public class JacksonMarshaller implements Marshaller {
                     @NotNull Instant time,
                     @NotBlank String datacontenttype,
                     @NotBlank String hash,
-                    @NotBlank String predecessorhash) {}
+                    @NotBlank String predecessorhash,
+                    String traceparent,
+                    String tracestate) {}
         }
     }
 
@@ -269,7 +275,9 @@ public class JacksonMarshaller implements Marshaller {
                                             jacksonEvent.time,
                                             jacksonEvent.datacontenttype,
                                             jacksonEvent.hash,
-                                            jacksonEvent.predecessorhash));
+                                            jacksonEvent.predecessorhash,
+                                            jacksonEvent.traceparent,
+                                            jacksonEvent.tracestate));
                                 }
                                 case EventQueryRowHandler.AsMap consumer ->
                                     consumer.accept((Map<String, ?>) row.payload);
