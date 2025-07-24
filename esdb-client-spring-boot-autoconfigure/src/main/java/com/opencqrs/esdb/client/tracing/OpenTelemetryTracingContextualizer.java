@@ -8,11 +8,11 @@ import io.opentelemetry.context.propagation.TextMapPropagator;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OTLPTracingContextProvider implements TracingContextProvider {
+public class OpenTelemetryTracingContextualizer implements TracingContextualizer {
 
     private final TextMapPropagator propagator;
 
-    public OTLPTracingContextProvider(OpenTelemetry openTelemetry) {
+    public OpenTelemetryTracingContextualizer(OpenTelemetry openTelemetry) {
         this.propagator = openTelemetry.getPropagators().getTextMapPropagator();
     }
 
