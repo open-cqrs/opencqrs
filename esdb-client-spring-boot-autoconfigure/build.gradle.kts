@@ -1,4 +1,11 @@
+
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
+
 description = "Spring Boot auto configurations for the ESDB client SDK"
+
+plugins {
+    id("org.springframework.boot") version "3.5.3"
+}
 
 dependencies {
     api(project(":esdb-client"))
@@ -6,6 +13,8 @@ dependencies {
     compileOnly("org.springframework.boot:spring-boot-starter-validation")
     compileOnly("org.springframework.boot:spring-boot-autoconfigure")
     compileOnly("org.springframework.boot:spring-boot-starter-actuator")
+
+    implementation("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter:2.17.0")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator")
