@@ -3,9 +3,7 @@ package com.opencqrs.esdb.client;
 
 import java.net.http.HttpClient;
 
-import com.opencqrs.esdb.client.tracing.OpenTelemetryTracingContextualizer;
 import com.opencqrs.esdb.client.tracing.TracingContextualizer;
-import io.opentelemetry.api.OpenTelemetry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -36,8 +34,4 @@ public class EsdbClientAutoConfiguration {
     public HttpClient.Builder esdbHttpClientBuilder() {
         return HttpClient.newBuilder();
     }
-
-    @Bean
-    @ConditionalOnMissingBean(TracingContextualizer.class)
-    public TracingContextualizer tracingContext(OpenTelemetry openTelemetry) { return new OpenTelemetryTracingContextualizer(openTelemetry); }
 }
