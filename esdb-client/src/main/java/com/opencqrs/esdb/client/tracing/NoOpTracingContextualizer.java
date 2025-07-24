@@ -3,11 +3,11 @@ package com.opencqrs.esdb.client.tracing;
 
 import com.opencqrs.esdb.client.EventCandidate;
 
-/** A trivial implementation of {@link TracingContextProvider} which does not retrieve any tracing data */
-public class EmptyTracingContextProvider implements TracingContextProvider {
+/** A trivial implementation of {@link TracingContextualizer} which does not retrieve any tracing data */
+public class NoOpTracingContextualizer implements TracingContextualizer {
 
     /**
-     * Trivial implementation of the method which simply returns the given {@link EventCandidate}
+     * Trivial default implementation of the method which simply returns the given {@link EventCandidate}
      *
      * @param candidate the given {@link EventCandidate}
      * @return the given {@link EventCandidate}

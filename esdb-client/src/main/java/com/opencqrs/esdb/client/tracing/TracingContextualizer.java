@@ -4,7 +4,7 @@ package com.opencqrs.esdb.client.tracing;
 import com.opencqrs.esdb.client.EventCandidate;
 
 /** Interface specifying methods for handling tracing data retrieved from the application's context */
-public interface TracingContextProvider {
+public interface TracingContextualizer {
 
     /**
      * Retrieves the current tracing data and adds it to a given {@link EventCandidate} if not already present
