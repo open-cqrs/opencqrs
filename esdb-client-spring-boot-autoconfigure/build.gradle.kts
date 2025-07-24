@@ -14,7 +14,9 @@ dependencies {
     compileOnly("org.springframework.boot:spring-boot-autoconfigure")
     compileOnly("org.springframework.boot:spring-boot-starter-actuator")
 
-    implementation("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter:2.17.0")
+    implementation(platform(SpringBootPlugin.BOM_COORDINATES))
+    implementation(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:2.17.0"))
+    implementation("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator")
