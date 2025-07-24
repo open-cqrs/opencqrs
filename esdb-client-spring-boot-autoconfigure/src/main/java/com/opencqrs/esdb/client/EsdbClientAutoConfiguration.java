@@ -2,8 +2,9 @@
 package com.opencqrs.esdb.client;
 
 import java.net.http.HttpClient;
-import com.opencqrs.esdb.client.tracing.EmptyTracingContext;
-import com.opencqrs.esdb.client.tracing.TracingContext;
+import com.opencqrs.esdb.client.tracing.OTLPTracingContextProvider;
+import com.opencqrs.esdb.client.tracing.TracingContextProvider;
+import io.opentelemetry.api.OpenTelemetry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -20,13 +21,13 @@ public class EsdbClientAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(EsdbClient.class)
     public EsdbClient esdbClient(
-            EsdbProperties properties, Marshaller marshaller, HttpClient.Builder httpClientBuilder, TracingContext tracingContext) {
+            EsdbProperties properties, Marshaller marshaller, HttpClient.Builder httpClientBuilder, TracingContextProvider tracingContextProvider) {
         return new EsdbClient(
                 properties.server().uri(),
                 properties.server().apiToken(),
                 marshaller,
                 httpClientBuilder.connectTimeout(properties.connectionTimeout()),
-                tracingContext);
+                tracingContextProvider);
     }
 
     @Bean
@@ -35,8 +36,7 @@ public class EsdbClientAutoConfiguration {
         return HttpClient.newBuilder();
     }
 
-    // TODO Add proper TracingContext implementation
     @Bean
-    @ConditionalOnMissingBean(TracingContext.class)
-    public TracingContext tracingContext() { return new EmptyTracingContext(); }
+    @ConditionalOnMissingBean(TracingContextProvider.class)
+    public TracingContextProvider tracingContext(OpenTelemetry openTelemetry) { return new OTLPTracingContextProvider(openTelemetry); }
 }
