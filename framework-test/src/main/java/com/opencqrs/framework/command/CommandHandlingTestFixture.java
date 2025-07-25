@@ -838,23 +838,23 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         }
 
         @Override
-        public <E> All single(E payload) {
-            return null;
+        public Foo2<I, R, All<I, R>> single() {
+            return new Foo2<>(this);
         }
 
         @Override
-        public All singleAsserting(Consumer<EventAsserting> assertion) {
-            return null;
+        public Foo2<I, R, All<I, R>> any() {
+            return new Foo2<>(this);
         }
 
         @Override
-        public All singleType(Class<?> type) {
-            return null;
+        public Foo2<I, R, All<I, R>> none() {
+            return new Foo2<>(this);
         }
 
         @Override
-        public <E> All singleSatisfying(Consumer<E> assertion) {
-            return null;
+        public Foo2<I, R, All<I, R>> exactly() {
+            return new Foo2<>(this);
         }
 
         @Override
@@ -864,36 +864,6 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
 
         @Override
         public All inAnyOrder(Object... events) {
-            return null;
-        }
-
-        @Override
-        public All expectAnyEvent(Consumer<EventAsserting> assertion) {
-            return null;
-        }
-
-        @Override
-        public <E> All any(E payload) {
-            return null;
-        }
-
-        @Override
-        public All anySatisfying(Consumer<EventAsserting> assertion) {
-            return null;
-        }
-
-        @Override
-        public All anyType(Class<?> type) {
-            return null;
-        }
-
-        @Override
-        public All none() {
-            return null;
-        }
-
-        @Override
-        public All notContaining(Consumer<EventAsserting> assertion) {
             return null;
         }
 
@@ -909,6 +879,106 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
 
         @Override
         public Common and() {
+            return null;
+        }
+    }
+
+    public class Foo<Parent> implements ExpectDsl.Foo<I, R, Parent> {
+
+        @Override
+        public Parent comparing(Object event) {
+            return null;
+        }
+
+        @Override
+        public <E> Parent satisfying(Consumer<E> assertion) {
+            return null;
+        }
+
+        @Override
+        public Parent asserting(Consumer<EventAsserting> asserting) {
+            return null;
+        }
+
+        @Override
+        public Parent ofType(Class<?> type) {
+            return null;
+        }
+    }
+
+    public class Foo2<Parent> implements ExpectDsl.Foo2<I, R, Parent>, ExpectDsl.Foo<I, R, Parent> {
+
+        private final Parent parent;
+
+        public Foo2(Parent parent) {
+            this.parent = parent;
+        }
+
+        @Override
+        public Foo2<I, R, Parent> comparing(Object event) {
+            return this;
+        }
+
+        @Override
+        public Foo2<I, R, Parent> comparing(Object... events) {
+            return this;
+        }
+
+        @Override
+        public Foo2<I, R, Parent> ofType(Class<?> type) {
+            return this;
+        }
+
+        @Override
+        public Foo2<I, R, Parent> ofType(Class<?>... types) {
+            return this;
+        }
+
+        @Override
+        public <E> Foo2<I, R, Parent> satisfying(Consumer<E> assertion) {
+            return this;
+        }
+
+        @Override
+        public <E> Foo2<I, R, Parent> satisfying(Consumer<E>... assertions) {
+            return this;
+        }
+
+        @Override
+        public Foo2<I, R, Parent> asserting(Consumer<EventAsserting> asserting) {
+            return this;
+        }
+
+        @Override
+        public Foo2<I, R, Parent> asserting(Consumer<EventAsserting>... assertings) {
+            return this;
+        }
+
+        @Override
+        public Parent and() {
+            return parent;
+        }
+    }
+
+    public class Foo3 implements ExpectDsl.Foo3<I, R> {
+
+        @Override
+        public Foo3<I, R> comparing(Object event) {
+            return null;
+        }
+
+        @Override
+        public <E> Foo3<I, R> satisfying(Consumer<E> assertion) {
+            return null;
+        }
+
+        @Override
+        public Foo3<I, R> asserting(Consumer<EventAsserting> asserting) {
+            return null;
+        }
+
+        @Override
+        public Foo3<I, R> ofType(Class<?> type) {
             return null;
         }
     }

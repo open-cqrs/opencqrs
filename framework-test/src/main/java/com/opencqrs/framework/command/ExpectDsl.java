@@ -57,39 +57,21 @@ public interface ExpectDsl<I, R> {
 
         // expectNumEvents
         All<I, R> count(int count);
-        // expectSingleEvent(E payload)
-        All<I, R> single(Consumer<Foo3<I, R>> c);
-        Foo<I, R, All<I, R>> any();
-        Foo<I, R, All<I, R>> none();
-        <E> All<I, R> single(E payload);
-        // expectSingleEvent(Consumer<EventAsserter> assertion)
-        All<I, R> singleAsserting(Consumer<EventAsserting> assertion);
-        // expectSingleEventType
-        All<I, R> singleType(Class<?> type);
-        // expectSingleEventSatisfying(Consumer<E> assertion)
-        <E> All<I, R> singleSatisfying(Consumer<E> assertion);
-        // ? - Doppelt mit Next exactly?
+        
+        // Mode switches - chainable
+        Foo2<I, R, All<I, R>> single();
+        Foo2<I, R, All<I, R>> any();
+        Foo2<I, R, All<I, R>> none();
         Foo2<I, R, All<I, R>> exactly();
-        All<I, R> exactly(Object event, Object... events); // in Order und exakte Anzahl
-        // ? - Doppelt mit Next inAnyOrder?
+        
+        // Direct methods (kept for backwards compatibility)
+        All<I, R> exactly(Object event, Object... events);
         All<I, R> inAnyOrder(Object... events);
-        // expectAnyEvent(Consumer<EventAsserter> assertion)
-        All<I, R> expectAnyEvent(Consumer<EventAsserting> assertion); // kann weg da any().asserting()
-        // expectAnyEvent(E payload)
-        <E> All<I, R> any(E payload);
-        // expectAnyEventSatisfying
-        All<I, R> anySatisfying(Consumer<EventAsserting> assertion);
-        // expectAnyEventType
-        All<I, R> anyType(Class<?> type);
-        // expectNoEventOfType(Class<?> type)
         All<I, R> notContainingType(Class<?> type);
-        // expectEventsSatisfying(Consumer<List<Object>> assertion)
         All<I, R> allSatisfying(Consumer<List<Object>> assertion, Consumer<List<Object>>... assertions);
+        
         // chain function
         Common<I, R> and();
-
-        // and().single().asserting().
-        // and()
     }
 
     interface Foo<I, R, Parent> {
