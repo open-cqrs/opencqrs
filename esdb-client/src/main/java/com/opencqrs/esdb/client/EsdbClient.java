@@ -3,6 +3,8 @@ package com.opencqrs.esdb.client;
 
 import com.opencqrs.esdb.client.eventql.ErrorHandler;
 import com.opencqrs.esdb.client.eventql.RowHandler;
+import com.opencqrs.esdb.client.tracing.TracingContextualizer;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -38,13 +40,15 @@ public final class EsdbClient implements AutoCloseable {
     private final Marshaller marshaller;
     private final HttpClient httpClient;
     private final HttpRequestErrorHandler httpRequestErrorHandler;
+    private final TracingContextualizer tracingContextualizer;
 
-    public EsdbClient(URI serverUri, String accessToken, Marshaller marshaller, HttpClient.Builder httpClientBuilder) {
+    public EsdbClient(URI serverUri, String accessToken, Marshaller marshaller, HttpClient.Builder httpClientBuilder, TracingContextualizer tracingContextualizer) {
         this.serverUri = serverUri;
         this.accessToken = accessToken;
         this.marshaller = marshaller;
         this.httpClient = httpClientBuilder.build();
         this.httpRequestErrorHandler = new HttpRequestErrorHandler(this.httpClient);
+        this.tracingContextualizer = tracingContextualizer;
     }
 
     /**
@@ -124,9 +128,11 @@ public final class EsdbClient implements AutoCloseable {
      */
     public List<Event> write(List<EventCandidate> eventCandidates, List<Precondition> preconditions)
             throws ClientException {
+        var enrichedEventCandidates = eventCandidates.stream().map(tracingContextualizer::enrichWithTracingData).toList();
+
         HttpRequest httpRequest = newJsonRequest("/api/v1/write-events")
                 .POST(HttpRequest.BodyPublishers.ofString(
-                        marshaller.toWriteEventsRequest(eventCandidates, preconditions)))
+                        marshaller.toWriteEventsRequest(enrichedEventCandidates, preconditions)))
                 .build();
 
         var response = httpRequestErrorHandler.handle(
@@ -147,7 +153,10 @@ public final class EsdbClient implements AutoCloseable {
                             eventResponse.time(),
                             eventResponse.dataContentType(),
                             eventResponse.hash(),
-                            eventResponse.predecessorHash());
+                            eventResponse.predecessorHash(),
+                            eventResponse.traceParent(),
+                            eventResponse.traceState()
+                    );
                 })
                 .toList();
     }

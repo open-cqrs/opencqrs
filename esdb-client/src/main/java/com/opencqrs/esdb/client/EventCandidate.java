@@ -19,4 +19,14 @@ import java.util.Map;
  * @see EsdbClient#write(List, List)
  */
 public record EventCandidate(
-        @NotBlank String source, @NotBlank String subject, @NotBlank String type, @NotNull Map<String, ?> data) {}
+        @NotBlank String source,
+        @NotBlank String subject,
+        @NotBlank String type,
+        @NotNull Map<String, ?> data,
+        String traceParent,
+        String traceState) {
+
+    public EventCandidate(@NotBlank String source, @NotBlank String subject, @NotBlank String type, @NotNull Map<String, ?> data) {
+        this(source, subject, type, data, null, null);
+    }
+}
