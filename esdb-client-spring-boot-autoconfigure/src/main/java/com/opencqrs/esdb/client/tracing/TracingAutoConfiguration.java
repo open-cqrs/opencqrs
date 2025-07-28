@@ -16,6 +16,6 @@ public class TracingAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(TracingDataEnricher.class)
-    public TracingDataEnricher noOpTracingContextualizer() { return new NoOpTracingDataEnricher(); }
+    public TracingDataEnricher noOpTracingContextualizer() { return new NoTracingDataEnricher(); }
 
 }

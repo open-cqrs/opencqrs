@@ -34,7 +34,7 @@ public class TracingAutoConfigurationTest {
                 .run(context -> {
                     assertThat(context)
                             .hasNotFailed()
-                            .hasSingleBean(NoOpTracingDataEnricher.class);
+                            .hasSingleBean(NoTracingDataEnricher.class);
                 });
     }
 

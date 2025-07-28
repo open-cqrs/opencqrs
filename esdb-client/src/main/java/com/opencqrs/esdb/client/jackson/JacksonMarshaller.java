@@ -153,8 +153,14 @@ public class JacksonMarshaller implements Marshaller {
         }
     }
 
-    private JacksonEventCandidate toJackson(EventCandidate c) {
-        return new JacksonEventCandidate(c.source(), c.subject(), c.type(), c.data(), c.traceParent(), c.traceState());
+    private JacksonEventCandidate toJackson(EventCandidate eventCandidate) {
+        return new JacksonEventCandidate(
+                eventCandidate.source(),
+                eventCandidate.subject(),
+                eventCandidate.type(),
+                eventCandidate.data(),
+                eventCandidate.traceParent(),
+                eventCandidate.traceState());
     }
 
     private JacksonPrecondition toJackson(Precondition precondition) {
