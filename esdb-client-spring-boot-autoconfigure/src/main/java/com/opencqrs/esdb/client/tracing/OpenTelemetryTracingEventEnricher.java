@@ -8,15 +8,15 @@ import io.opentelemetry.context.propagation.TextMapPropagator;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OpenTelemetryTracingDataEnricher implements TracingDataEnricher {
+public class OpenTelemetryTracingEventEnricher implements TracingEventEnricher {
 
     private final TextMapPropagator propagator;
 
-    public OpenTelemetryTracingDataEnricher(OpenTelemetry openTelemetry) {
+    public OpenTelemetryTracingEventEnricher(OpenTelemetry openTelemetry) {
         this(openTelemetry.getPropagators().getTextMapPropagator());
     }
 
-    protected OpenTelemetryTracingDataEnricher(TextMapPropagator propagator) {
+    protected OpenTelemetryTracingEventEnricher(TextMapPropagator propagator) {
         this.propagator = propagator;
     }
 

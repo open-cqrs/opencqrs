@@ -1,3 +1,4 @@
+/* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client.tracing;
 
 import io.opentelemetry.api.OpenTelemetry;
@@ -11,11 +12,14 @@ public class TracingAutoConfiguration {
 
     @Bean
     @ConditionalOnBean(OpenTelemetry.class)
-    @ConditionalOnMissingBean(TracingDataEnricher.class)
-    public TracingDataEnricher otelTracingContextualizer(OpenTelemetry openTelemetry) { return new OpenTelemetryTracingDataEnricher(openTelemetry); }
+    @ConditionalOnMissingBean(TracingEventEnricher.class)
+    public TracingEventEnricher otelTracingContextualizer(OpenTelemetry openTelemetry) {
+        return new OpenTelemetryTracingEventEnricher(openTelemetry);
+    }
 
     @Bean
-    @ConditionalOnMissingBean(TracingDataEnricher.class)
-    public TracingDataEnricher noOpTracingContextualizer() { return new NoTracingDataEnricher(); }
-
+    @ConditionalOnMissingBean(TracingEventEnricher.class)
+    public TracingEventEnricher noOpTracingContextualizer() {
+        return new NoTracingEventEnricher();
+    }
 }

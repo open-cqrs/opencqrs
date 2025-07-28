@@ -8,7 +8,7 @@ import com.opencqrs.esdb.client.EventCandidate;
  *
  * @see <a href="https://www.w3.org/TR/trace-context/">official W3C "Trace Context" standard</a>
  */
-public interface TracingDataEnricher {
+public interface TracingEventEnricher {
 
     /**
      * Retrieves tracing headers from current trace context and adds it to a given {@link EventCandidate} if not already

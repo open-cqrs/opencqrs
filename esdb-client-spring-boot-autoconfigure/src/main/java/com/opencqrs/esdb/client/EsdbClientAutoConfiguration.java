@@ -1,8 +1,8 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
+import com.opencqrs.esdb.client.tracing.TracingEventEnricher;
 import java.net.http.HttpClient;
-import com.opencqrs.esdb.client.tracing.TracingDataEnricher;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -19,13 +19,16 @@ public class EsdbClientAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(EsdbClient.class)
     public EsdbClient esdbClient(
-            EsdbProperties properties, Marshaller marshaller, HttpClient.Builder httpClientBuilder, TracingDataEnricher tracingDataEnricher) {
+            EsdbProperties properties,
+            Marshaller marshaller,
+            HttpClient.Builder httpClientBuilder,
+            TracingEventEnricher tracingEventEnricher) {
         return new EsdbClient(
                 properties.server().uri(),
                 properties.server().apiToken(),
                 marshaller,
                 httpClientBuilder.connectTimeout(properties.connectionTimeout()),
-                tracingDataEnricher);
+                tracingEventEnricher);
     }
 
     @Bean
