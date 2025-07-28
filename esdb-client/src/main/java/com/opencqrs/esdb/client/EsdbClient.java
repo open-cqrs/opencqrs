@@ -4,7 +4,7 @@ package com.opencqrs.esdb.client;
 import com.opencqrs.esdb.client.eventql.EventQuery;
 import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
 import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
-import com.opencqrs.esdb.client.tracing.TracingContextualizer;
+import com.opencqrs.esdb.client.tracing.TracingDataEnricher;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -42,20 +42,20 @@ public final class EsdbClient implements AutoCloseable {
     private final Marshaller marshaller;
     private final HttpClient httpClient;
     private final HttpRequestErrorHandler httpRequestErrorHandler;
-    private final TracingContextualizer tracingContextualizer;
+    private final TracingDataEnricher tracingDataEnricher;
 
     public EsdbClient(
             URI serverUri,
             String accessToken,
             Marshaller marshaller,
             HttpClient.Builder httpClientBuilder,
-            TracingContextualizer tracingContextualizer) {
+            TracingDataEnricher tracingDataEnricher) {
         this.serverUri = serverUri;
         this.accessToken = accessToken;
         this.marshaller = marshaller;
         this.httpClient = httpClientBuilder.build();
         this.httpRequestErrorHandler = new HttpRequestErrorHandler(this.httpClient);
-        this.tracingContextualizer = tracingContextualizer;
+        this.tracingDataEnricher = tracingDataEnricher;
     }
 
     /**
@@ -136,7 +136,7 @@ public final class EsdbClient implements AutoCloseable {
     public List<Event> write(List<EventCandidate> eventCandidates, List<Precondition> preconditions)
             throws ClientException {
         var enrichedEventCandidates = eventCandidates.stream()
-                .map(tracingContextualizer::enrichWithTracingData)
+                .map(tracingDataEnricher::enrichWithTracingData)
                 .toList();
 
         HttpRequest httpRequest = newJsonRequest("/api/v1/write-events")

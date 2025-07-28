@@ -11,11 +11,11 @@ public class TracingAutoConfiguration {
 
     @Bean
     @ConditionalOnBean(OpenTelemetry.class)
-    @ConditionalOnMissingBean(TracingContextualizer.class)
-    public TracingContextualizer tracingContextualizer(OpenTelemetry openTelemetry) { return new OpenTelemetryTracingContextualizer(openTelemetry); }
+    @ConditionalOnMissingBean(TracingDataEnricher.class)
+    public TracingDataEnricher otelTracingContextualizer(OpenTelemetry openTelemetry) { return new OpenTelemetryTracingDataEnricher(openTelemetry); }
 
     @Bean
-    @ConditionalOnMissingBean({OpenTelemetry.class, TracingContextualizer.class})
-    public TracingContextualizer tracingContextualizer() { return new NoOpTracingContextualizer(); }
+    @ConditionalOnMissingBean(TracingDataEnricher.class)
+    public TracingDataEnricher noOpTracingContextualizer() { return new NoOpTracingDataEnricher(); }
 
 }
