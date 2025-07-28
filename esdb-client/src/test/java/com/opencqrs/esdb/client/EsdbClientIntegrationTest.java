@@ -34,6 +34,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public class EsdbClientIntegrationTest {
 
     private static final String TEST_SOURCE = "tag://test-execution";
+    private static final String TEST_TRACE_PARENT = "00-4bf92f0853545edc50c7bc64bcbf0b01-00f067aa0ba902b7-01";
+    private static final String TEST_TRACE_STATE =
+            "congo=t67eff,rojo=00f067aa0ba902b7,foo=bar,example@vendor=some-custom-value";
 
     @Autowired
     private EsdbClient client;
@@ -459,8 +462,8 @@ public class EsdbClientIntegrationTest {
                             subject,
                             "com.opencqrs.books-added.v1",
                             objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class),
-                            "00-4bf92f0853545edc50c7bc64bcbf0b01-00f067aa0ba902b7-01",
-                            "congo=t67eff,rojo=00f067aa0ba902b7,foo=bar,example@vendor=some-custom-value")),
+                            TEST_TRACE_PARENT,
+                            TEST_TRACE_STATE)),
                     List.of(new Precondition.SubjectIsPristine(subject))));
 
             client.read("/", Set.of(new Option.Recursive()), consumedEvents::add);
@@ -475,6 +478,8 @@ public class EsdbClientIntegrationTest {
                 assertThat(e.id()).isNotBlank();
                 assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
                 assertThat(e.predecessorHash()).isNotBlank();
+                assertThat(e.traceParent()).isEqualTo(TEST_TRACE_PARENT);
+                assertThat(e.traceState()).isEqualTo(TEST_TRACE_STATE);
                 assertThat(objectMapper.convertValue(e.data(), BookAddedEvent.class))
                         .isEqualTo(new BookAddedEvent("JRR Tolkien", "LOTR"));
             }));
@@ -567,7 +572,7 @@ public class EsdbClientIntegrationTest {
             assertThat(ref).hasValueSatisfying(event -> {
                 assertThat(event)
                         .usingRecursiveComparison()
-                        .ignoringFields("id", "time", "hash", "predecessorHash")
+                        .ignoringFields("id", "time", "hash", "predecessorHash", "traceParent", "traceState")
                         .isEqualTo(new Event(
                                 eventCandidate.source(),
                                 subject,
