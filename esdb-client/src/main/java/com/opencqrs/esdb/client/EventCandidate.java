@@ -26,6 +26,14 @@ public record EventCandidate(
         String traceParent,
         String traceState) {
 
+    /**
+     * Convenience constructor for EventCandidates with no tracing data available
+     *
+     * @param source
+     * @param subject
+     * @param type
+     * @param data
+     */
     public EventCandidate(
             @NotBlank String source, @NotBlank String subject, @NotBlank String type, @NotNull Map<String, ?> data) {
         this(source, subject, type, data, null, null);
