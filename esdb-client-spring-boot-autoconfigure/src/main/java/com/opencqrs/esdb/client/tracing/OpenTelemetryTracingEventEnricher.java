@@ -1,10 +1,10 @@
+/* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client.tracing;
 
 import com.opencqrs.esdb.client.EventCandidate;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapPropagator;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,26 +22,20 @@ public class OpenTelemetryTracingEventEnricher implements TracingEventEnricher {
 
     @Override
     public EventCandidate enrichWithTracingData(EventCandidate candidate) {
+        var headers = getHeaders();
+        return new EventCandidate(
+                candidate.source(),
+                candidate.subject(),
+                candidate.type(),
+                candidate.data(),
+                candidate.traceParent() != null ? candidate.traceParent() : headers.getOrDefault("traceparent", null),
+                candidate.traceState() != null ? candidate.traceState() : headers.getOrDefault("tracestate", null));
+    }
 
-        if (candidate.traceParent() == null) {
-            Map<String, String> headers = new HashMap<>();
-            Context context = Context.current();
-
-            propagator.inject(context, headers, Map::put);
-
-            var traceParent = headers.getOrDefault("traceparent", null);
-            var traceState = headers.getOrDefault("tracestate", null);
-
-            return new EventCandidate(
-                    candidate.source(),
-                    candidate.subject(),
-                    candidate.type(),
-                    candidate.data(),
-                    traceParent,
-                    traceState
-            );
-        } else {
-            return candidate;
-        }
+    private Map<String, String> getHeaders() {
+        Map<String, String> headers = new HashMap<>();
+        Context context = Context.current();
+        propagator.inject(context, headers, Map::put);
+        return headers;
     }
 }
