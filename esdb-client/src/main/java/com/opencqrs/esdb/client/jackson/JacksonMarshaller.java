@@ -47,11 +47,13 @@ public class JacksonMarshaller implements Marshaller {
 
     @Override
     public String toWriteEventsRequest(List<EventCandidate> eventCandidates, List<Precondition> preconditions) {
+        var jacksonEventCandidates =
+                eventCandidates.stream().map(this::toJackson).toList();
         var jacksonPreconditions = preconditions.stream().map(this::toJackson).toList();
 
         try {
             return objectMapper.writeValueAsString(
-                    Map.of("events", eventCandidates, "preconditions", jacksonPreconditions));
+                    Map.of("events", jacksonEventCandidates, "preconditions", jacksonPreconditions));
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
         }
@@ -151,6 +153,16 @@ public class JacksonMarshaller implements Marshaller {
         }
     }
 
+    private JacksonEventCandidate toJackson(EventCandidate eventCandidate) {
+        return new JacksonEventCandidate(
+                eventCandidate.source(),
+                eventCandidate.subject(),
+                eventCandidate.type(),
+                eventCandidate.data(),
+                eventCandidate.traceParent(),
+                eventCandidate.traceState());
+    }
+
     private JacksonPrecondition toJackson(Precondition precondition) {
         return switch (precondition) {
             case Precondition.SubjectIsPristine p ->
@@ -162,6 +174,15 @@ public class JacksonMarshaller implements Marshaller {
                         "isSubjectOnEventId", new JacksonPrecondition.IsOnEventId.Payload(p.subject(), p.eventId()));
         };
     }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record JacksonEventCandidate(
+            @NotBlank String source,
+            @NotBlank String subject,
+            @NotBlank String type,
+            @NotNull Map<String, ?> data,
+            String traceparent,
+            String tracestate) {}
 
     interface JacksonPrecondition {
         record IsPristine(String type, Payload payload) implements JacksonPrecondition {
