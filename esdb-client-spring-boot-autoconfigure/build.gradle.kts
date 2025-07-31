@@ -7,8 +7,7 @@ dependencies {
     compileOnly("org.springframework.boot:spring-boot-starter-validation")
     compileOnly("org.springframework.boot:spring-boot-autoconfigure")
     compileOnly("org.springframework.boot:spring-boot-starter-actuator")
-
-    implementation("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
+    compileOnly("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator")

@@ -9,6 +9,7 @@ gradle.beforeProject {
     extensions.extraProperties["frameworkVersions"] = mapOf(
         "esdb.version" to "1.0.3",
         "spring.boot.version" to "3.5.3",
+        "opentelemetry.api.version" to "1.51.0",
         "opentelemetry.instrumentation.version" to "2.17.1"
     )
     extensions.extraProperties["memorySettings"] = mapOf(
