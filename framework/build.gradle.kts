@@ -14,6 +14,7 @@ dependencies {
     testImplementation("com.h2database:h2")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.awaitility:awaitility:4.3.0")
+    testImplementation("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
     // https://github.com/gradle/gradle/issues/33950
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
