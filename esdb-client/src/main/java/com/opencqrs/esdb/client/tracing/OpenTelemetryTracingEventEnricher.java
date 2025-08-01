@@ -8,6 +8,13 @@ import io.opentelemetry.context.propagation.TextMapPropagator;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * OpenTelemetry-based implementation of the {@link TracingEventEnricher} interface which works in conjunction with
+ * OTel's official java instrumentation
+ *
+ * @see <a href="https://opentelemetry.io/docs/zero-code/java/">Official documentation for OpenTelemetry Java
+ *     instrumentation</a>
+ */
 public class OpenTelemetryTracingEventEnricher implements TracingEventEnricher {
 
     private final TextMapPropagator propagator;
@@ -20,6 +27,13 @@ public class OpenTelemetryTracingEventEnricher implements TracingEventEnricher {
         this.propagator = propagator;
     }
 
+    /**
+     * Retrieves 'traceparent' and 'tracestate' headers from current context and enriches a given {@link EventCandidate}
+     * with them
+     *
+     * @param candidate the {@link EventCandidate} to be enriched with tracing data
+     * @return the enriched {@link EventCandidate}
+     */
     @Override
     public EventCandidate enrichWithTracingData(EventCandidate candidate) {
         var headers = getHeaders();

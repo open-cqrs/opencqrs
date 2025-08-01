@@ -45,7 +45,7 @@ public record Event(
         implements Marshaller.ResponseElement {
 
     /**
-     * Convenience constructor with no tracing information available
+     * Convenience constructor with no tracing information available.
      *
      * @param source
      * @param subject

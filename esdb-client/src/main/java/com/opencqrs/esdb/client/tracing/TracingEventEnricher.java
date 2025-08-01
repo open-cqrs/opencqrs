@@ -11,8 +11,7 @@ import com.opencqrs.esdb.client.EventCandidate;
 public interface TracingEventEnricher {
 
     /**
-     * Retrieves tracing headers from current trace context and adds it to a given {@link EventCandidate} if not already
-     * present
+     * Method for enriching a given {@link EventCandidate} with tracing data
      *
      * @param candidate the {@link EventCandidate} to be enriched with tracing data
      * @return a new {@link EventCandidate} instance with tracing data set or the original instance if it already had

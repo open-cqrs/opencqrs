@@ -29,7 +29,7 @@ public record EventCandidate(
         String traceState) {
 
     /**
-     * Convenience constructor for EventCandidates with no tracing data available
+     * Convenience constructor for EventCandidates with no tracing data available.
      *
      * @param source
      * @param subject
