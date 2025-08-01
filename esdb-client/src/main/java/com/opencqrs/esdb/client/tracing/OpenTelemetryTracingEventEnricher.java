@@ -32,7 +32,7 @@ public class OpenTelemetryTracingEventEnricher implements TracingEventEnricher {
                 candidate.traceState() != null ? candidate.traceState() : headers.getOrDefault("tracestate", null));
     }
 
-    private Map<String, String> getHeaders() {
+    protected Map<String, String> getHeaders() {
         Map<String, String> headers = new HashMap<>();
         Context context = Context.current();
         propagator.inject(context, headers, Map::put);
