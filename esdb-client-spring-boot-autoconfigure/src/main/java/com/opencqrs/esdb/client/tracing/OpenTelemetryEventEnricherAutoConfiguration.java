@@ -5,22 +5,18 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.instrumentation.spring.autoconfigure.OpenTelemetryAutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 
 @AutoConfiguration(after = OpenTelemetryAutoConfiguration.class)
-public class TracingEventEnricherAutoConfiguration {
+@ConditionalOnClass(OpenTelemetry.class)
+public class OpenTelemetryEventEnricherAutoConfiguration {
 
     @Bean
     @ConditionalOnBean(OpenTelemetry.class)
     @ConditionalOnMissingBean(TracingEventEnricher.class)
-    public TracingEventEnricher otelTracingEventEnricher(OpenTelemetry openTelemetry) {
+    public OpenTelemetryTracingEventEnricher otelTracingEventEnricher(OpenTelemetry openTelemetry) {
         return new OpenTelemetryTracingEventEnricher(openTelemetry);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(TracingEventEnricher.class)
-    public TracingEventEnricher noTracingEventEnricher() {
-        return new NoTracingEventEnricher();
     }
 }

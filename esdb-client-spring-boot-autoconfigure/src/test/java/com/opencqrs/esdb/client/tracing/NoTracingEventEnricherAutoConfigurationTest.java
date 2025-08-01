@@ -12,14 +12,14 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-public class TracingEventEnricherAutoConfigurationTest {
+public class NoTracingEventEnricherAutoConfigurationTest {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner();
 
     @Test
     public void otelTracingEventEnricherUsed() {
-        runner.withConfiguration(AutoConfigurations.of(TracingEventEnricherAutoConfiguration.class))
-                .withBean(OpenTelemetry.class, TracingEventEnricherAutoConfigurationTest::mockOtel)
+        runner.withConfiguration(AutoConfigurations.of(OpenTelemetryEventEnricherAutoConfiguration.class))
+                .withBean(OpenTelemetry.class, NoTracingEventEnricherAutoConfigurationTest::mockOtel)
                 .run(context -> {
                     assertThat(context).hasNotFailed().hasSingleBean(OpenTelemetryTracingEventEnricher.class);
                 });
@@ -27,7 +27,7 @@ public class TracingEventEnricherAutoConfigurationTest {
 
     @Test
     public void noTracingEventEnricherUsed() {
-        runner.withConfiguration(AutoConfigurations.of(TracingEventEnricherAutoConfiguration.class))
+        runner.withConfiguration(AutoConfigurations.of(NoTracingEventEnricherAutoConfiguration.class))
                 .withClassLoader(new FilteredClassLoader(OpenTelemetry.class, OpenTelemetryAutoConfiguration.class))
                 .run(context -> {
                     assertThat(context).hasNotFailed().hasSingleBean(NoTracingEventEnricher.class);
