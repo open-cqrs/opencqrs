@@ -1,10 +1,13 @@
 package com.opencqrs.framework.command;
 
-import java.util.List;
+import java.time.Instant;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public interface ExpectDsl<I, R> {
+
+    Given<I, R> given();
 
     Initializing<I, R> when(Object command);
 
@@ -14,131 +17,86 @@ public interface ExpectDsl<I, R> {
     }
 
     interface Initializing<I, R> {
-        // expectSuccessfulExecution
         Succeeding<I, R> succeeds();
-        // expectUnsuccessfulExecution
-        // Terminating
         Failing<I, R> fails();
     }
 
     interface Succeeding<I, R> {
         Succeeding<I, R> withoutEvents();
-        // expectResult
         Succeeding<I, R> havingResult(R expected);
-        // expectResultSatisfying
         Succeeding<I, R> resultSatisfying(Consumer<R> assertion);
-        // expectState
         Succeeding<I, R> havingState(I state);
-        // expectStateSatisfying
         Succeeding<I, R> stateSatisfying(Consumer<I> assertion);
-        // expectStateExtracting
         <T> Succeeding<I, R> stateExtracting(Function<I, T> extractor, T expected);
-        // chain function
-        Common<I, R> and();
+        Common<I, R> and(); // Eventuell anderes Keyword als and(), evtl. then()?
     }
 
     interface Failing<I, R> {
-        // expectException
-        // Terminating
         <T> Failing<I, R> throwing(Class<T> t);
-        // expectExceptionSatisfying
-        // Terminating
         <T> Failing<I, R> throwsSatisfying(Consumer<T> assertion);
-        // violatingCommandSubjectCondition()
-        // Terminating
         Failing<I, R> violatingAnyCondition();
-        // violatingCommandSubjectCondition(Command.SubjectCondition condition)
-        // Terminating
         Failing<I, R> violatingExactly(Command.SubjectCondition condition);
     }
 
+    interface Given<I, R> {
+        Given<I, R> nothing(); // givenNothing()
+        Given<I, R> time(Instant time); // givenTime(time)
+        Given<I, R> state(I state); // givenState(state)
+        Given<I, R> events(Object... events); // given(events...)
+        Given<I, R> event(Consumer<EventSpecifier<I, R>> event); // given(Consumer<GivenEvent>)
+        <C extends Command> Given<I, R> command(CommandHandlingTestFixture<I, C, ?> fixture, C command); // givenCommand(fixture, command)
+        <C extends Command> Given<I, R> command(CommandHandlingTestFixture<I, C, ?> fixture, C command, Map<String, ?> metaData); // givenCommand(fixture, command, metaData)
+        
+        // Ich habe die and...() Methoden entfernt, da sie technisch genau das selbe
+        // gemacht haben wie ihre Pendants ohne and() und das Wort and() in der neuen
+        // fluent API eine andere Bedeutung hat. Verketten können wir auch so.
+        
+        // Terminierung
+        Initializing<I, R> when(Object command);
+    }
+    
+    interface EventSpecifier<I, R> {
+        EventSpecifier<I, R> payload(Object payload);
+        EventSpecifier<I, R> time(Instant time);
+        EventSpecifier<I, R> subject(String subject);
+        EventSpecifier<I, R> id(String id);
+        EventSpecifier<I, R> metaData(Map<String, ?> metaData);
+    }
+
+    interface EventValidator<I, R> {
+        EventValidator<I, R> comparing(Object event);
+        <E> EventValidator<I, R> satisfying(Consumer<E> assertion);
+        EventValidator<I, R> asserting(Consumer<EventAsserting> asserting);
+        EventValidator<I, R> ofType(Class<?> type);
+    }
 
     interface All<I, R> {
 
-        // expectNumEvents
         All<I, R> count(int count);
-        // expectSingleEvent(E payload)
-        All<I, R> single(Consumer<Foo3<I, R>> c);
-        Foo<I, R, All<I, R>> any();
-        Foo<I, R, All<I, R>> none();
-        <E> All<I, R> single(E payload);
-        // expectSingleEvent(Consumer<EventAsserter> assertion)
-        All<I, R> singleAsserting(Consumer<EventAsserting> assertion);
-        // expectSingleEventType
-        All<I, R> singleType(Class<?> type);
-        // expectSingleEventSatisfying(Consumer<E> assertion)
-        <E> All<I, R> singleSatisfying(Consumer<E> assertion);
-        // ? - Doppelt mit Next exactly?
-        Foo2<I, R, All<I, R>> exactly();
-        All<I, R> exactly(Object event, Object... events); // in Order und exakte Anzahl
-        // ? - Doppelt mit Next inAnyOrder?
-        All<I, R> inAnyOrder(Object... events);
-        // expectAnyEvent(Consumer<EventAsserter> assertion)
-        All<I, R> expectAnyEvent(Consumer<EventAsserting> assertion); // kann weg da any().asserting()
-        // expectAnyEvent(E payload)
-        <E> All<I, R> any(E payload);
-        // expectAnyEventSatisfying
-        All<I, R> anySatisfying(Consumer<EventAsserting> assertion);
-        // expectAnyEventType
-        All<I, R> anyType(Class<?> type);
-        // expectNoEventOfType(Class<?> type)
-        All<I, R> notContainingType(Class<?> type);
-        // expectEventsSatisfying(Consumer<List<Object>> assertion)
-        All<I, R> allSatisfying(Consumer<List<Object>> assertion, Consumer<List<Object>>... assertions);
-        // chain function
+        All<I, R> single(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers);
+        All<I, R> any(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers);
+        All<I, R> exactly(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers); // Ist exactly() auf All terminating für All? Danach kann ja nichts mehr kommen und es müsste alles abgefragt sein. Es sei denn, man will danach noch mit z.B. single() auf eine Sache validieren?
+        All<I, R> all(Consumer<EventValidator<I, R>> consumer);
+        All<I, R> none(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers);
         Common<I, R> and();
-
-        // and().single().asserting().
-        // and()
-    }
-
-    interface Foo<I, R, Parent> {
-        Parent comparing(Object event);
-        <E> Parent satisfying(Consumer<E> assertion);
-        Parent asserting(Consumer<EventAsserting> asserting);
-        Parent ofType(Class<?> type);
-    }
-
-    interface Foo2<I, R, Parent> {
-        Foo2<I, R, Parent> comparing(Object... events);
-        Foo2<I, R, Parent> ofType(Class<?>... types);
-        <E> Foo2<I, R, Parent> satisfying(Consumer<E>... assertions);
-        Foo2<I, R, Parent> asserting(Consumer<EventAsserting>... assertings);
-        Parent and();
-    }
-
-    interface Foo3<I, R> {
-        Foo3<I, R> comparing(Object event);
-        <E> Foo3<I, R> satisfying(Consumer<E> assertion);
-        Foo3<I, R> asserting(Consumer<EventAsserting> asserting);
-        Foo3<I, R> ofType(Class<?> type);
     }
 
     interface Next<I, R> {
-        // skipEvents
         Next<I, R> skip(int num);
-        // expectNoMoreEvents
-        Next<I, R> andNoMore();
-        // expectEvents (in order)
-        Next<I, R> exactly(Object event, Object... events); // wenn 2 events übergeben aber 10 da, dann schaue ich nur auf die nächsten 2
-        // expectEventTypes (in order)
-        Next<I, R> matchingTypes(Class<?> type, Class<?>... types);
-        // expectEventsInAnyOrder
-        Next<I, R> inAnyOrder(Object event, Object... events); // Was ist Abgrenzung zu All<I, R> inAnyOrder(Object... events)? - beide implementieren?
-        // expectEventTypesInAnyOrder
-        Next<I, R> matchingTypesInAnyOrder(Class<?> type, Class<?>... types);
-        // expectNextEvent(Consumer<EventAsserter> assertion)
-        <E> Next<I, R> comparing(E payload);
-        // expectNextEvent(Consumer<EventAsserter> assertion)
-        Next<I, R> comparing(Consumer<EventAsserting> assertion);
-        // expectNextEventType(Class<?> type)
-        Next<I, R> comparingType(Class<?> type);
-        // expectNextEventSatisfying(Consumer<E> assertion)
-        <E> Next<I, R> satisfying(Consumer<E> assertion);
-        // ? - kann hier weg, oder? // Lookahead ob any noch erfüllt wird (ohne steps)
-        Next<I, R> any(Object e);
+        Next<I, R> noMore();
 
-        // chain function
+        /**
+         * Single wird auch in nextEvents() gebraucht, denn wenn ich 10 Events habe, und skip(2) mache und dann auf
+         * allEvents gehe, schaut er wieder auf alle 10. mit nextEvents().skip(2).single(e -> e.ofType))
+         * kann ich sagen, das ich in den restlichen 8 Events noch 1 einziges von diesem Typ erwarte.
+         * mit nextEvents().skip(2).exactly(e -> e.ofType()) würde ich sagen, dass ich jetzt als nächstes genau
+         * ein Event des Typs erwarte. Das selbe gilt für none(). Das hat aber den Nachteil, dass danach alle Events
+         * konsumiert wären.
+         */
+        Next<I, R> single(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers); //
+        Next<I, R> any(Consumer<EventValidator<I, R>>  consumer, Consumer<EventValidator<I, R>>... consumers); // Prüft Anzahl der übergebenen Events in beliebiger Reihenfolge
+        Next<I, R> exactly(Consumer<EventValidator<I, R>>  consumer, Consumer<EventValidator<I, R>>... consumers); // Püft Anzahl der übergebenen Events in exakter Reihenfolge
+        Next<R, R> none(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers);
         Common<I, R> and();
     }
 }
