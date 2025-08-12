@@ -1,9 +1,11 @@
 package com.opencqrs.framework.command;
 
+import java.time.Instant;
+
 public class Main {
 
     @SuppressWarnings("unchecked")
-    public static void main(String[] args){
+    public static void main(String[] args) {
         CommandHandlingTestFixture<Object, Command, String> fixture = CommandHandlingTestFixture
                 .withStateRebuildingHandlerDefinitions()
                 .using(Object.class, new CommandHandler.ForInstanceAndCommand<Object, Command, String>() {
@@ -46,10 +48,10 @@ public class Main {
             }
         };
 
-        // Cross-fixture command example - in alte CHTF war das fixture.givenCommand(anotherFixture, command)
         fixture
                 .given()
-                .command(anotherFixture, anotherCommand) // Neue DSL: command() ist jetzt in der fluent chain
+                .command(anotherFixture, anotherCommand)
+                .time(Instant.now())
                 .when(testCommand)
                 .succeeds()
                 .withoutEvents()
@@ -103,12 +105,12 @@ public class Main {
                         e -> e
                                 .ofType(String.class)
                                 .comparing("Event2")
-                        )
+                )
                 .exactly(e -> e // Erwartet exakte Reihenfolge dieser Events // Betrachtet so viele Events wie übergeben
-                                .ofType(String.class)
+                        .ofType(String.class)
                 )
                 .any(e -> e // In Abgrenzung zu exactly - Erwartet übergebene e in beliebiger Reihenfolge // Betrachtet Anzahl übergebener e
-                    .ofType(String.class)
+                        .ofType(String.class)
                 )
                 .skip(2);
 

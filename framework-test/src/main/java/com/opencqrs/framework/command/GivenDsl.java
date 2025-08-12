@@ -1,0 +1,29 @@
+package com.opencqrs.framework.command;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.function.Consumer;
+
+public interface GivenDsl {
+    
+    interface Given<I, R> {
+        Given<I, R> nothing();
+        Given<I, R> time(Instant time);
+        Given<I, R> state(I state);
+        Given<I, R> events(Object... events);
+        Given<I, R> event(Consumer<EventSpecifier<I, R>> event);
+        <C extends Command> Given<I, R> command(CommandHandlingTestFixture<I, C, ?> fixture, C command);
+        <C extends Command> Given<I, R> command(CommandHandlingTestFixture<I, C, ?> fixture, C command, Map<String, ?> metaData);
+        
+        // Terminierung
+        ExpectDsl.Initializing<I, R> when(Object command);
+    }
+    
+    interface EventSpecifier<I, R> {
+        EventSpecifier<I, R> payload(Object payload);
+        EventSpecifier<I, R> time(Instant time);
+        EventSpecifier<I, R> subject(String subject);
+        EventSpecifier<I, R> id(String id);
+        EventSpecifier<I, R> metaData(Map<String, ?> metaData);
+    }
+}
