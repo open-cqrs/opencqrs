@@ -1,13 +1,9 @@
 package com.opencqrs.framework.command;
 
-import java.time.Instant;
-import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public interface ExpectDsl<I, R> {
-
-    Given<I, R> given();
 
     Initializing<I, R> when(Object command);
 
@@ -38,30 +34,6 @@ public interface ExpectDsl<I, R> {
         Failing<I, R> violatingExactly(Command.SubjectCondition condition);
     }
 
-    interface Given<I, R> {
-        Given<I, R> nothing(); // givenNothing()
-        Given<I, R> time(Instant time); // givenTime(time)
-        Given<I, R> state(I state); // givenState(state)
-        Given<I, R> events(Object... events); // given(events...)
-        Given<I, R> event(Consumer<EventSpecifier<I, R>> event); // given(Consumer<GivenEvent>)
-        <C extends Command> Given<I, R> command(CommandHandlingTestFixture<I, C, ?> fixture, C command); // givenCommand(fixture, command)
-        <C extends Command> Given<I, R> command(CommandHandlingTestFixture<I, C, ?> fixture, C command, Map<String, ?> metaData); // givenCommand(fixture, command, metaData)
-        
-        // Ich habe die and...() Methoden entfernt, da sie technisch genau das selbe
-        // gemacht haben wie ihre Pendants ohne and() und das Wort and() in der neuen
-        // fluent API eine andere Bedeutung hat. Verketten können wir auch so.
-        
-        // Terminierung
-        Initializing<I, R> when(Object command);
-    }
-    
-    interface EventSpecifier<I, R> {
-        EventSpecifier<I, R> payload(Object payload);
-        EventSpecifier<I, R> time(Instant time);
-        EventSpecifier<I, R> subject(String subject);
-        EventSpecifier<I, R> id(String id);
-        EventSpecifier<I, R> metaData(Map<String, ?> metaData);
-    }
 
     interface EventValidator<I, R> {
         EventValidator<I, R> comparing(Object event);

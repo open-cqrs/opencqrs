@@ -50,7 +50,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         }
     }
 
-    public class Given<C extends Command> implements ExpectDsl.Given<I, R> {
+    public class Given<C extends Command> implements GivenDsl.Given<I, R> {
         
         sealed interface Stub<I> {
 
@@ -149,7 +149,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             }
         }
 
-        public static class GivenEvent<I, R> implements EventSpecifier<I, R> {
+        public static class GivenEvent<I, R> implements GivenDsl.EventSpecifier<I, R> {
             Stub.Event<I> stub;
 
             GivenEvent(Stub.Event<I> stub) {
@@ -157,31 +157,31 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             }
 
             @Override
-            public EventSpecifier<I, R> payload(Object payload) {
+            public GivenDsl.EventSpecifier<I, R> payload(Object payload) {
                 stub = stub.withPayload(payload);
                 return this;
             }
 
             @Override
-            public EventSpecifier<I, R> time(Instant time) {
+            public GivenDsl.EventSpecifier<I, R> time(Instant time) {
                 stub = stub.withTime(time);
                 return this;
             }
 
             @Override
-            public EventSpecifier<I, R> subject(String subject) {
+            public GivenDsl.EventSpecifier<I, R> subject(String subject) {
                 stub = stub.withSubject(subject);
                 return this;
             }
 
             @Override
-            public EventSpecifier<I, R> id(String id) {
+            public GivenDsl.EventSpecifier<I, R> id(String id) {
                 stub = stub.withId(id);
                 return this;
             }
 
             @Override
-            public EventSpecifier<I, R> metaData(Map<String, ?> metaData) {
+            public GivenDsl.EventSpecifier<I, R> metaData(Map<String, ?> metaData) {
                 stub = stub.withMetaData(metaData);
                 return this;
             }
@@ -223,24 +223,24 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         }
 
         @Override
-        public ExpectDsl.Given<I, R> nothing() {
+        public GivenDsl.Given<I, R> nothing() {
             return this;
         }
 
         @Override
-        public ExpectDsl.Given<I, R> time(Instant time) {
+        public GivenDsl.Given<I, R> time(Instant time) {
             stubs.add(new Stub.Time<>(time));
             return this;
         }
 
         @Override
-        public ExpectDsl.Given<I, R> state(I state) {
+        public GivenDsl.Given<I, R> state(I state) {
             stubs.add(new Stub.State<>(state));
             return this;
         }
 
         @Override
-        public ExpectDsl.Given<I, R> events(Object... events) {
+        public GivenDsl.Given<I, R> events(Object... events) {
             for (Object event : events) {
                 stubs.add(new Stub.Event<I>().withPayload(event));
             }
@@ -248,18 +248,18 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         }
 
         @Override
-        public ExpectDsl.Given<I, R> event(Consumer<ExpectDsl.EventSpecifier<I, R>> event) {
+        public GivenDsl.Given<I, R> event(Consumer<GivenDsl.EventSpecifier<I, R>> event) {
             addToStubs(event::accept);
             return this;
         }
 
         @Override
-        public <CMD extends Command> ExpectDsl.Given<I, R> command(CommandHandlingTestFixture<I, CMD, ?> fixture, CMD command) {
+        public <CMD extends Command> GivenDsl.Given<I, R> command(CommandHandlingTestFixture<I, CMD, ?> fixture, CMD command) {
             return command(fixture, command, Map.of());
         }
 
         @Override
-        public <CMD extends Command> ExpectDsl.Given<I, R> command(CommandHandlingTestFixture<I, CMD, ?> fixture, CMD command, Map<String, ?> metaData) {
+        public <CMD extends Command> GivenDsl.Given<I, R> command(CommandHandlingTestFixture<I, CMD, ?> fixture, CMD command, Map<String, ?> metaData) {
             var expect = (CommandHandlingTestFixture<I, CMD, ?>.Expect) fixture.givenStubs(stubs).when(command);
             
             expect.succeeds();
@@ -275,14 +275,14 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         /**
          * Sets the default subject for subsequent events
          */
-        public ExpectDsl.Given<I, R> usingSubject(String subject) {
+        public GivenDsl.Given<I, R> usingSubject(String subject) {
             return new Given<>(subject, commandHandler, stubs);
         }
         
         /**
          * Resets to using command subject for subsequent events
          */
-        public ExpectDsl.Given<I, R> usingCommandSubject() {
+        public GivenDsl.Given<I, R> usingCommandSubject() {
             return usingSubject(null);
         }
         
@@ -354,7 +354,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         }
     }
 
-    public ExpectDsl.Given<I, R> given() {
+    public GivenDsl.Given<I, R> given() {
         return new Given<>(commandHandler);
     }
 
