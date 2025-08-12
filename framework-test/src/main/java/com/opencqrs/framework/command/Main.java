@@ -2,23 +2,54 @@ package com.opencqrs.framework.command;
 
 public class Main {
 
+    @SuppressWarnings("unchecked")
     public static void main(String[] args){
-        CommandHandlingTestFixture<Object, Command, String> fixture = null;
-        
+        CommandHandlingTestFixture<Object, Command, String> fixture = CommandHandlingTestFixture
+                .withStateRebuildingHandlerDefinitions()
+                .using(Object.class, new CommandHandler.ForInstanceAndCommand<Object, Command, String>() {
+                    @Override
+                    public String handle(Object state, Command command, CommandEventPublisher<Object> publisher) {
+                        return "success";
+                    }
+                });
+
+        CommandHandlingTestFixture<Object, Command, String> anotherFixture = CommandHandlingTestFixture
+                .withStateRebuildingHandlerDefinitions()
+                .using(Object.class, new CommandHandler.ForInstanceAndCommand<Object, Command, String>() {
+                    @Override
+                    public String handle(Object state, Command command, CommandEventPublisher<Object> publisher) {
+                        return "another-result";
+                    }
+                });
+
         Command testCommand = new Command() {
             @Override
             public String getSubject() {
                 return "test-subject";
             }
-            
+
             @Override
             public SubjectCondition getSubjectCondition() {
                 return SubjectCondition.NONE;
             }
         };
-        
+
+        Command anotherCommand = new Command() {
+            @Override
+            public String getSubject() {
+                return "another-subject";
+            }
+
+            @Override
+            public SubjectCondition getSubjectCondition() {
+                return SubjectCondition.NONE;
+            }
+        };
+
+        // Cross-fixture command example - in alte CHTF war das fixture.givenCommand(anotherFixture, command)
         fixture
-                .givenNothing()
+                .given()
+                .command(anotherFixture, anotherCommand) // Neue DSL: command() ist jetzt in der fluent chain
                 .when(testCommand)
                 .succeeds()
                 .withoutEvents()
@@ -27,59 +58,59 @@ public class Main {
                 .havingState(new Object())
                 .stateSatisfying(state -> System.out.println("State: " + state))
                 .stateExtracting(Object::toString, "expectedString")
-                
                 .and()
-                
                 .allEvents()
-                .count(3)
-                .single(e -> e.comparing(new Object()))
-//                .single("singleEvent")
-                .singleAsserting(asserter -> asserter.payload("expectedPayload"))
-                .singleType(String.class)
-                .singleSatisfying(event -> System.out.println("Single event: " + event))
-                .exactly().comparing("event1", "event2").ofType(Integer.class).and() // wie verhindern wir, dass jemand das and() weg lässt
-                .exactly("event1", "event2", "event3")
-                .inAnyOrder("eventA", "eventB", "eventC")
-                .expectAnyEvent(asserter -> asserter.payload("anyEvent"))
-                .any().comparing(new Object())
-                .anySatisfying(asserter -> asserter.payloadType(String.class))
-                .anyType(String.class)
-                .none().asserting(asserter -> asserter.payload("forbiddenEvent"))
-                .notContaining(asserter -> asserter.payload("forbiddenEvent"))
-                .notContainingType(Integer.class)
-                .all().satisfying(events -> System.out.println("All events: " + events))
-                .allSatisfying( // noch nicht glücklich mit
-                    events -> System.out.println("All events: " + events),
-                    events -> events.forEach(System.out::println)
+                .single(e -> e
+                                .comparing("UserRegistered")
+                                .ofType(String.class)
+                                .satisfying(event -> {
+                                    assert event != null;
+                                    assert event.toString().contains("user");
+                                })
+                                .asserting(assertion -> assertion.payloadType(String.class)),
+                        e -> e
+                                .comparing("EmailSent")
+                                .ofType(String.class)
+                                .satisfying(event -> {
+                                    assert event != null;
+                                    assert event.toString().contains("email");
+                                })
+                                .asserting(assertion -> assertion.payload("EmailSent")),
+                        e -> e
+                                .comparing("AuditLogCreated")
+                                .ofType(String.class)
+                                .satisfying(event -> {
+                                    assert event != null;
+                                    assert event.toString().contains("audit");
+                                })
+                                .asserting(assertion -> assertion.payloadSatisfying(payload -> {
+                                    assert payload.toString().startsWith("Audit");
+                                }))
                 )
-                
+                .exactly(e -> e
+                        .comparing("UserRegistered")
+                )
                 .and()
-                
-                .nextEvents() // besserer Name für nextEvents() ?
-                .skip(2)
-                .andNoMore()
-                .exactly("nextEvent1", "nextEvent2")
-                .matchingTypes(String.class, Integer.class)
-                .inAnyOrder("orderEvent1", "orderEvent2")
-                .matchingTypesInAnyOrder(String.class, Double.class)
-                .comparing("compareEvent") // next().comparing()
-                .comparing(asserter -> asserter.payload("comparePayload"))
-                .comparingType(String.class) //next().ofType()
-                .satisfying(event -> System.out.println("Satisfying: " + event))
-                .any("anyNextEvent")
-                
-                .and()
-                
-                .allEvents()
-                .count(0);
+                .nextEvents()
+                .single(e -> e // Jedes e mit all seinen Validatoren darf einmal vorkommen
+                                .comparing("Event1")
+                                .ofType(String.class)
+                                .satisfying(event -> {
+                                    assert event != null;
+                                    assert event.toString().contains("user");
+                                })
+                                .asserting(assertion -> assertion.payloadType(String.class)),
+                        e -> e
+                                .ofType(String.class)
+                                .comparing("Event2")
+                        )
+                .exactly(e -> e // Erwartet exakte Reihenfolge dieser Events // Betrachtet so viele Events wie übergeben
+                                .ofType(String.class)
+                )
+                .any(e -> e // In Abgrenzung zu exactly - Erwartet übergebene e in beliebiger Reihenfolge // Betrachtet Anzahl übergebener e
+                    .ofType(String.class)
+                )
+                .skip(2);
 
-        fixture
-                .givenNothing()
-                .when(testCommand)
-                .fails()
-                .throwing(RuntimeException.class)
-                .throwsSatisfying(exception -> System.out.println("Exception: " + exception))
-                .violatingAnyCondition()
-                .violatingExactly(Command.SubjectCondition.PRISTINE);
     }
 }
