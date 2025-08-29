@@ -9,6 +9,7 @@ gradle.beforeProject {
     extensions.extraProperties["frameworkVersions"] = mapOf(
         "esdb.version" to "1.0.3",
         "spring.boot.version" to "3.5.3",
+        "opentelemetry.instrumentation.version" to "2.17.1"
     )
     extensions.extraProperties["memorySettings"] = mapOf(
         "test.min-heap-size" to "2048m",
