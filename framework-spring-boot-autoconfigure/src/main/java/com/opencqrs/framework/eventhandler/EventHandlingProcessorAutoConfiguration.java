@@ -223,10 +223,22 @@ public class EventHandlingProcessorAutoConfiguration {
                                                             .getIfUnique();
                                                     yield switch (uniqueLockRegistry) {
                                                         case null -> {
-                                                            log.warning(() ->
-                                                                    "multiple " + LockRegistry.class.getSimpleName()
-                                                                            + " bean candidates found, falling back to 'application-context' controller for event handling processor: "
-                                                                            + group);
+                                                            var beanCount =
+                                                                    parentContext
+                                                                            .getBeanProvider(LockRegistry.class)
+                                                                            .stream()
+                                                                            .count();
+                                                            if (beanCount == 0) {
+                                                                log.info(
+                                                                        () -> "no " + LockRegistry.class.getSimpleName()
+                                                                                + " bean candidates found, using 'application-context' lifecycle-controller for event handling processor: "
+                                                                                + group);
+                                                            } else {
+                                                                log.warning(() -> beanCount + " ambiguous "
+                                                                        + LockRegistry.class.getSimpleName()
+                                                                        + " bean candidates found, falling back to 'application-context' lifecycle-controller for event handling processor: "
+                                                                        + group);
+                                                            }
                                                             yield fallbackLifecycleRegistration;
                                                         }
                                                         default ->
@@ -259,10 +271,21 @@ public class EventHandlingProcessorAutoConfiguration {
                                                     .getIfUnique();
                                             yield switch (uniqueJdbc) {
                                                 case null -> {
-                                                    log.warning(() ->
-                                                            "multiple " + JdbcProgressTracker.class.getSimpleName()
-                                                                    + " bean candidates found, falling back to 'in-memory' progress tracking for event handling processor: "
-                                                                    + group);
+                                                    var beanCount =
+                                                            parentContext
+                                                                    .getBeanProvider(JdbcProgressTracker.class)
+                                                                    .stream()
+                                                                    .count();
+                                                    if (beanCount == 0) {
+                                                        log.info(() -> "no " + JdbcProgressTracker.class.getSimpleName()
+                                                                + " bean candidates found, using 'in-memory' progress tracking for event handling processor: "
+                                                                + group);
+                                                    } else {
+                                                        log.warning(() -> beanCount + " ambiguous "
+                                                                + JdbcProgressTracker.class.getSimpleName()
+                                                                + " bean candidates found, falling back to 'in-memory' progress tracking for event handling processor: "
+                                                                + group);
+                                                    }
                                                     yield defaultProgressTracker;
                                                 }
                                                 default -> uniqueJdbc;

@@ -14,14 +14,20 @@ import com.opencqrs.framework.eventhandler.progress.InMemoryProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.JdbcProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
+import java.io.IOException;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.logging.LogManager;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
@@ -29,6 +35,7 @@ import org.springframework.integration.support.leader.LockRegistryLeaderInitiato
 import org.springframework.integration.support.locks.LockRegistry;
 import org.springframework.util.backoff.ExponentialBackOff;
 
+@ExtendWith(OutputCaptureExtension.class)
 class EventHandlingProcessorAutoConfigurationTest {
 
     static class MyConfiguration {
@@ -64,6 +71,11 @@ class EventHandlingProcessorAutoConfigurationTest {
             context.accept(AssertableApplicationContext.get(() ->
                     parent.getBean("openCqrsEventHandlingProcessorContext", ConfigurableApplicationContext.class)));
         });
+    }
+
+    @AfterEach
+    public void resetOutputCapturing() throws IOException {
+        LogManager.getLogManager().readConfiguration();
     }
 
     @Test
@@ -252,6 +264,55 @@ class EventHandlingProcessorAutoConfigurationTest {
     }
 
     @Test
+    public void eventProcessorLifecycleConfiguredUsingInMemoryProgressIfNoJdbcProgressTrackerBeans(
+            CapturedOutput output) {
+        assertEventHandlingProcessorContext(runner.withUserConfiguration(MyConfiguration.class), context -> {
+            assertThat(context)
+                    .getBeans(EventHandlingProcessor.class)
+                    .hasSize(2)
+                    .allSatisfy((beanName, bean) ->
+                            assertThat(bean.progressTracker).isInstanceOf(InMemoryProgressTracker.class));
+            assertThat(output).contains("no JdbcProgressTracker bean candidates found");
+        });
+    }
+
+    @Test
+    public void eventProcessorLifecycleConfiguredUsingInMemoryProgressIfAmbiguousJdbcProgressTrackerBeans(
+            CapturedOutput output) {
+        assertEventHandlingProcessorContext(
+                runner.withUserConfiguration(MyConfiguration.class)
+                        .withBean("jdbcProgressTracker1", JdbcProgressTracker.class, Mockito::mock)
+                        .withBean("jdbcProgressTracker2", JdbcProgressTracker.class, Mockito::mock),
+                context -> {
+                    assertThat(context)
+                            .getBeans(EventHandlingProcessor.class)
+                            .hasSize(2)
+                            .allSatisfy((beanName, bean) ->
+                                    assertThat(bean.progressTracker).isInstanceOf(InMemoryProgressTracker.class));
+                    assertThat(output).contains("2 ambiguous JdbcProgressTracker bean candidates found");
+                });
+    }
+
+    @Test
+    public void eventProcessorLifecycleConfiguredUsingPrimaryJdbcProgressTrackerBean() {
+        assertEventHandlingProcessorContext(
+                runner.withUserConfiguration(MyConfiguration.class)
+                        .withBean("jdbcProgressTracker1", JdbcProgressTracker.class, Mockito::mock)
+                        .withBean(
+                                "jdbcProgressTracker2",
+                                JdbcProgressTracker.class,
+                                Mockito::mock,
+                                bd -> bd.setPrimary(true)),
+                context -> {
+                    assertThat(context)
+                            .getBeans(EventHandlingProcessor.class)
+                            .hasSize(2)
+                            .allSatisfy((beanName, bean) ->
+                                    assertThat(bean.progressTracker).isInstanceOf(JdbcProgressTracker.class));
+                });
+    }
+
+    @Test
     public void eventProcessorLifecycleConfiguredUsingApplicationContextIfLockRegistryNotOnClasspath() {
         assertEventHandlingProcessorContext(
                 runner.withUserConfiguration(MyConfiguration.class)
@@ -266,7 +327,20 @@ class EventHandlingProcessorAutoConfigurationTest {
     }
 
     @Test
-    public void eventProcessorLifecycleConfiguredUsingApplicationContextIfAmbiguousLockRegistryBeans() {
+    public void eventProcessorLifecycleConfiguredUsingApplicationContextIfNoLockRegistryBeans(CapturedOutput output) {
+        assertEventHandlingProcessorContext(runner.withUserConfiguration(MyConfiguration.class), context -> {
+            assertThat(context)
+                    .getBeans(EventHandlingProcessorLifecycleController.class)
+                    .hasSize(2)
+                    .allSatisfy((beanName, bean) -> assertThat(bean)
+                            .isInstanceOf(SmartLifecycleEventHandlingProcessorLifecycleController.class));
+            assertThat(output).contains("no LockRegistry bean candidates found");
+        });
+    }
+
+    @Test
+    public void eventProcessorLifecycleConfiguredUsingApplicationContextIfAmbiguousLockRegistryBeans(
+            CapturedOutput output) {
         assertEventHandlingProcessorContext(
                 runner.withUserConfiguration(MyConfiguration.class)
                         .withBean("lockRegistry1", LockRegistry.class, Mockito::mock)
@@ -277,6 +351,22 @@ class EventHandlingProcessorAutoConfigurationTest {
                             .hasSize(2)
                             .allSatisfy((beanName, bean) -> assertThat(bean)
                                     .isInstanceOf(SmartLifecycleEventHandlingProcessorLifecycleController.class));
+                    assertThat(output).contains("2 ambiguous LockRegistry bean candidates found");
+                });
+    }
+
+    @Test
+    public void eventProcessorLifecycleConfiguredUsingLeaderElectionUsingPrimaryLockRegistryBean() {
+        assertEventHandlingProcessorContext(
+                runner.withUserConfiguration(MyConfiguration.class)
+                        .withBean("lockRegistry1", LockRegistry.class, Mockito::mock)
+                        .withBean("lockRegistry2", LockRegistry.class, Mockito::mock, bd -> bd.setPrimary(true)),
+                context -> {
+                    assertThat(context)
+                            .getBeans(EventHandlingProcessorLifecycleController.class)
+                            .hasSize(2)
+                            .allSatisfy((beanName, bean) -> assertThat(bean)
+                                    .isInstanceOf(LeaderElectionEventHandlingProcessorLifecycleController.class));
                 });
     }
 }
