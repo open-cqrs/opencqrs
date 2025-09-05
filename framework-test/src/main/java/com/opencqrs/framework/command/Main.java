@@ -55,14 +55,14 @@ public class Main {
                 .when(testCommand)
                 .succeeds()
                 .withoutEvents()
-                .havingResult("success")
-                .resultSatisfying(result -> System.out.println("Result: " + result))
-                .havingState(new Object())
-                .stateSatisfying(state -> System.out.println("State: " + state))
-                .stateExtracting(Object::toString, "expectedString")
+                .havingResult("success") // having gerade ziehen nach Vorlage der Validatoren
+                .resultSatisfying(result -> System.out.println("Result: " + result)) // having gerade ziehen nach Vorlage der Validatoren
+                .havingState(new Object()) // having gerade ziehen nach Vorlage der Validatoren
+                .stateSatisfying(state -> System.out.println("State: " + state)) // state gerade ziehen nach Vorlage der Validatoren
+                .stateExtracting(Object::toString, "expectedString") // state gerade ziehen nach Vorlage der Validatoren
                 .and()
                 .allEvents()
-                .single(e -> e
+                .single(e -> e // VarArgs aus single nehmen und schauen wo VarArgs Sinn ergeben
                                 .comparing("UserRegistered")
                                 .ofType(String.class)
                                 .satisfying(event -> {
