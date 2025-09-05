@@ -234,6 +234,12 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         }
 
         @Override
+        public GivenDsl.Given<I, R> timeDelta(java.time.Duration delta) {
+            stubs.add(new Stub.TimeDelta<>(delta));
+            return this;
+        }
+
+        @Override
         public GivenDsl.Given<I, R> state(I state) {
             stubs.add(new Stub.State<>(state));
             return this;
@@ -260,7 +266,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
 
         @Override
         public <CMD extends Command> GivenDsl.Given<I, R> command(CommandHandlingTestFixture<I, CMD, ?> fixture, CMD command, Map<String, ?> metaData) {
-            var expect = (CommandHandlingTestFixture<I, CMD, ?>.Expect) fixture.givenStubs(stubs).when(command);
+            var expect = (CommandHandlingTestFixture<I, CMD, ?>.Expect) fixture.givenStubs(stubs).when(command, metaData);
             
             expect.succeeds();
             
@@ -275,6 +281,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         /**
          * Sets the default subject for subsequent events
          */
+        @Override
         public GivenDsl.Given<I, R> usingSubject(String subject) {
             return new Given<>(subject, commandHandler, stubs);
         }
@@ -282,15 +289,19 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         /**
          * Resets to using command subject for subsequent events
          */
+        @Override
         public GivenDsl.Given<I, R> usingCommandSubject() {
             return usingSubject(null);
         }
         
         @Override
         public Initializing<I, R> when(Object command) {
+            return when(command, java.util.Map.of());
+        }
+
+        @Override
+        public Initializing<I, R> when(Object command, java.util.Map<String, ?> metaData) {
             Command cmd = (Command) command;
-            Map<String, ?> metaData = Map.of();
-            
             AtomicReference<StubResult<I>> stubResult = new AtomicReference<>(
                     new StubResult<>(instanceClass, null, Instant.now(), cmd, stateRebuildingHandlerDefinitions, Set.of()));
             stubs.forEach(stub -> stubResult.updateAndGet(result -> result.merge(stub)));
@@ -392,31 +403,60 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
 
             @Override
             public ExpectDsl.Succeeding<I, R> havingResult(R expected) {
-                // TODO
+                if (expected == null && result == null) return this;
+                if (expected == null || (result == null) || !expected.equals(result)) {
+                    StringBuilder builder = new StringBuilder();
+                    builder.append("Command handler result expected to be equal, but captured result:\n");
+                    builder.append(result);
+                    builder.append("\n");
+                    builder.append("differs from:\n");
+                    builder.append(expected);
+                    throw new AssertionError(builder.toString());
+                }
                 return this;
             }
 
             @Override
-            public ExpectDsl.Succeeding<I, R> resultSatisfying(Consumer<R> assertion) {
-                // TODO
+            public ExpectDsl.Succeeding<I, R> resultSatisfying(java.util.function.Consumer<R> assertion) {
+                assertion.accept(result);
                 return this;
             }
 
             @Override
-            public ExpectDsl.Succeeding<I, R> havingState(I state) {
-                // TODO
+            public ExpectDsl.Succeeding<I, R> havingState(I expectedState) {
+                if (state == null) throw new AssertionError("No state captured");
+                if (!state.equals(expectedState)) {
+                    StringBuilder builder = new StringBuilder();
+                    builder.append("State expected to be equal, but captured state:\n");
+                    builder.append(state);
+                    builder.append("\n");
+                    builder.append("differs from:\n");
+                    builder.append(expectedState);
+                    throw new AssertionError(builder.toString());
+                }
                 return this;
             }
 
             @Override
-            public ExpectDsl.Succeeding<I, R> stateSatisfying(Consumer<I> assertion) {
-                // TODO
+            public ExpectDsl.Succeeding<I, R> stateSatisfying(java.util.function.Consumer<I> assertion) {
+                assertion.accept(state);
                 return this;
             }
 
             @Override
-            public <T> ExpectDsl.Succeeding<I, R> stateExtracting(Function<I, T> extractor, T expected) {
-                // TODO
+            public <T> ExpectDsl.Succeeding<I, R> stateExtracting(java.util.function.Function<I, T> extractor, T expected) {
+                if (state == null) throw new AssertionError("No state captured");
+                T extracted = extractor.apply(state);
+                if (expected == null && extracted == null) return this;
+                if (expected == null || (extracted == null) || !expected.equals(extracted)) {
+                    StringBuilder builder = new StringBuilder();
+                    builder.append("Extracted state expected to be equal, but captured extracted state:\n");
+                    builder.append(extracted);
+                    builder.append("\n");
+                    builder.append("differs from:\n");
+                    builder.append(expected);
+                    throw new AssertionError(builder.toString());
+                }
                 return this;
             }
 
@@ -429,25 +469,42 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
         public class Failing implements ExpectDsl.Failing<I, R> {
             @Override
             public <T> ExpectDsl.Failing<I, R> throwing(Class<T> t) {
-                // TODO
+                if (throwable == null) throw new AssertionError("No exception occurred, as expected");
+                if (!t.isAssignableFrom(throwable.getClass())) {
+                    throw new AssertionError("Captured exception has wrong type: " + throwable.getClass().getSimpleName(), throwable);
+                }
                 return this;
             }
 
             @Override
-            public <T> ExpectDsl.Failing<I, R> throwsSatisfying(Consumer<T> assertion) {
-                // TODO
+            public <T> ExpectDsl.Failing<I, R> throwsSatisfying(java.util.function.Consumer<T> assertion) {
+                if (throwable == null) throw new AssertionError("No exception occurred, as expected");
+                assertion.accept((T) throwable);
                 return this;
             }
 
             @Override
             public ExpectDsl.Failing<I, R> violatingAnyCondition() {
-                // TODO
+                if (!(throwable instanceof CommandSubjectAlreadyExistsException || throwable instanceof CommandSubjectDoesNotExistException)) {
+                    throw new AssertionError("Expected command subject condition not violated");
+                }
                 return this;
             }
 
             @Override
             public ExpectDsl.Failing<I, R> violatingExactly(Command.SubjectCondition condition) {
-                // TODO
+                if (condition == Command.SubjectCondition.NONE) {
+                    throw new IllegalArgumentException("Command subject condition NONE cannot be violated");
+                }
+                if (condition == Command.SubjectCondition.PRISTINE) {
+                    if (!(throwable instanceof CommandSubjectAlreadyExistsException)) {
+                        throw new AssertionError("Expected command subject condition not violated: PRISTINE");
+                    }
+                } else if (condition == Command.SubjectCondition.EXISTS) {
+                    if (!(throwable instanceof CommandSubjectDoesNotExistException)) {
+                        throw new AssertionError("Expected command subject condition not violated: EXISTS");
+                    }
+                }
                 return this;
             }
         }
@@ -555,8 +612,24 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             }
 
             @Override
-            public All<I, R> none(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers) {
-                // TODO
+            public All<I, R> none(java.util.function.Consumer<EventValidator<I, R>> consumer, java.util.function.Consumer<EventValidator<I, R>>... consumers) {
+                java.util.List<java.util.function.Consumer<EventValidator<I, R>>> allConsumers = new java.util.ArrayList<>();
+                allConsumers.add(consumer);
+                allConsumers.addAll(java.util.Arrays.asList(consumers));
+                for (java.util.function.Consumer<EventValidator<I, R>> validatorConsumer : allConsumers) {
+                    int matches = 0;
+                    for (CapturedEvent event : capturedEvents) {
+                        try {
+                            EventValidatorImpl validator = new EventValidatorImpl(event);
+                            validatorConsumer.accept(validator);
+                            matches++;
+                        } catch (AssertionError e) {
+                        }
+                    }
+                    if (matches > 0) {
+                        throw new AssertionError("Expected no events matching validator, but found " + matches);
+                    }
+                }
                 return this;
             }
 
@@ -592,10 +665,8 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
                 allConsumers.add(consumer);
                 allConsumers.addAll(Arrays.asList(consumers));
                 
-                List<CapturedEvent> remainingEvents = new ArrayList<>();
-                while (nextEvent.hasNext()) {
-                    remainingEvents.add(nextEvent.next());
-                }
+                List<CapturedEvent> remainingEvents = new java.util.ArrayList<>(
+                        capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()));
                 
                 for (Consumer<EventValidator<I, R>> validatorConsumer : allConsumers) {
                     int matches = 0;
@@ -620,8 +691,27 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             }
 
             @Override
-            public Next<I, R> any(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers) {
-                // TODO
+            public Next<I, R> any(java.util.function.Consumer<EventValidator<I, R>> consumer, java.util.function.Consumer<EventValidator<I, R>>... consumers) {
+                java.util.List<java.util.function.Consumer<EventValidator<I, R>>> allConsumers = new java.util.ArrayList<>();
+                allConsumers.add(consumer);
+                allConsumers.addAll(java.util.Arrays.asList(consumers));
+                java.util.List<CapturedEvent> remainingEvents = new java.util.ArrayList<>(
+                        capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()));
+                for (java.util.function.Consumer<EventValidator<I, R>> validatorConsumer : allConsumers) {
+                    boolean found = false;
+                    for (CapturedEvent event : remainingEvents) {
+                        try {
+                            EventValidatorImpl validator = new EventValidatorImpl(event);
+                            validatorConsumer.accept(validator);
+                            found = true;
+                            break;
+                        } catch (AssertionError e) {
+                        }
+                    }
+                    if (!found) {
+                        throw new AssertionError("Expected at least one remaining event matching validator, but found none");
+                    }
+                }
                 return this;
             }
 
@@ -649,9 +739,27 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             }
 
             @Override
-            public Next<R, R> none(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers) {
-                // TODO
-                return null;
+            public Next<I, R> none(java.util.function.Consumer<EventValidator<I, R>> consumer, java.util.function.Consumer<EventValidator<I, R>>... consumers) {
+                java.util.List<java.util.function.Consumer<EventValidator<I, R>>> allConsumers = new java.util.ArrayList<>();
+                allConsumers.add(consumer);
+                allConsumers.addAll(java.util.Arrays.asList(consumers));
+                java.util.List<CapturedEvent> remainingEvents = new java.util.ArrayList<>(
+                        capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()));
+                for (java.util.function.Consumer<EventValidator<I, R>> validatorConsumer : allConsumers) {
+                    int matches = 0;
+                    for (CapturedEvent event : remainingEvents) {
+                        try {
+                            EventValidatorImpl validator = new EventValidatorImpl(event);
+                            validatorConsumer.accept(validator);
+                            matches++;
+                        } catch (AssertionError e) {
+                        }
+                    }
+                    if (matches > 0) {
+                        throw new AssertionError("Expected no remaining events matching validator, but found " + matches);
+                    }
+                }
+                return this;
             }
 
             @Override
