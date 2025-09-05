@@ -65,10 +65,10 @@ public interface ExpectDsl<I, R> {
          * ein Event des Typs erwarte. Das selbe gilt für none(). Das hat aber den Nachteil, dass danach alle Events
          * konsumiert wären.
          */
-        Next<I, R> single(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers); //
+        Next<I, R> single(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers); // konsumiert zwar events, setzt den iterator dann aber wieder an den Ausgang zurück
         Next<I, R> any(Consumer<EventValidator<I, R>>  consumer, Consumer<EventValidator<I, R>>... consumers); // Prüft Anzahl der übergebenen Events in beliebiger Reihenfolge
         Next<I, R> exactly(Consumer<EventValidator<I, R>>  consumer, Consumer<EventValidator<I, R>>... consumers); // Püft Anzahl der übergebenen Events in exakter Reihenfolge
-        Next<R, R> none(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers);
+        Next<I, R> none(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers);
         Common<I, R> and();
     }
 }
