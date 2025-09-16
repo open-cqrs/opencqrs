@@ -313,7 +313,7 @@ to its clients.
 
 ## Testing the Application
 
-Finally, after [starting the Event-Sourcing DB](../01_setup/index.md#running-the-event-sourcing-db) and our
+Finally, after [starting the {{ esdb_name() }}](../01_setup/index.md#running-the-event-sourcing-db) and our
 [application](../01_setup/index.md#running-the-application), [previously purchased books](../02_command_handling/index.md#testing-the-application)
 can be borrowed using the REST API, for instance as follows:
 

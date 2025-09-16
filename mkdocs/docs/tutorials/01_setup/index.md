@@ -1,8 +1,8 @@
 ---
-description: Creating an initial CQRS/ES Spring Boot application connected to an Event-Sourcing DB
+description: Creating an initial {{ custom.framework_name }} Spring Boot application connected to an {{ esdb_name() }}
 ---
 
-This tutorial will enable you to develop [Spring Boot](https://spring.io/projects/spring-boot) CQRS/ES applications 
+This tutorial will enable you to develop [Spring Boot](https://spring.io/projects/spring-boot) {{ custom.framework_name }} applications 
 by introducing you to the necessary building blocks used throughout this [Getting Started](/tutorials/README.md) series.
 This involves the required infrastructure components and project dependencies. You will be
 creating an initial, running Spring Boot application, that will be extended throughout the following
@@ -10,7 +10,7 @@ tutorials.
 
 ## Prerequisites
 
-__In order to create and run the CQRS/ES Spring Boot App, you need the following tools:__
+__In order to create and run the {{ custom.framework_name }} Spring Boot App, you need the following tools:__
 
 <div class="grid cards" markdown>
 
@@ -58,7 +58,7 @@ block-beta
     space Client["Client\n(curl)"] space
     space space space
     space App["Spring Boot Web App"] space
-    ESDB[("Event Store\n(Event Sourcing DB)")] space Database[("Database\n(H2)")]
+    ESDB[("Event Store\n({{ esdb_name() }})")] space Database[("Database\n(H2)")]
     
     Client --> App
     App --> ESDB
@@ -67,7 +67,7 @@ block-beta
 
 * The __Client__ represents real-world client applications interacting with the REST API provided by our Spring Boot application.
 * The __Spring Boot Web App__ implements the domain and business logic to handle client requests.
-* The [__Event-Sourcing DB__]({{ custom.esdb_homepage }}) is responsible for storing and reading the
+* The {{ esdb_ref() }} is responsible for storing and reading the
   events published and consumed by the application, respectively. It represents the event store, which is the primary
   storage for our application.
 * The __Database__ is a SQL database storing secondary data, i.e. data projections from existing events, and provides
@@ -78,9 +78,9 @@ block-beta
     into the life-cycle of the Spring Boot application. This, however, implies that data stored therein will be lost upon
     restart of the application or has to be recreated from the primary storage (event store), if necessary.
 
-## Running the Event-Sourcing DB
+## Running the {{ esdb_name() }}
 
-The Event-Sourcing DB is an infrastructure component that needs to be started independently of the Spring Boot app. You
+The {{ esdb_ref() }} is an infrastructure component that needs to be started independently of the Spring Boot app. You
 can start it using Docker, as follows:
 
 === ":simple-linux: Linux / :simple-apple: MacOS"
@@ -107,7 +107,7 @@ can start it using Docker, as follows:
 
 The database will be listening on TCP port `3000` with the access token `secret`, which can be verified by querying its `/ping` endpoint as follows:
 ```shell
-curl --request GET --url "http://localhost:3000/api/ping"
+curl --request GET --url "http://localhost:3000/api/v1/ping"
 ```
 If running correctly, this should yield `OK` as response.
 
@@ -123,7 +123,7 @@ You will need to create a new Spring Boot application with __Spring Web__, __Spr
 Choose from any of the following options to create the application:
 ??? info "Spring Boot version"
     Spring Boot's version is constantly increasing. You may use any stable Spring Boot
-    version newer than `3.4.2` as well, in the following.
+    version newer than `{{ custom.spring_boot_version }}` as well, in the following.
 
 === ":simple-spring: Spring Initializr"
 
@@ -132,7 +132,7 @@ Choose from any of the following options to create the application:
     sure to select Java 21+ and include the _Spring Web_, _Spring Boot Actuator_, _H2 Database_, and _Spring Data JPA_ dependencies.
     !!! tip
         Alternatively, you may use the following 
-        [bookmark](https://start.spring.io/#!type=gradle-project-kotlin&language=java&platformVersion=3.4.2&packaging=jar&jvmVersion=21&groupId=com.example&artifactId=cqrs-example&name=cqrs-example&description=Demo%20project%20for%20Spring%20Boot&packageName=com.example.cqrs&dependencies=web,actuator,h2,data-jpa)
+        [bookmark](https://start.spring.io/#!type=gradle-project-kotlin&language=java&platformVersion={{ custom.spring_boot_version }}&packaging=jar&jvmVersion=21&groupId=com.example&artifactId=cqrs-example&name=cqrs-example&description=Demo%20project%20for%20Spring%20Boot&packageName=com.example.cqrs&dependencies=web,actuator,h2,data-jpa)
         to preselect the required options.
     
     ![Spring Initializr Settings](spring_initializr_01.png)
@@ -148,7 +148,7 @@ Choose from any of the following options to create the application:
     ![IntelliJ Spring Boot Step 1](intellij_02.png)
     IntelliJ will generate and open the application for you automatically.
 
-After having set up the new Spring Boot application project, add the CQRS/ES Framework
+After having set up the new Spring Boot application project, add the {{ custom.framework_name }}
 to your project's dependencies. Choose one of the following options to add the highlighted
 lines to your _build script_ (depending on the build system chosen before):
 
@@ -247,12 +247,12 @@ The configuration assures, that:
 
 * the application is named appropriately for later event publishing
 * the HTTP listen port is configured to `8080`
-* the connection to the Event-Sourcing DB is configured
+* the connection to the {{ esdb_ref() }} is configured
 * Spring Boot Actuator provides more detailed health information (including the ESDB health)
 
 ## Running the Application
 
-With the Event-Sourcing DB running, the application can finally be started as follows:
+With the {{ esdb_ref() }} running, the application can finally be started as follows:
 
 === ":simple-gradle: Gradle on :simple-linux: Linux / :simple-apple: MacOS"
     ```shell
@@ -274,7 +274,7 @@ With the Event-Sourcing DB running, the application can finally be started as fo
     mvnw.bat bootRun
     ```
 
-To ensure it is running properly and connects to the Event-Sourcing DB and the H2 database correctly, use the following
+To ensure it is running properly and connects to the {{ esdb_ref() }} and the H2 database correctly, use the following
 command:
 
 ```shell
@@ -305,4 +305,4 @@ This should yield the following output:
 }
 ```
 
-Now you are ready to proceed with the remaining [tutorials](../README.md) to learn how to implement CQRS/ES applications.
+Now you are ready to proceed with the remaining [tutorials](../README.md) to learn how to implement {{ custom.framework_name }} applications.

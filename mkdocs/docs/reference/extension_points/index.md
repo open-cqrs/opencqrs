@@ -1,9 +1,9 @@
 ---
 title: Extension Points
-description: Building Application Components using OpenCQRS
+description: Building Application Components using {{ custom.framework_name }}
 ---
 
-OpenCQRS offers three core extension points for application developers to implement their CQRS applications:
+{{ custom.framework_name }} offers three core extension points for application developers to implement their CQRS applications:
  
 * `CommandHandler`{ title="com.opencqrs.framework.command.CommandHandler" } [definitions](command_handler/index.md) encapsulate the command handling logic for changing the system's state by publishing new events
 * `StateRebuildingHandler`{ title="com.opencqrs.framework.command.StateRebuildingHandler" } [definitions](state_rebuilding_handler/index.md) support the reconstruction of write models from events, on which commands are executed

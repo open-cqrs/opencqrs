@@ -1,9 +1,9 @@
 ---
-title: Getting Started with Open-CQRS
-description: Learning the core concepts and how to build CQRS/ES applications
+title: Getting Started with {{ custom.framework_name }}
+description: Learning the core concepts and how to build {{ custom.framework_name }} applications
 ---
 
-Welcome to the __Getting Started__ series for [Open-CQRS](../index.md)! This tutorial series will guide you through the 
+Welcome to the __Getting Started__ series for {{ custom.framework_name }}! This tutorial series will guide you through the 
 core concepts and practical implementation of CQRS (Command Query Responsibility Segregation) using our framework. 
 Whether you're new to CQRS or looking for a structured approach to building scalable and resilient applications, 
 this series will provide you with a solid foundation.
@@ -23,8 +23,8 @@ Throughout these six tutorials, you will step through the key aspects of develop
 
 - **Developers** looking to build applications with CQRS and Event Sourcing.
 - **Architects** interested in designing scalable, decoupled systems.
-- **Anyone curious about (Open)-CQRS** and looking for a practical introduction with real-world examples.
+- **Anyone curious about {{ custom.framework_name }}** and looking for a practical introduction with real-world examples.
 
 Each tutorial includes clear explanations, code examples, and practical exercises to help you gain hands-on experience.
 
-Ready to get started? Jump into the first tutorial and begin your journey with [Open-CQRS](../index.md)!
+Ready to get started? Jump into the first tutorial and begin your journey with [{{ custom.framework_name }}](../index.md)!

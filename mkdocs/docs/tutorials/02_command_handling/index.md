@@ -35,7 +35,7 @@ sequenceDiagram
     deactivate Book
 ```
 
-The [CQRS/ES Spring Boot application](../01_setup/index.md) will be extended to support the book inventory
+The [{{ custom.framework_name }} Spring Boot application](../01_setup/index.md) will be extended to support the book inventory
 management, book lending and return, as well as browsing the stock for available book copies.
 
 ## Defining a Command for Purchasing Books
@@ -172,7 +172,7 @@ public class BookController {
 
 ## Testing the Application
 
-Finally, after [starting the Event-Sourcing DB](../01_setup/index.md#running-the-event-sourcing-db) and our 
+Finally, after [starting the {{ esdb_name() }}](../01_setup/index.md#running-the-event-sourcing-db) and our 
 [application](../01_setup/index.md#running-the-application), new book copies for the library may be purchased
 using the REST API, for instance as follows:
 
@@ -205,12 +205,12 @@ using the REST API, for instance as follows:
     ```
 
 To verify the command was handled properly and a new event was published successfully,
-the Event-Sourcing DB may be queried, as follows:
+the {{ esdb_ref() }} may be queried, as follows:
 
 === ":simple-linux: Linux / :simple-apple: MacOS"
     ```shell
     curl --request POST \
-         --url "http://localhost:3000/api/read-events" \
+         --url "http://localhost:3000/api/v1/read-events" \
          --header "Authorization: Bearer secret" \
          --data '{ 
                   "subject": "/", 
@@ -223,7 +223,7 @@ the Event-Sourcing DB may be queried, as follows:
 === " :fontawesome-brands-windows: Windows"
     ```shell
     curl --request POST ^
-         --url "http://localhost:3000/api/read-events" ^
+         --url "http://localhost:3000/api/v1/read-events" ^
          --header "Authorization: Bearer secret" 
          --data '{ 
                   "subject": "/", 

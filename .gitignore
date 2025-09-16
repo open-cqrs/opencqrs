@@ -9,3 +9,4 @@ out
 .cache
 mkdocs/site
 mkdocs/.cache
+mkdocs/__pycache__/

@@ -2,8 +2,7 @@
 package com.opencqrs.framework.eventhandler.partitioning;
 
 /**
- * Interface for implementations able to derive a consistently derive a numeric partition key from an event sequence
- * identifier.
+ * Interface for implementations able to consistently derive a numeric partition key from an event sequence identifier.
  *
  * @see EventSequenceResolver
  */
