@@ -168,7 +168,7 @@ public Instant handle(Book book, BorrowBookCommand command, CommandEventPublishe
 }
 ```
 
-After [starting the Event-Sourcing DB](../01_setup/index.md#running-the-event-sourcing-db) and our
+After [starting the {{ esdb_name()}}](../01_setup/index.md#running-the-event-sourcing-db) and our
 [application](../01_setup/index.md#running-the-application), we can now purchase, borrow, and return books,
 as shown in [the previous tutorial](../03_domain_logic/index.md#testing-the-application).
 

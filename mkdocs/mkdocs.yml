@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 site_name: OpenCQRS
-site_url: https://www.opencqrs.com
+site_url: https://docs.opencqrs.com
 repo_url: https://github.com/open-cqrs/opencqrs
 copyright: Copyright &copy; 2025 OpenCQRS and contributors
 
@@ -10,26 +10,27 @@ plugins:
 
 extra:
   custom:
-    esdb_homepage: https://to.be.defined
+    framework_name: OpenCQRS
+    framework_version: 1.0-rc6
     esdb_version: 1.0.3
-    framework_version: 1.0.0
+    spring_boot_version: 3.4.6
   homepage: https://www.opencqrs.com
   social:
     - icon: fontawesome/solid/blog
       link: https://blog.digitalfrontiers.de
-    - icon: fontawesome/brands/github
-      link: https://github.com/dxfrontiers
     - icon: fontawesome/brands/x-twitter
       link: https:/x.com/dxfrontiers
     - icon: fontawesome/brands/linkedin
       link: https://www.linkedin.com/company/digital-frontiers-gmbh-co-kg
 
+extra_javascript:
+  - js/open_external_in_new_tab.js
+
 theme:
   name: material
   language: en
+  logo: images/logo.png
   favicon: images/favicon.png
-  icon:
-    logo: material/library
   palette:
     # Palette toggle for light mode
     - scheme: default
@@ -96,6 +97,7 @@ nav:
   - Guides:
     - howto/README.md
     - Registering explicit Event Types: howto/explicit_type_registration/index.md
+    - Scaling Event Processing: howto/scaling_event_processing/index.md
     - Upcasting a Single Event: howto/upcaster_single_event/index.md
     - Persisting Abstract Event Classes: howto/abstract_type_persistence/index.md
   - Reference:
@@ -105,7 +107,7 @@ nav:
     - Exception Handling: reference/exceptions/index.md
     - Core Components:
       - reference/core_components/index.md
-      - Event-Sourcing DB Client: reference/core_components/esdb_client/index.md
+      - ESDB Client: reference/core_components/esdb_client/index.md
       - Event Repository: reference/core_components/event_repository/index.md
       - Command Router: reference/core_components/command_router/index.md
       - Event Handling Processor: reference/core_components/event_handling_processor/index.md

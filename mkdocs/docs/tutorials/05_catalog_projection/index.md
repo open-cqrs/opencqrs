@@ -106,7 +106,7 @@ It defines two additional query methods:
 
 ## Populating the Catalog
 
-The `BOOK_CATALOG` table needs to be filled driven by the events stored within the Event-Sourcing DB. Accordingly,
+The `BOOK_CATALOG` table needs to be filled driven by the events stored within the {{ esdb_ref() }}. Accordingly,
 _event handlers_ need to be defined, mapping the different domain events to `BookCatalogEntity`. Create a
 `BookCatalogProjector` as follows:
 
@@ -204,7 +204,7 @@ public class BookCatalogController {
 
 ## Testing the Application
 
-Finally, after [starting the Event-Sourcing DB](../01_setup/index.md#running-the-event-sourcing-db) and our
+Finally, after [starting the {{ esdb_name() }}](../01_setup/index.md#running-the-event-sourcing-db) and our
 [application](../01_setup/index.md#running-the-application), you can query the book catalog, for instance
 matching the book title, using:
 

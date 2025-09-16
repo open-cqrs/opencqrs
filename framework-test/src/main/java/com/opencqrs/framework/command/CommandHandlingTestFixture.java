@@ -87,7 +87,7 @@ import java.util.function.Function;
  *     </tr>
  *     <tr>
  *         <td>{@link Event#subject()}</td>
- *         <td>is set to {@link Command#getSubject()}, but can be overridden per event using {@link Given.GivenEvent#subject(String)}</td>
+ *         <td>is set to {@link Command#getSubject()}, but can be overridden using {@link #usingSubject(String)} or per event using {@link Given.GivenEvent#subject(String)}</td>
  *     </tr>
  *     <tr>
  *         <td>{@link Event#type()}</td>

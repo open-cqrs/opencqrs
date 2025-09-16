@@ -1,8 +1,8 @@
 ---
-description: An overview of the CQRS/ES frameworks modules and when to use them
+description: An overview of the {{ custom.framework_name }} modules and when to use them
 ---
 
-The following diagram depicts the CQRS/ES framework modules, their categorization and interdependencies:
+The following diagram depicts the {{ custom.framework_name }} framework modules, their categorization and interdependencies:
 
 ``` mermaid
 flowchart TD
@@ -27,18 +27,18 @@ flowchart TD
 
 ## Core
 
-The framework is made up of two core modules:
+{{ custom.framework_name }} is made up of two core modules:
 
-1.  The `esdb-client` provides an SDK to communicate with the Event-Sourcing DB, hiding the REST API details from the user.
-    Its main focus is on _publishing_ and _observing_ [events](../events/index.md).
-2.  The `framework` builds on top of the `esdb-client` and provides extension points to implement CQRS/ES applications using
-    the Event-Sourcing DB as event store. Its main focus is on enabling application-specific _command_ and _event_ handling.
+1.  The `esdb-client` module provides an SDK to communicate with the {{ esdb_ref() }}, hiding the REST API details from the user.
+    Its main focus is on _publishing_, _reading_, and _observing_ [events](../events/index.md).
+2.  The `framework` module builds on top of the `esdb-client` and provides extension points to implement {{ custom.framework_name }} applications using
+    the {{ esdb_ref() }} as event store. Its main focus is on enabling [application-specific](../extension_points/index.md) _command_ and _event_ handling.
 
 !!! info "Third-party dependencies"
-    Both core modules are solely dependent on the JDK, so no further dependencies aren't necessarily required to use them.
+    Both core modules are solely dependent on the JDK, so no further dependencies are required to use them.
     However, for serialization to and from JSON both contain default marshaller implementations using [Jackson](https://github.com/FasterXML/jackson-databind).
     It is therefore suggested to either include this library or to implement custom marshallers, by extending the appropriate
-    interfaces (`Marshaller`{ title="com.opencqrs.esdb.client.Marshaller" } and `EventDataMarshaller`{ title="com.opencqrs.framework.serialization.EventDataMarshaller" }),
+    interfaces ({{ javadoc_class_ref("com.opencqrs.esdb.client.Marshaller") }} and {{ javadoc_class_ref("com.opencqrs.framework.serialization.EventDataMarshaller") }}),
     respectively.
 
 ## Spring Boot Support
@@ -48,7 +48,7 @@ the core components:
 
 1.  `esdb-client-spring-boot-autoconfigure` provides the Spring Boot auto-configurations for the `esdb-client`.
 2.  `esdb-client-spring-boot-starter` is the Spring Boot starter module for the `esdb-client`. Its main focus is on
-    providing a preconfigured client for the Event-Sourcing DB.
+    providing a preconfigured client for the {{ esdb_ref() }}.
 3.  `framework-spring-boot-autoconfigure` provides Spring Boot auto-configurations for the `framework`.
 4.  `framework-spring-boot-starter` is the Spring Boot starter module for the `framework`. Its main focus
     is on providing preconfigured components for _command_ and _event_ handling.
