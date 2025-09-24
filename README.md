@@ -12,7 +12,7 @@
 ![OpenCQRS](banner.png)
 
 OpenCQRS is a lightweight open source Java framework for building applications based on the CQRS (Command Query Responsibility Segregation) and Event Sourcing patterns.
-It includes built-in support for testing and offers optional Spring Boot integration to simplify configuration and production deployment. 
+It includes built-in support for testing and offers optional Spring Boot integration to simplify configuration and production deployment.
 OpenCQRS is based on [EventSourcingDB](https://www.eventsourcingdb.io), a third-party event store, and provides a Java client SDK for it.
 
 ## Installation
@@ -133,7 +133,7 @@ Handle events asynchronously to decouple side effects:
 ```java
 @Component
 public class BookCatalogProjector {
-    
+
     @EventHandling("catalog")
     public void on(BookPurchasedEvent event) {
         // ...
@@ -143,7 +143,7 @@ public class BookCatalogProjector {
 
 ### Looking for runnable examples?
 
-Check out our [OpenCQRS Sample Applications](https://github.com/open-cqrs/opencqrs-samples) repository.  
+Check out our [OpenCQRS Sample Applications](https://github.com/open-cqrs/opencqrs-samples) repository.
 It provides working example projects that demonstrate how to build applications using OpenCQRS.
 
 
@@ -181,4 +181,4 @@ Feel free to open issues or reach out via email – we’re happy to collaborate
 ## Contact
 
 For questions or feedback, please contact the development team at
-`opencqrs (at) digitalfrontiers.de`.
+[opencqrs@digitalfrontiers.de](mailto:opencqrs@digitalfrontiers.de).
