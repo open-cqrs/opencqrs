@@ -41,4 +41,4 @@ OpenCQRS runs on the **Java Virtual Machine** and is fully compatible with JVM-b
 
 ## Need Support?
 
-If you or your team need help **designing, integrating, or scaling** applications with OpenCQRS, the team behind the framework is here to assist. Just reach out at **[opencqrs (at) digitalfrontiers.de](mailto:opencqrs@digitalfrontiers.de)**.
+If you or your team need help **designing, integrating, or scaling** applications with OpenCQRS, the team behind the framework is here to assist. Just reach out at **[opencqrs@digitalfrontiers.de](mailto:opencqrs@digitalfrontiers.de)**.
