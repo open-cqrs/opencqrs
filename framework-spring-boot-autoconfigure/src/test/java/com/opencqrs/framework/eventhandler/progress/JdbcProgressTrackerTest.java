@@ -33,11 +33,11 @@ public class JdbcProgressTrackerTest {
         }
 
         @Bean
-        public JdbcProgressTracker nonTransactionalJdbcProgressTracker(
+        public JdbcProgressTracker transactionalJdbcProgressTracker(
                 DataSource dataSource, PlatformTransactionManager transactionManager) {
             var result = new JdbcProgressTracker(dataSource, transactionManager);
             result.setTablePrefix("TEST_");
-            result.setProceedTransactionally(false);
+            result.setProceedTransactionally(true);
             return result;
         }
     }
@@ -46,7 +46,7 @@ public class JdbcProgressTrackerTest {
     private JdbcProgressTracker jdbcProgressTracker;
 
     @Autowired
-    private JdbcProgressTracker nonTransactionalJdbcProgressTracker;
+    private JdbcProgressTracker transactionalJdbcProgressTracker;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -101,20 +101,20 @@ public class JdbcProgressTrackerTest {
     }
 
     @Test
-    public void proceedCalledTransactionallyByDefault() {
+    public void proceedCalledNonTransactionallyByDefault() {
         assertThatCode(() -> jdbcProgressTracker.proceed(UUID.randomUUID().toString(), 0, () -> new TransactionTemplate(
                                 transactionManager,
-                                new DefaultTransactionDefinition(TransactionDefinition.PROPAGATION_MANDATORY))
+                                new DefaultTransactionDefinition(TransactionDefinition.PROPAGATION_NEVER))
                         .execute(status -> new Progress.Success("42"))))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    public void proceedCalledNonTransactionallyIfConfigured() {
-        assertThatCode(() -> nonTransactionalJdbcProgressTracker.proceed(
+    public void proceedCalledTransactionallyIfConfigured() {
+        assertThatCode(() -> transactionalJdbcProgressTracker.proceed(
                         UUID.randomUUID().toString(), 0, () -> new TransactionTemplate(
                                         transactionManager,
-                                        new DefaultTransactionDefinition(TransactionDefinition.PROPAGATION_NEVER))
+                                        new DefaultTransactionDefinition(TransactionDefinition.PROPAGATION_MANDATORY))
                                 .execute(status -> new Progress.Success("42"))))
                 .doesNotThrowAnyException();
     }

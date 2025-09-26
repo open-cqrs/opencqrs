@@ -51,7 +51,7 @@ public class JdbcProgressTracker implements ProgressTracker, InitializingBean, S
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private boolean checkDatabaseOnStart = true;
-    private boolean proceedTransactionally = true;
+    private boolean proceedTransactionally = false;
     private String tablePrefix = DEFAULT_TABLE_PREFIX;
 
     private String findQuery =
@@ -90,14 +90,15 @@ public class JdbcProgressTracker implements ProgressTracker, InitializingBean, S
 
     /**
      * Configures whether the {@linkplain Supplier execution} passed to {@link #proceed(String, long, Supplier)} will be
-     * executed within the same transaction as {@code this}. If set to {@code true} all {@link EventHandler}s or
-     * {@link EventHandling} annotated methods executed during the {@linkplain EventHandlingProcessor#run() event
-     * processing loop} (for the same raw {@link Event}) will automatically participate in the same transaction, that is
-     * used to persist the new {@link Progress}. <strong>This assures atomicity, if and only if the participating event
-     * handlers operate only on resources managed by the configured {@link PlatformTransactionManager}, i.e. the
-     * {@link DataSource} resource.</strong>
+     * executed transactionally. If set to {@code true} all {@link EventHandler}s or {@link EventHandling} annotated
+     * methods executed within the {@linkplain EventHandlingProcessor#run() event processing loop} (for the same raw
+     * {@link Event}) will be executed transactionally within the same transaction, that is used to retrieve and update
+     * the event processing progress. <strong>This guarantees atomicity and idempotency, if and only if all
+     * participating event handlers operate only on resources managed by the configured
+     * {@link PlatformTransactionManager}, i.e. the {@link DataSource} resource.</strong>
      *
-     * @param proceedTransactionally {@code true} (default) if event handlers shall participate in the same transaction
+     * @param proceedTransactionally {@code true} if event handlers shall participate in the same transaction, defaults
+     *     to {@code false} otherwise
      */
     public void setProceedTransactionally(boolean proceedTransactionally) {
         this.proceedTransactionally = proceedTransactionally;
