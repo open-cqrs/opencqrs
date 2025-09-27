@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Test support for {@link CommandHandler} or {@link CommandHandlerDefinition}. This class can be used in favor of the
@@ -124,20 +125,18 @@ import java.util.function.Function;
  *     </tbody>
  * </table>
  *
- * @param <I> the generic type of the instance to be event sourced before handling the command
  * @param <C> the command type
- * @param <R> the command execution result type
  */
-public class CommandHandlingTestFixture<I, C extends Command, R> {
+public class CommandHandlingTestFixture<C extends Command> {
 
-    private final Class<I> instanceClass;
-    private final List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions;
-    final CommandHandler<I, C, R> commandHandler;
+    private final Class<?> instanceClass;
+    private final List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions;
+    final CommandHandler<?, C, ?> commandHandler;
 
     private CommandHandlingTestFixture(
-            Class<I> instanceClass,
-            List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions,
-            CommandHandler<I, C, R> commandHandler) {
+            Class<?> instanceClass,
+            List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions,
+            CommandHandler<?, C, ?> commandHandler) {
         this.instanceClass = instanceClass;
         this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
         this.commandHandler = commandHandler;
@@ -162,9 +161,9 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
      * @param <I> the generic type of the instance to be event sourced before handling the command
      */
     public static class Builder<I> {
-        final List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions;
+        final List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions;
 
-        private Builder(List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions) {
+        private Builder(List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions) {
             this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
         }
 
@@ -174,10 +173,8 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @param definition the {@link CommandHandlerDefinition} under test
          * @return a fully initialized test fixture
          * @param <C> the command type
-         * @param <R> the command execution result type
          */
-        public <C extends Command, R> CommandHandlingTestFixture<I, C, R> using(
-                CommandHandlerDefinition<I, C, R> definition) {
+        public <C extends Command> CommandHandlingTestFixture<C> using(CommandHandlerDefinition<I, C, ?> definition) {
             return using(definition.instanceClass(), definition.handler());
         }
 
@@ -188,10 +185,9 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @param handler the {@link CommandHandler} under test
          * @return a fully initialized test fixture
          * @param <C> the command type
-         * @param <R> the command execution result type
          */
-        public <C extends Command, R> CommandHandlingTestFixture<I, C, R> using(
-                Class<I> instanceClass, CommandHandler<I, C, R> handler) {
+        public <C extends Command> CommandHandlingTestFixture<C> using(
+                Class<I> instanceClass, CommandHandler<I, C, ?> handler) {
             return new CommandHandlingTestFixture<>(instanceClass, stateRebuildingHandlerDefinitions, handler);
         }
     }
@@ -224,9 +220,10 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
      *
      * @param state the initialization state
      * @return a {@link Given} instance for further fluent API calls
+     * @param <I> the generic state type
      */
-    public Given<C> givenState(I state) {
-        return new Given<>(null, commandHandler, state);
+    public <I> Given<C> givenState(I state) {
+        return new Given<>(null, commandHandler, () -> state);
     }
 
     /**
@@ -267,7 +264,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
      * @param event event specification consumer, at least {@link Given.GivenEvent#payload(Object)} must be called
      * @return a {@link Given} instance for further fluent API calls
      */
-    public Given<C> given(Consumer<Given.GivenEvent<I>> event) {
+    public Given<C> given(Consumer<Given.GivenEvent> event) {
         return new Given<>(null, commandHandler, event);
     }
 
@@ -290,7 +287,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
      * @param <AnotherCommand> generic command type to execute
      */
     public <AnotherCommand extends Command> Given<C> givenCommand(
-            CommandHandlingTestFixture<I, AnotherCommand, ?> fixture, AnotherCommand command) {
+            CommandHandlingTestFixture<AnotherCommand> fixture, AnotherCommand command) {
         return givenNothing().andGivenCommand(fixture, command);
     }
 
@@ -314,11 +311,11 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
      * @param <AnotherCommand> generic command type to execute
      */
     public <AnotherCommand extends Command> Given<C> givenCommand(
-            CommandHandlingTestFixture<I, AnotherCommand, ?> fixture, AnotherCommand command, Map<String, ?> metaData) {
+            CommandHandlingTestFixture<AnotherCommand> fixture, AnotherCommand command, Map<String, ?> metaData) {
         return givenNothing().andGivenCommand(fixture, command, metaData);
     }
 
-    private Given<C> givenStubs(List<Given.Stub<I>> stubs) {
+    private Given<C> givenStubs(List<Given.Stub> stubs) {
         return new Given<>(null, commandHandler, stubs);
     }
 
@@ -330,77 +327,77 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
      */
     public class Given<C extends Command> {
 
-        sealed interface Stub<I> {
+        sealed interface Stub {
 
-            record State<I>(I state) implements Stub<I> {}
+            record State(Object state) implements Stub {}
 
-            record Time<I>(Instant time) implements Stub<I> {}
+            record Time(Instant time) implements Stub {}
 
-            record TimeDelta<I>(Duration duration) implements Stub<I> {}
+            record TimeDelta(Duration duration) implements Stub {}
 
-            record Event<I>(String id, Instant time, String subject, Object payload, Map<String, ?> metaData)
-                    implements Stub<I> {
+            record Event(String id, Instant time, String subject, Object payload, Map<String, ?> metaData)
+                    implements Stub {
 
                 public Event() {
                     this(null, null, null, null, null);
                 }
 
-                public Event<I> withId(String id) {
-                    return new Event<>(id, time(), subject(), payload(), metaData());
+                public Event withId(String id) {
+                    return new Event(id, time(), subject(), payload(), metaData());
                 }
 
-                public Event<I> withTime(Instant time) {
-                    return new Event<>(id(), time, subject(), payload(), metaData());
+                public Event withTime(Instant time) {
+                    return new Event(id(), time, subject(), payload(), metaData());
                 }
 
-                public Event<I> withSubject(String subject) {
-                    return new Event<>(id(), time(), subject, payload(), metaData());
+                public Event withSubject(String subject) {
+                    return new Event(id(), time(), subject, payload(), metaData());
                 }
 
-                public Event<I> withPayload(Object payload) {
-                    return new Event<>(id(), time(), subject(), payload, metaData());
+                public Event withPayload(Object payload) {
+                    return new Event(id(), time(), subject(), payload, metaData());
                 }
 
-                public Event<I> withMetaData(Map<String, ?> metaData) {
-                    return new Event<>(id(), time(), subject(), payload(), metaData);
+                public Event withMetaData(Map<String, ?> metaData) {
+                    return new Event(id(), time(), subject(), payload(), metaData);
                 }
             }
         }
 
-        record Result<I>(
-                Class<I> instanceClass,
-                I state,
+        record Result(
+                Class<?> instanceClass,
+                Object state,
                 Instant time,
                 Command command,
-                List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions,
+                List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions,
                 Set<String> subjects) {
 
-            public Result<I> withState(I newState) {
-                return new Result<>(
+            public Result withState(Object newState) {
+                return new Result(
                         instanceClass(), newState, time(), command(), stateRebuildingHandlerDefinitions(), subjects());
             }
 
-            public Result<I> withTime(Instant newTime) {
-                return new Result<>(
+            public Result withTime(Instant newTime) {
+                return new Result(
                         instanceClass(), state(), newTime, command(), stateRebuildingHandlerDefinitions(), subjects());
             }
 
-            public Result<I> withSubject(String newSubject) {
+            public Result withSubject(String newSubject) {
                 var newSubjects = new HashSet<>(subjects());
                 newSubjects.add(newSubject);
-                return new Result<>(
+                return new Result(
                         instanceClass(), state(), time(), command(), stateRebuildingHandlerDefinitions(), newSubjects);
             }
 
-            public Result<I> merge(Stub<I> stub) {
+            public Result merge(Stub stub) {
                 return switch (stub) {
-                    case Stub.State<I> state -> {
+                    case Stub.State state -> {
                         if (state() != null) throw new IllegalArgumentException("givenState() must only be used once");
                         yield withState(state.state());
                     }
-                    case Stub.Time<I> time -> withTime(time.time());
-                    case Stub.TimeDelta<I> timeDelta -> withTime(time().plus(timeDelta.duration()));
-                    case Stub.Event<I> event -> {
+                    case Stub.Time time -> withTime(time.time());
+                    case Stub.TimeDelta timeDelta -> withTime(time().plus(timeDelta.duration()));
+                    case Stub.Event event -> {
                         var rawEvent = new Event(
                                 CommandHandlingTestFixture.class.getSimpleName(),
                                 event.subject() != null
@@ -416,7 +413,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
                                 "application/test",
                                 UUID.randomUUID().toString(),
                                 UUID.randomUUID().toString());
-                        AtomicReference<I> reference = new AtomicReference<>(state());
+                        AtomicReference<Object> reference = new AtomicReference<>(state());
                         if (!Util.applyUsingHandlers(
                                 stateRebuildingHandlerDefinitions.stream()
                                         .filter(srhd -> srhd.instanceClass().equals(instanceClass()))
@@ -436,16 +433,12 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             }
         }
 
-        /**
-         * Fluent API helper class for fine granular specification of a single <strong>given</strong> event.
-         *
-         * @param <I> the generic type of the instance to be event sourced before handling the command
-         */
-        public static class GivenEvent<I> {
+        /** Fluent API helper class for fine granular specification of a single <strong>given</strong> event. */
+        public static class GivenEvent {
 
-            Stub.Event<I> stub;
+            Stub.Event stub;
 
-            GivenEvent(Stub.Event<I> stub) {
+            GivenEvent(Stub.Event stub) {
                 this.stub = stub;
             }
 
@@ -455,7 +448,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
              * @param id the event id
              * @return {@code this} for further specification calls
              */
-            public GivenEvent<I> id(String id) {
+            public GivenEvent id(String id) {
                 stub = stub.withId(id);
                 return this;
             }
@@ -466,7 +459,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
              * @param time the event time-stamp
              * @return {@code this} for further specification calls
              */
-            public GivenEvent<I> time(Instant time) {
+            public GivenEvent time(Instant time) {
                 stub = stub.withTime(time);
                 return this;
             }
@@ -477,7 +470,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
              * @param subject the event subject
              * @return {@code this} for further specification calls
              */
-            public GivenEvent<I> subject(String subject) {
+            public GivenEvent subject(String subject) {
                 stub = stub.withSubject(subject);
                 return this;
             }
@@ -489,7 +482,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
              * @return {@code this} for further specification calls
              * @param <E> the generic payload type
              */
-            public <E> GivenEvent<I> payload(E payload) {
+            public <E> GivenEvent payload(E payload) {
                 stub = stub.withPayload(payload);
                 return this;
             }
@@ -500,21 +493,21 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
              * @param metaData the event meta-data
              * @return {@code this} for further specification calls
              */
-            public GivenEvent<I> metaData(Map<String, ?> metaData) {
+            public GivenEvent metaData(Map<String, ?> metaData) {
                 stub = stub.withMetaData(metaData);
                 return this;
             }
         }
 
         private final String subject;
-        private final List<Stub<I>> stubs = new ArrayList<>();
-        private final CommandHandler<I, C, R> commandHandler;
+        private final List<Stub> stubs = new ArrayList<>();
+        private final CommandHandler<?, C, ?> commandHandler;
 
-        private void addToStubs(Consumer<GivenEvent<I>> givenEvent) {
-            GivenEvent<I> capture = new GivenEvent<>(new Stub.Event<>());
+        private void addToStubs(Consumer<GivenEvent> givenEvent) {
+            GivenEvent capture = new GivenEvent(new Stub.Event());
             givenEvent.accept(capture);
 
-            Stub.Event<I> stub = capture.stub;
+            Stub.Event stub = capture.stub;
             if (stub.payload() == null) {
                 throw new IllegalArgumentException("Event payload must be specified using payload()");
             }
@@ -525,28 +518,29 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             }
         }
 
-        private Given(String subject, CommandHandler<I, C, R> commandHandler, Instant time) {
+        private Given(String subject, CommandHandler<?, C, ?> commandHandler, Instant time) {
             this.subject = subject;
             this.commandHandler = commandHandler;
-            stubs.add(new Stub.Time<>(time));
+            stubs.add(new Stub.Time(time));
         }
 
-        private Given(String subject, CommandHandler<I, C, R> commandHandler) {
+        private Given(String subject, CommandHandler<?, C, ?> commandHandler) {
             this(subject, commandHandler, Instant.now());
         }
 
-        private Given(String subject, CommandHandler<I, C, R> commandHandler, I state) {
+        // Supplier used to avoid ambiguous constructor declarations
+        private Given(String subject, CommandHandler<?, C, ?> commandHandler, Supplier<?> state) {
             this(subject, commandHandler);
-            stubs.add(new Stub.State<>(state));
+            stubs.add(new Stub.State(state.get()));
         }
 
-        private Given(String subject, CommandHandler<I, C, R> commandHandler, Consumer<GivenEvent<I>> givenEvent) {
+        private Given(String subject, CommandHandler<?, C, ?> commandHandler, Consumer<GivenEvent> givenEvent) {
             this(subject, commandHandler);
 
             addToStubs(givenEvent);
         }
 
-        private Given(String subject, CommandHandler<I, C, R> commandHandler, Object... events) {
+        private Given(String subject, CommandHandler<?, C, ?> commandHandler, Object... events) {
             this(subject, commandHandler);
 
             for (Object e : events) {
@@ -554,7 +548,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             }
         }
 
-        private Given(String subject, CommandHandler<I, C, R> commandHandler, List<Stub<I>> stubs) {
+        private Given(String subject, CommandHandler<?, C, ?> commandHandler, List<Stub> stubs) {
             this(subject, commandHandler);
             this.stubs.addAll(stubs);
         }
@@ -578,8 +572,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @param <AnotherCommand> generic command type to execute
          */
         public <AnotherCommand extends Command> Given<C> andGivenCommand(
-                CommandHandlingTestFixture<I, AnotherCommand, ?> fixture, AnotherCommand command)
-                throws AssertionError {
+                CommandHandlingTestFixture<AnotherCommand> fixture, AnotherCommand command) throws AssertionError {
             return andGivenCommand(fixture, command, Map.of());
         }
 
@@ -603,9 +596,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @param <AnotherCommand> generic command type to execute
          */
         public <AnotherCommand extends Command> Given<C> andGivenCommand(
-                CommandHandlingTestFixture<I, AnotherCommand, ?> fixture,
-                AnotherCommand command,
-                Map<String, ?> metaData)
+                CommandHandlingTestFixture<AnotherCommand> fixture, AnotherCommand command, Map<String, ?> metaData)
                 throws AssertionError {
             fixture.givenStubs(stubs)
                     .when(command, metaData)
@@ -653,7 +644,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return a {@code this} for further fluent API calls
          */
         public Given<C> andGivenTime(Instant time) {
-            stubs.add(new Stub.Time<>(time));
+            stubs.add(new Stub.Time(time));
             return this;
         }
 
@@ -665,7 +656,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return a {@code this} for further fluent API calls
          */
         public Given<C> andGivenTimeDelta(Duration duration) {
-            stubs.add(new Stub.TimeDelta<>(duration));
+            stubs.add(new Stub.TimeDelta(duration));
             return this;
         }
 
@@ -691,7 +682,7 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @param event event specification consumer, at least {@link GivenEvent#payload(Object)} must be called
          * @return a {@code this} for further fluent API calls
          */
-        public Given<C> andGiven(Consumer<GivenEvent<I>> event) {
+        public Given<C> andGiven(Consumer<GivenEvent> event) {
             addToStubs(event);
             return this;
         }
@@ -736,12 +727,12 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return an {@link Expect} instance for further fluent API calls
          */
         public Expect when(C command, Map<String, ?> metaData) {
-            AtomicReference<Result<I>> stubResult = new AtomicReference<>(
-                    new Result<>(instanceClass, null, null, command, stateRebuildingHandlerDefinitions, Set.of()));
+            AtomicReference<Result> stubResult = new AtomicReference<>(
+                    new Result(instanceClass, null, null, command, stateRebuildingHandlerDefinitions, Set.of()));
             stubs.forEach(stub -> stubResult.updateAndGet(result -> result.merge(stub)));
 
-            I currentState = stubResult.get().state();
-            CommandEventCapturer<I> eventCapturer = new CommandEventCapturer<>(
+            Object currentState = stubResult.get().state();
+            CommandEventCapturer<?> eventCapturer = new CommandEventCapturer<Object>(
                     currentState,
                     command.getSubject(),
                     stateRebuildingHandlerDefinitions.stream()
@@ -778,12 +769,12 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             }
 
             try {
-                R result =
+                Object result =
                         switch (commandHandler) {
-                            case CommandHandler.ForCommand<I, C, R> handler -> handler.handle(command, eventCapturer);
-                            case CommandHandler.ForInstanceAndCommand<I, C, R> handler ->
+                            case CommandHandler.ForCommand handler -> handler.handle(command, eventCapturer);
+                            case CommandHandler.ForInstanceAndCommand handler ->
                                 handler.handle(currentState, command, eventCapturer);
-                            case CommandHandler.ForInstanceAndCommandAndMetaData<I, C, R> handler ->
+                            case CommandHandler.ForInstanceAndCommandAndMetaData handler ->
                                 handler.handle(currentState, command, metaData, eventCapturer);
                         };
                 return new Expect(
@@ -821,19 +812,19 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
 
         private boolean eventVerified = false;
         private final Command command;
-        private final I state;
+        private final Object state;
         private final boolean stateStubbed;
         private final List<CapturedEvent> capturedEvents;
         private final ListIterator<CapturedEvent> nextEvent;
-        private final R result;
+        private final Object result;
         private final Throwable throwable;
 
         private Expect(
                 Command command,
-                I state,
+                Object state,
                 boolean stateStubbed,
                 List<CapturedEvent> capturedEvents,
-                R result,
+                Object result,
                 Throwable throwable) {
             this.command = command;
             this.state = state;
@@ -867,7 +858,15 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             return expectException(Throwable.class);
         }
 
-        public Expect expectResult(R expected) throws AssertionError {
+        /**
+         * Asserts that the {@link CommandHandler} returned the expected result.
+         *
+         * @param expected the expected result (may be {@code null})
+         * @return {@code this} for further assertions
+         * @throws AssertionError if the {@link CommandHandler} returned a result non-equal to the expected one
+         * @param <R> the generic result type
+         */
+        public <R> Expect expectResult(R expected) throws AssertionError {
             if (expected == null && result == null) return this;
 
             if (expected == null || !expected.equals(result)) {
@@ -883,8 +882,17 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
             return this;
         }
 
-        public Expect expectResultSatisfying(Consumer<R> assertion) throws AssertionError {
-            assertion.accept(result);
+        /**
+         * Asserts that the {@link CommandHandler}'s returned result satisfies the custom assertions using the provided
+         * {@link Consumer}.
+         *
+         * @param assertion a consumer for custom assertions of the captured result
+         * @return {@code this} for further assertions
+         * @throws AssertionError if thrown by the consumer
+         * @param <R> the generic result type
+         */
+        public <R> Expect expectResultSatisfying(Consumer<R> assertion) throws AssertionError {
+            assertion.accept((R) result);
             return this;
         }
 
@@ -984,8 +992,9 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @param state the expected state
          * @return {@code this} for further assertions
          * @throws AssertionError if the captured state is {@code null} or not equal to the expected state
+         * @param <I> the generic state type
          */
-        public Expect expectState(I state) throws AssertionError {
+        public <I> Expect expectState(I state) throws AssertionError {
             if (this.state == null) throw new AssertionError("No state captured");
             if (!state.equals(this.state)) {
                 StringBuilder builder = new StringBuilder();
@@ -1011,10 +1020,11 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @return {@code this} for further assertions
          * @throws AssertionError if the captured state is {@code null} or the extracted state is not as expected
          * @param <R> the result type of the extractor function
+         * @param <I> the generic state type
          */
-        public <R> Expect expectStateExtracting(Function<I, R> extractor, R expected) throws AssertionError {
+        public <I, R> Expect expectStateExtracting(Function<I, R> extractor, R expected) throws AssertionError {
             if (state == null) throw new AssertionError("No state captured");
-            R extracted = extractor.apply(state);
+            R extracted = extractor.apply((I) state);
 
             if (expected == null && extracted == null) return this;
 
@@ -1039,9 +1049,10 @@ public class CommandHandlingTestFixture<I, C extends Command, R> {
          * @param assertion the consumer used for custom state assertions
          * @return {@code this} for further assertions
          * @throws AssertionError if thrown by the given consumer
+         * @param <I> the generic state type
          */
-        public Expect expectStateSatisfying(Consumer<I> assertion) throws AssertionError {
-            assertion.accept(this.state);
+        public <I> Expect expectStateSatisfying(Consumer<I> assertion) throws AssertionError {
+            assertion.accept((I) this.state);
             return this;
         }
 

@@ -13,8 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class PageHandlingTest {
 
     @Test
-    public void pageMarkedAsDamaged(
-            @Autowired CommandHandlingTestFixture<Page, MarkBookPageDamagedCommand, Void> fixture) {
+    public void pageMarkedAsDamaged(@Autowired CommandHandlingTestFixture<MarkBookPageDamagedCommand> fixture) {
         fixture.givenNothing()
                 .when(new MarkBookPageDamagedCommand("4711", 42L, UUID.randomUUID()))
                 .expectSuccessfulExecution()

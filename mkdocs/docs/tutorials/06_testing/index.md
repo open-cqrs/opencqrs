@@ -6,7 +6,7 @@ In this tutorial you will learn, how to write unit test for your _command handle
 tests verify the domain logic by focussing on:
 
 1.  sending commands to command handlers for execution
-2.  implicitly verifying that the write mode is properly rebuilt
+2.  implicitly verifying that the write model is properly rebuilt
 3.  verifying the publication of new events
 
 ## Preparing the Test Fixture
@@ -38,7 +38,7 @@ public class BookHandlingTest {
     private LateChargeCalculator lateChargeCalculator;
 
     @Test
-    public void canBePurchased(@Autowired CommandHandlingTestFixture<Void, PurchaseBookCommand, Void> fixture) {
+    public void canBePurchased(@Autowired CommandHandlingTestFixture<PurchaseBookCommand> fixture) {
         // ...
     }
 }
@@ -53,11 +53,7 @@ The test contains the following essential elements:
     out of scope of this test class and hence will be mocked (lines 20-21).
 3.  It defines an initial test method with an autowired `CommandHandlingTestFixture`{ title="com.opencqrs.framework.command.CommandHandlingTestFixture" }.
     This fixture substitutes the command execution via the `CommandRouter`{ title="com.opencqrs.framework.command.CommandRouter" }.
-    The command handler to test is identified by the fixture's generic types in the following order (lines 23-26):
-    
-    1.  the type of the state rebuilt prior to executing the command (`Void`)
-    2.  the type of the command executed (`PurchaseBookCommand`)
-    3.  the command handler's return type (`Void`)
+    The command handler to test is identified by the fixture's generic command type `PurchaseBookCommand` (lines 23-26).
 
 For the remainder of this tutorial we will be implementing further tests, by simply adding them to the `BookHandlingTest` class.
 All tests can be executed directly from the IDE or as follows:
@@ -91,7 +87,7 @@ us express this using its [Given When Then](https://martinfowler.com/bliki/Given
 
 ```java
 @Test
-public void canBePurchased(@Autowired CommandHandlingTestFixture<Void, PurchaseBookCommand, Void> fixture) {
+public void canBePurchased(@Autowired CommandHandlingTestFixture<PurchaseBookCommand> fixture) {
     var id = UUID.randomUUID();
     
     fixture
@@ -131,7 +127,7 @@ to be published, as well as the due date being returned from the command handler
 
 ```java linenums="1"
 @Test
-public void canBeBorrowed(@Autowired CommandHandlingTestFixture<Book, BorrowBookCommand, Instant> fixture) {
+public void canBeBorrowed(@Autowired CommandHandlingTestFixture<BorrowBookCommand> fixture) {
     var id = UUID.randomUUID();
 
     fixture
@@ -146,7 +142,7 @@ public void canBeBorrowed(@Autowired CommandHandlingTestFixture<Book, BorrowBook
             )
             .when(new BorrowBookCommand(id))
             .expectSuccessfulExecution()
-            .expectResultSatisfying(instant -> assertThat(instant).isInTheFuture())
+            .expectResultSatisfying((Instant instant) -> assertThat(instant).isInTheFuture())
             .expectSingleEventSatisfying((BookLentEvent e) -> {
                 assertThat(e.id()).isEqualTo(id);
                 assertThat(e.returnDueAt()).isInTheFuture();
@@ -163,7 +159,7 @@ verified by another test for the same command handler, which expects no events b
 
 ```java hl_lines="22-23"
 @Test
-public void cannotBeBorrowedIfAlreadyLent(@Autowired CommandHandlingTestFixture<Book, BorrowBookCommand, Instant> fixture) {
+public void cannotBeBorrowedIfAlreadyLent(@Autowired CommandHandlingTestFixture<BorrowBookCommand> fixture) {
     var id = UUID.randomUUID();
 
     fixture
@@ -196,7 +192,7 @@ decides, if the return is overdue or not. So, for returns without late charge th
 
 ```java
 @Test
-public void canBeReturnedWithoutLateCharge(@Autowired CommandHandlingTestFixture<Book, ReturnBookCommand, Void> fixture) {
+public void canBeReturnedWithoutLateCharge(@Autowired CommandHandlingTestFixture<ReturnBookCommand> fixture) {
     var id = UUID.randomUUID();
     var now = Instant.now();
 
@@ -227,7 +223,7 @@ the event publication, as follows:
 
 ```java hl_lines="6-8 28"
     @Test
-    public void canBeReturnedWithLateChargeCalculated(@Autowired CommandHandlingTestFixture<Book, ReturnBookCommand, Void> fixture) {
+    public void canBeReturnedWithLateChargeCalculated(@Autowired CommandHandlingTestFixture<ReturnBookCommand> fixture) {
         var id = UUID.randomUUID();
         var now = Instant.now();
 
