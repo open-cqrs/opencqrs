@@ -70,17 +70,6 @@ public final class CommandRouter {
         }
         this.commandHandlerDefinitions = commandHandlerDefinitions.stream()
                 .collect(toMap(CommandHandlerDefinition::commandClass, Function.identity()));
-
-        // TODO: won't work due to generics hell
-        /*this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions
-        .stream()
-        .collect(
-                groupingBy(
-                        StateRebuildingHandlerDefinition::instanceClass,
-                        toList()
-                )
-        );*/
-
         this.stateRebuildingHandlerDefinitions = new HashMap<>();
         stateRebuildingHandlerDefinitions.forEach(srhd -> this.stateRebuildingHandlerDefinitions
                 .computeIfAbsent(srhd.instanceClass(), clazz -> new ArrayList<>())

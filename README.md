@@ -118,7 +118,7 @@ Test command handling logic using the built-in test fixture support:
 public class BookHandlingTest {
 
     @Test
-    public void canBePurchased(@Autowired CommandHandlingTestFixture<Book, PurchaseBookCommand, String> fixture) {
+    public void canBePurchased(@Autowired CommandHandlingTestFixture<PurchaseBookCommand> fixture) {
         fixture.givenNothing()
                 .when(new PurchaseBookCommand("4711", "JRR Tolkien", "LOTR", 435))
                 .expectSuccessfulExecution()

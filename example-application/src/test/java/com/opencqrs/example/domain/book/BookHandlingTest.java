@@ -20,7 +20,7 @@ public class BookHandlingTest {
     private ReaderRepository readerRepository;
 
     @Test
-    public void canBePurchased(@Autowired CommandHandlingTestFixture<Book, PurchaseBookCommand, String> fixture) {
+    public void canBePurchased(@Autowired CommandHandlingTestFixture<PurchaseBookCommand> fixture) {
         fixture.givenNothing()
                 .when(new PurchaseBookCommand("4711", "JRR Tolkien", "LOTR", 435))
                 .expectSuccessfulExecution()
@@ -28,8 +28,7 @@ public class BookHandlingTest {
     }
 
     @Test
-    public void canBeBorrowedIfReaderExists(
-            @Autowired CommandHandlingTestFixture<Book, BorrowBookCommand, Void> fixture) {
+    public void canBeBorrowedIfReaderExists(@Autowired CommandHandlingTestFixture<BorrowBookCommand> fixture) {
         var reader = UUID.randomUUID();
         doReturn(true).when(readerRepository).existsById(reader);
 
@@ -40,7 +39,7 @@ public class BookHandlingTest {
     }
 
     @Test
-    public void canBeReturnedIfLent(@Autowired CommandHandlingTestFixture<Book, ReturnBookCommand, Void> fixture) {
+    public void canBeReturnedIfLent(@Autowired CommandHandlingTestFixture<ReturnBookCommand> fixture) {
         fixture.givenState(new Book("4711", 435, Set.of(), new Book.Lending.Lent(UUID.randomUUID())))
                 .when(new ReturnBookCommand("4711"))
                 .expectSuccessfulExecution()
@@ -49,7 +48,7 @@ public class BookHandlingTest {
 
     @Test
     public void cannotBeBorrowedIfTooManyPagesDamaged(
-            @Autowired CommandHandlingTestFixture<Book, BorrowBookCommand, Void> fixture) {
+            @Autowired CommandHandlingTestFixture<BorrowBookCommand> fixture) {
         var reader = UUID.randomUUID();
         doReturn(true).when(readerRepository).existsById(reader);
 
