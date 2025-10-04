@@ -65,15 +65,15 @@ public record PurchaseBookCommand(
 }
 ```
 
-It needs to inherit `Command`{ title="com.opencqrs.framework.command.Command" } and implement its `getSubject()` method
+It needs to inherit {{ javadoc_class_ref("com.opencqrs.framework.command.Command") }} and implement its `getSubject()` method
 to uniquely identify the book copy by means of a unique, path-like id, the so-called _subject_.
 
 
 ## Implementing the Command Handling Logic
 
 The business logic for book copy purchases needs to be implemented within a command handler, which receives the 
-`PurchaseBookCommand`. It can be declared using a `@CommandHandling`{ title="com.opencqrs.framework.command.CommandHandling" } 
-annotated method within any class annotated with `@CommandHandlerConfiguration`{ title="com.opencqrs.framework.command.CommandHandlerConfiguration" } (1).
+`PurchaseBookCommand`. It can be declared using a {{ javadoc_class_ref("com.opencqrs.framework.command.CommandHandling") }} 
+annotated method within any class annotated with {{ javadoc_class_ref("com.opencqrs.framework.command.CommandHandlerConfiguration") }} (1).
 { .annotate }
 
 1. which itself is meta-annotated with Spring's `@Configuration` annotation
@@ -94,7 +94,7 @@ public class BookHandling {
 }
 ```
 
-Handling a command implies publishing _events_, if the command is valid. The `CommandEventPublisher`{ title="com.opencqrs.framework.command.CommandEventPublisher" }
+Handling a command implies publishing _events_, if the command is valid. The {{ javadoc_class_ref("com.opencqrs.framework.command.CommandEventPublisher") }}
 can be used to publish `BookPurchasedEvent` events, representing book copies being added to the inventory. Create a
 new Java record for the event, as follows:
 
@@ -142,7 +142,7 @@ public class BookHandling {
 
 Next you need to create an appropriate Spring REST API controller to accept commands from
 clients. The `PurchaseBookCommand` can directly be used as HTTP `@RequestBody` for `POST` requests
-to `/books/purchase`. It is then sent to the (auto-wired) `CommandRouter`{ title="com.opencqrs.framework.command.CommandRouter" }
+to `/books/purchase`. It is then sent to the (auto-wired) {{ javadoc_class_ref("com.opencqrs.framework.command.CommandRouter") }}
 to _route_ it to the command handler.
 
 Create the REST controller as follows:

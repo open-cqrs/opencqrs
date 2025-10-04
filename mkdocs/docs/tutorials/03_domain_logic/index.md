@@ -68,12 +68,12 @@ public record BookLentEvent(
 
 In order to be able to handle the `BorrowBookCommand`, the following extensions need to be made:
 
-1.  The `Book` write model needs to be rebuilt from the `BookPurchasedEvent`. An additional `@StateRebuilding`{ title="com.opencqrs.framework.command.StateRebuilding" }
+1.  The `Book` write model needs to be rebuilt from the `BookPurchasedEvent`. An additional {{ javadoc_class_ref("com.opencqrs.framework.command.StateRebuilding") }}
     annotated handler is required for this.
 2.  The rebuilt `Book` instance needs to be passed to a new command handler for the `BorrowBookCommand`, in order to be able to decide, whether the borrowing request is
     eligible, i.e. non-exceptional. Furthermore, the `BookLentEvent`, containing a random _due date_ between 7 and 30 days, will be published, if so. Finally, the _due date_ will be returned 
     from the command handler, so it can be exposed as result from the REST API call later.
-3.  Another `@StateRebuilding`{ title="com.opencqrs.framework.command.StateRebuilding" } handler is needed to update the `Book` write model
+3.  Another {{ javadoc_class_ref("com.opencqrs.framework.command.StateRebuilding") }} handler is needed to update the `Book` write model
     based on the `BookLentEvent` just published, to prevent further rental requests.
 
 The required additions to the `BookHandling` class are highlighted in the following code block:
@@ -170,7 +170,7 @@ In order to be able to handle the `ReturnBookCommand`, the following extensions 
 2.  In case of an overdue return a _late charge_ needs to be calculated. The calculation logic can be out-sourced to a separate
     service, which is `@Autowired` into the command handler additionally.
 3.  Furthermore, the `BookReturnedEvent`, containing the calculated late charge, will be published.
-4.  Another `@StateRebuilding`{ title="com.opencqrs.framework.command.StateRebuilding" } handler is needed to update the `Book` write model
+4.  Another {{ javadoc_class_ref("com.opencqrs.framework.command.StateRebuilding") }} handler is needed to update the `Book` write model
     based on the `BookReturnedEvent` just published, to mark it as available for further borrow requests.
 
 The required additions to the `BookHandling` class are highlighted in the following code block:

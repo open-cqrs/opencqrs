@@ -7,3 +7,5 @@
 *[JVM]: Java Virtual Machine
 *[SDK]: Software Development Kit
 *[SQL]: Structured Query Language
+*[DDD]: Domain Driven Design
+*[DTO]: Data Transfer Object

@@ -31,4 +31,4 @@ def define_env(env):
         url = f"{base_url}/{full_path}.html"
         short_classname = parts[-1]
 
-        return f'<a href="{url}" title="{classname}" style="color: inherit;"><code>{short_classname}</code></a>'
+        return f'<a target="_blank" href="{url}" title="{classname}" style="color: inherit;"><code>{short_classname}</code></a>'
