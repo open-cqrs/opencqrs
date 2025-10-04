@@ -46,13 +46,13 @@ public class BookHandlingTest {
 
 The test contains the following essential elements:
 
-1.  It is annotated with `@CommandHandlingTest`{ title="com.opencqrs.framework.command.CommandHandlingTest" }, which
-    declares the test class as a Spring Boot Test, designated for testing `@CommandHandling`{ title="com.opencqrs.framework.command.CommandHandling" }
+1.  It is annotated with {{ javadoc_class_ref("com.opencqrs.framework.command.CommandHandlingTest") }}, which
+    declares the test class as a Spring Boot Test, designated for testing {{ javadoc_class_ref("com.opencqrs.framework.command.CommandHandling") }}
     annotated methods (line 17).
 2.  It defines a [Mockito](https://site.mockito.org) bean for the `LateChargeCalculator`, since this dependency is
     out of scope of this test class and hence will be mocked (lines 20-21).
-3.  It defines an initial test method with an autowired `CommandHandlingTestFixture`{ title="com.opencqrs.framework.command.CommandHandlingTestFixture" }.
-    This fixture substitutes the command execution via the `CommandRouter`{ title="com.opencqrs.framework.command.CommandRouter" }.
+3.  It defines an initial test method with an autowired {{ javadoc_class_ref("com.opencqrs.framework.command.CommandHandlingTestFixture") }}.
+    This fixture substitutes the command execution via the {{ javadoc_class_ref("com.opencqrs.framework.command.CommandRouter") }}.
     The command handler to test is identified by the fixture's generic command type `PurchaseBookCommand` (lines 23-26).
 
 For the remainder of this tutorial we will be implementing further tests, by simply adding them to the `BookHandlingTest` class.
@@ -82,7 +82,7 @@ All tests can be executed directly from the IDE or as follows:
 
 The first test is going to verify that a new book copy can be purchased successfully, i.e. that
 a valid `PurchaseBookCommand` is handled successfully and results in a new `BookPurchasedEvent` being published.
-The `CommandHandlingTestFixture`{ title="com.opencqrs.framework.command.CommandHandlingTestFixture" } lets
+The {{ javadoc_class_ref("com.opencqrs.framework.command.CommandHandlingTestFixture") }} lets
 us express this using its [Given When Then](https://martinfowler.com/bliki/GivenWhenThen.html) fluent API, as follows:
 
 ```java

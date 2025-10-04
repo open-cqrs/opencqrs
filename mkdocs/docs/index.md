@@ -4,7 +4,7 @@ Welcome to the official documentation for **{{ custom.framework_name }}** – an
 
 {{ custom.framework_name }} is designed to work seamlessly with **{{ esdb_ref() }}**, making it straightforward to model, implement, and operate event-driven applications. Built with **Java** and **Kotlin** developers in mind, it provides ready-to-use building blocks for **commands, events, aggregates, projections, and testing** – all with a strong focus on **clarity, testability, and maintainability**.
 
-{{ custom.framework_name }} is developed and maintained by **[Digital Frontiers GmbH & Co. KG](https://www.digitalfrontiers.de/)** and released as **open source software** under the **Apache 2.0 license**. It is free to use and backed by professional expertise and consulting services when you need them.
+{{ custom.framework_name }} is developed and maintained by the German IT consultancy **[Digital Frontiers GmbH & Co. KG](https://www.digitalfrontiers.de/)** and released as **open source software** under the **Apache 2.0 license**. It is free to use and backed by professional expertise and consulting services when you need them.
 
 ## Learning the Concepts
 
@@ -20,7 +20,7 @@ New to **CQRS** or **event sourcing**, or wondering how {{ custom.framework_name
 
 - **[Reference](reference/README.md)**
 
-      Detailed reference documentation for **commands, events, aggregates, projections,** and the **ESDB client SDK**.
+      Detailed reference documentation for **core framework components**, **command and event handling extension points**, the **ESDB client SDK**, and **test support**.
 
 - **[Concepts](concepts/README.md)**
 

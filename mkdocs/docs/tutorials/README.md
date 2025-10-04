@@ -27,4 +27,4 @@ Throughout these six tutorials, you will step through the key aspects of develop
 
 Each tutorial includes clear explanations, code examples, and practical exercises to help you gain hands-on experience.
 
-Ready to get started? Jump into the first tutorial and begin your journey with [{{ custom.framework_name }}](../index.md)!
+Ready to get started? Jump into the first tutorial and begin your journey with {{ custom.framework_name }}!

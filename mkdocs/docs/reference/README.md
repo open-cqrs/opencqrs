@@ -1,38 +1,12 @@
+# Reference
 
-- Modules (Client / Framework / Test)
-- Events
-- Exceptions
-  - Client vs. Framework 
-  - Transient
-  - Non-Transient
-- Core Components
-  - EsdbClient
-  - EventRepository
-  - Command Router
-  - EventHandlingProcessor
-    - Transactions
-    - ...
-  - Test-Fixture
-    - simulates CommandRouter
-    - in-memory capture/replay
-    - ...
-  - Event Publishers
-    - EventPublisher
-    - CommandEventPublisher
-    - ImmediateEventPublisher
-  - StateRebuildingCache
-  - TypeResolver
-  - Marshaller (Client/Framework)
-  - ...
-- Must-Have "Extension Points":
-  - common (sealed function interfaces, autowiring when using annotations) 
-  - CHD (manual, Bean & Annotation)
-    - sourcing modes
-  - SRHD
-  - EHD
-- Spring Support/Integration (Auto-Configurations)
-  - EsdbClient Config
-  - EHP Life-Cycle
-    - Retry Configuration
-    - ....
-  - Test Slice
+This chapter provides a detailed overview of the framework’s internal structure, its core building blocks, and the extension mechanisms available to developers.
+
+The following sections are included:
+
+- [Modules](modules/index.md) describing the framework's internal structure
+- [Event Representations](events/index.md) describing how events are represented within {{ custom.framework_name }}
+- [Exception Handling](exceptions/index.md) describing how errors are handled and mapped to appropriate exceptions
+- [Core Components](core_components/index.md) describing the built-in components required to develop CQRS/ES applications
+- [Extension Points](extension_points/index.md) describing how to develop custom command handling logic and read model projections
+- [Test Support](test_support/index.md) describing the built-in test support to verify command handler logic

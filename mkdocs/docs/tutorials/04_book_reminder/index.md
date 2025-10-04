@@ -47,7 +47,7 @@ public class BookReminder {
 
 The highlighted lines:
 
-1.  define two _event handlers_ named `reminder` using the `@EventHandling`{ title="com.opencqrs.framework.eventhandler.EventHandling" } annotation
+1.  define two _event handlers_ named `reminder` using the {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.EventHandling") }} annotation
 2.  consume any existing or new `BookLentEvent` or `BookReturnedEvent` from the event store in order
 3.  track a book copy's rental status, respectively, within a hash map
 

@@ -14,7 +14,7 @@ both for __reading__ and __writing__ events.
 By default, when using the framework's Spring Boot Starter, {{ javadoc_class_ref("com.opencqrs.framework.types.ClassNameEventTypeResolver") }} is registered
 automatically. This implementation uses the fully-qualified Java classname as type identifier.
 
-!!! warning
+!!! danger "Interoperability of Event Classes"
     The use of this type resolver is strongly discouraged, especially with respect to
     interoperability with other programming languages. Also package or classname refactoring using
     this type resolver, requires additional [upcasting](../../concepts/upcasting/index.md).
@@ -22,8 +22,11 @@ automatically. This implementation uses the fully-qualified Java classname as ty
 ## Explicit Type Registration
 
 For explicit type registration a {{ javadoc_class_ref("com.opencqrs.framework.types.PreconfiguredAssignableClassEventTypeResolver") }}
-needs to be defined as Spring Bean within the application context, for instance within a dedicated 
-`OpenCqrsFrameworkConfiguration`, as follows:
+can be defined as Spring Bean within the application context (1), for instance within a dedicated `OpenCqrsFrameworkConfiguration`, as follows:
+{ .annotate }
+
+1. Refer to [manual configuration](../../reference/core_components/event_repository/index.md#manual-configuration) if you want to register it manually with the {{ javadoc_class_ref("com.opencqrs.framework.persistence.EventRepository") }}.
+
 ```java hl_lines="17-20"
 package com.opencqrs.example.configuration;
 
@@ -50,6 +53,7 @@ public class OpenCqrsFrameworkConfiguration {
     }
 }
 ```
+
 This bean maps type identifiers to Java classes and is used when:
 
 1. writing the event object to persist the type identifier within the raw event
@@ -59,6 +63,6 @@ As shown in the highlighted lines, the type identifier may include a _version_ t
 to evolve events using [upcasters](../../concepts/upcasting/index.md).
 !!! tip
     Make sure to register __all__ of your event classes, as any manually defined
-{{ javadoc_class_ref("com.opencqrs.framework.types.EventTypeResolver") }} bean supersedes the auto-configured {{ javadoc_class_ref("com.opencqrs.framework.types.ClassNameEventTypeResolver") }}.
+    {{ javadoc_class_ref("com.opencqrs.framework.types.EventTypeResolver") }} bean supersedes the auto-configured {{ javadoc_class_ref("com.opencqrs.framework.types.ClassNameEventTypeResolver") }}.
     In other words, there is (for obvious reasons) no fallback to class-based types,
     once the bean has defined explicitly.
