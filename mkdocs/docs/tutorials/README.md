@@ -1,6 +1,6 @@
 ---
-title: Getting Started with {{ custom.framework_name }}
-description: Learning the core concepts and how to build {{ custom.framework_name }} applications
+title: Getting Started with OpenCQRS
+description: Learning the core concepts and how to build OpenCQRS applications
 ---
 
 Welcome to the __Getting Started__ series for {{ custom.framework_name }}! This tutorial series will guide you through the 
