@@ -1,5 +1,5 @@
 ---
-description: How events are represented within {{ custom.framework_name }}
+description: How events are represented within OpenCQRS
 ---
 
 Events published or consumed using {{ custom.framework_name }} are stored within the {{ esdb_ref() }}, which in turn

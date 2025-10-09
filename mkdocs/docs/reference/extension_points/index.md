@@ -1,6 +1,6 @@
 ---
 title: Extension Points
-description: Building Application Components using {{ custom.framework_name }}
+description: Building Application Components using OpenCQRS
 ---
 
 {{ custom.framework_name }} offers three core extension points for application developers to implement their CQRS applications:

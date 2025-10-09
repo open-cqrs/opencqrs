@@ -1,5 +1,5 @@
 ---
-description: Creating an initial {{ custom.framework_name }} Spring Boot application connected to an {{ esdb_name() }}
+description: Creating an initial OpenCQRS Spring Boot application connected to an {{ esdb_name() }}
 ---
 
 This tutorial will enable you to develop [Spring Boot](https://spring.io/projects/spring-boot) {{ custom.framework_name }} applications 
