@@ -20,6 +20,8 @@ import java.util.function.Consumer;
  * @param dataContentType the data content-type, always {@code application/json}
  * @param hash the hash of this event
  * @param predecessorHash the hash of the preceding event in the event store
+ * @param traceParent the event's 'traceparent' header, according to the W3C Trace Context standard
+ * @param traceState the event's 'tracestate' header, according to the W3C Trace Context standard
  * @see EventCandidate
  * @see EsdbClient#read(String, Set)
  * @see EsdbClient#read(String, Set, Consumer)
@@ -36,4 +38,7 @@ public record Event(
         String dataContentType,
         String hash,
         String predecessorHash)
+        @NotBlank String predecessorHash,
+        String traceParent,
+        String traceState)
         implements Marshaller.ResponseElement {}

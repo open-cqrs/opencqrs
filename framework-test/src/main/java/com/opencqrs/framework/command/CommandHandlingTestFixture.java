@@ -267,7 +267,9 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 event.time() != null ? event.time() : time(),
                                 "application/test",
                                 UUID.randomUUID().toString(),
-                                UUID.randomUUID().toString());
+                                UUID.randomUUID().toString(),
+                                null,
+                                null);
 
                         AtomicReference reference = new AtomicReference<@Nullable Object>(state());
                         if (!Util.applyUsingHandlers(

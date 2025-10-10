@@ -22,7 +22,7 @@ class PerConfigurableLevelSubjectEventSequenceResolverTest {
     public void foo(int levelsToKeep, String subject, String sequenceId) {
         var resolver = new PerConfigurableLevelSubjectEventSequenceResolver(levelsToKeep);
 
-        Event e = new Event(null, subject, null, null, null, null, null, null, null, null);
+        Event e = new Event(null, subject, null, null, null, null, null, null, null, null, null, null);
 
         assertThat(resolver.sequenceIdFor(e)).isEqualTo(sequenceId);
     }

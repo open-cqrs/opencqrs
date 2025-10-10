@@ -13,7 +13,29 @@ import java.util.Map;
  * @param type uniquely identifies the event type, specifically for being able to interpret the contained data structure
  * @param data a generic map structure containing the event payload, which is going to be stored as JSON within the
  *     event store
+ * @param traceParent the candidate's 'traceparent' header, according to the W3C Trace Context standard
+ * @param traceState the candidate's 'tracestate' header, according to the W3C Trace Context standard
  * @see Event
  * @see EsdbClient#write(List, List)
  */
-public record EventCandidate(String source, String subject, String type, Map<String, ?> data) {}
+public record EventCandidate(
+        String source,
+        String subject,
+        String type,
+        Map<String, ?> data,
+        String traceParent,
+        String traceState) {
+
+    /**
+     * Convenience constructor for EventCandidates with no tracing data available.
+     *
+     * @param source
+     * @param subject
+     * @param type
+     * @param data
+     */
+    public EventCandidate(
+            String source, String subject, String type, Map<String, ?> data) {
+        this(source, subject, type, data, null, null);
+    }
+}
