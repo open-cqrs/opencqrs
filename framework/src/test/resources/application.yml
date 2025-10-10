@@ -5,3 +5,11 @@ cqrs.event-handling:
     retry:
       policy: fixed
       initial-interval: 5
+
+otel:
+  traces:
+    exporter: none
+  metrics:
+    exporter: none
+  logs:
+    exporter: none
