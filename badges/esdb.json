@@ -1,0 +1,6 @@
+{
+    "schemaVersion": 1,
+     "label": "EventSourcingDB",
+     "message": "1.1.0",
+     "color": "orange"
+}
