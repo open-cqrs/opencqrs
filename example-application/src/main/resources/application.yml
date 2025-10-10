@@ -1,6 +1,5 @@
 spring.application.name: library
 
-
 esdb:
   server:
     uri: http://localhost:3000
@@ -32,3 +31,17 @@ management:
     health:
       show-components: always
       #show-details: always
+    beans:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "beans"
+
+otel:
+  traces:
+    exporter: none
+  metrics:
+    exporter: none
+  logs:
+    exporter: none

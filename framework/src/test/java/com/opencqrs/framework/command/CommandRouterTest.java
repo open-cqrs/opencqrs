@@ -79,7 +79,9 @@ public class CommandRouterTest {
                                         raw.time(),
                                         raw.dataContentType(),
                                         raw.hash(),
-                                        raw.predecessorHash())),
+                                        raw.predecessorHash(),
+                                        null,
+                                        null)),
                         raw));
     };
 
@@ -111,7 +113,9 @@ public class CommandRouterTest {
                             Instant.now(),
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            null,
+                            null));
                     consumer.accept(new Event(
                             "test",
                             command.getSubject() + "/pages/42",
@@ -122,7 +126,9 @@ public class CommandRouterTest {
                             Instant.now(),
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            null,
+                            null));
                     return null;
                 })
                 .when(client)
@@ -258,7 +264,9 @@ public class CommandRouterTest {
                                     Instant.now(),
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    null,
+                                    null));
                             return null;
                         })
                         .when(client)
@@ -278,7 +286,9 @@ public class CommandRouterTest {
                                     Instant.now(),
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    null,
+                                    null));
                             return null;
                         })
                         .when(client)
@@ -326,7 +336,9 @@ public class CommandRouterTest {
                                     Instant.now(),
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    null,
+                                    null));
                             return null;
                         })
                         .when(client)
@@ -346,7 +358,9 @@ public class CommandRouterTest {
                                     Instant.now(),
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    null,
+                                    null));
                             return null;
                         })
                         .when(client)
@@ -420,7 +434,9 @@ public class CommandRouterTest {
                 Instant.now(),
                 "application/json",
                 UUID.randomUUID().toString(),
-                UUID.randomUUID().toString());
+                UUID.randomUUID().toString(),
+                null,
+                null);
 
         doAnswer(invocation -> {
                     Consumer<Event> consumer = invocation.getArgument(2);
@@ -474,7 +490,9 @@ public class CommandRouterTest {
                             Instant.now(),
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            null,
+                            null));
                     return null;
                 })
                 .when(client)
@@ -614,7 +632,9 @@ public class CommandRouterTest {
                             Instant.now(),
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            null,
+                            null));
                     return null;
                 })
                 .when(client)

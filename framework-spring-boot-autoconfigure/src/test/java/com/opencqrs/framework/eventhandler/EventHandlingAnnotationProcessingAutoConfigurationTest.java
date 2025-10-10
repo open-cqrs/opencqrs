@@ -192,7 +192,9 @@ public class EventHandlingAnnotationProcessingAutoConfigurationTest {
                                 Instant.now(),
                                 "application/json",
                                 "hash",
-                                "predecessor"));
+                                "predecessor",
+                                null,
+                                null));
         return handlerResponse.get();
     }
 
