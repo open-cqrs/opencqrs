@@ -103,7 +103,9 @@ public class EventHandlingProcessorTest {
                 Instant.now(),
                 "content-type",
                 "1",
-                "0");
+                "0",
+                null,
+                null);
         submittedEvents.put(raw, new EventData<>(metaData, payload));
         assertThat(eventQueue.add(raw)).as("could not submit event to queue").isTrue();
         return raw;
@@ -180,7 +182,9 @@ public class EventHandlingProcessorTest {
                                                 raw.time(),
                                                 raw.dataContentType(),
                                                 raw.hash(),
-                                                raw.predecessorHash())),
+                                                raw.predecessorHash(),
+                                                null,
+                                                null)),
                                 raw);
                     });
                     return null;
