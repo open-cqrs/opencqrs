@@ -2,6 +2,7 @@ description = "Spring Boot auto configurations for OpenCQRS framework"
 
 dependencies {
     api(project(":framework"))
+    compileOnly("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
     compileOnly("jakarta.validation:jakarta.validation-api")
     implementation("org.springframework.boot:spring-boot-starter-jackson")
     compileOnly("org.springframework:spring-jdbc")
@@ -11,6 +12,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jdbc-test")
     testImplementation("org.springframework.integration:spring-integration-core")
+    testImplementation("io.opentelemetry:opentelemetry-api")
     testImplementation("org.springframework.integration:spring-integration-jdbc")
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")
     testImplementation("org.awaitility:awaitility:4.3.0")
