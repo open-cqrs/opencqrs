@@ -3,6 +3,7 @@ description = "OpenCQRS Java CQRS/ES Core Framework"
 dependencies {
     api(project(":esdb-client"))
     compileOnly("jakarta.validation:jakarta.validation-api")
+    compileOnly("io.opentelemetry:opentelemetry-api")
     implementation("org.springframework.boot:spring-boot-starter-jackson")
     implementation("jakarta.annotation:jakarta.annotation-api:3.0.0")
     testImplementation(project(":framework-spring-boot-starter"))
@@ -13,6 +14,7 @@ dependencies {
     testImplementation("com.h2database:h2")
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")
     testImplementation("org.awaitility:awaitility:4.3.0")
+    testImplementation("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
     // https://github.com/gradle/gradle/issues/33950
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
