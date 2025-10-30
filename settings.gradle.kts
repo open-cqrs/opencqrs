@@ -7,7 +7,7 @@
 
 gradle.beforeProject {
     extensions.extraProperties["frameworkVersions"] = mapOf(
-        "esdb.version" to "1.1.0",
+        "esdb.version" to "preview",
         "spring.boot.version" to "3.5.6",
     )
     extensions.extraProperties["memorySettings"] = mapOf(
