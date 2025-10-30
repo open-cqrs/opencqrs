@@ -281,9 +281,7 @@ public class EsdbClientIntegrationTest {
                 assertThat(e.data()).isEqualTo(data);
             });
 
-            assertThat(client.read(subject, Set.of()))
-                    .as("both events written")
-                    .hasSize(2);
+            assertThat(client.read(subject, Set.of())).as("both events written").hasSize(2);
         }
 
         @Test
@@ -296,16 +294,14 @@ public class EsdbClientIntegrationTest {
                     "com.opencqrs.books-removed.v1",
                     objectMapper.convertValue(new BookRemovedEvent("pages missing"), Map.class));
 
-            assertThatThrownBy(() ->
-                            client.write(List.of(eventCandidate), List.of(new Precondition.SubjectIsPopulated(subject))))
+            assertThatThrownBy(() -> client.write(
+                            List.of(eventCandidate), List.of(new Precondition.SubjectIsPopulated(subject))))
                     .isInstanceOfSatisfying(ClientException.HttpException.HttpClientException.class, e -> {
                         assertThat(e.getStatusCode()).isEqualTo(409);
                         assertThat(e.getMessage()).contains("precondition failed");
                     });
 
-            assertThat(client.read(subject, Set.of()))
-                    .as("no events written")
-                    .isEmpty();
+            assertThat(client.read(subject, Set.of())).as("no events written").isEmpty();
         }
 
         @Test
@@ -324,8 +320,8 @@ public class EsdbClientIntegrationTest {
 
             List<Event> published = client.write(
                     List.of(new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-removed.v1", data)),
-                    List.of(new Precondition.IsEventQlQueryTrue(
-                            "SELECT COUNT(*) as count FROM events WHERE subject = '" + subject + "' HAVING count > 0")));
+                    List.of(new Precondition.IsEventQlQueryTrue("SELECT COUNT(*) as count FROM events WHERE subject = '"
+                            + subject + "' HAVING count > 0")));
 
             assertThat(published).singleElement().satisfies(e -> {
                 assertThat(e.source()).isEqualTo(TEST_SOURCE);
@@ -355,9 +351,7 @@ public class EsdbClientIntegrationTest {
                         assertThat(e.getMessage()).contains("precondition failed");
                     });
 
-            assertThat(client.read(subject, Set.of()))
-                    .as("no events written")
-                    .isEmpty();
+            assertThat(client.read(subject, Set.of())).as("no events written").isEmpty();
         }
     }
 
