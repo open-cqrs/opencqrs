@@ -4,8 +4,6 @@ package com.opencqrs.framework.command;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.opencqrs.framework.State;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -37,8 +35,8 @@ public class CommandHandlingTestAutoConfigurationTest {
     @Test
     public void initialized_CommandHandlingTestFixture_beanMethodNoDependency() {
         contextRunner.run(context -> {
-            assertThat(context.getBeanNamesForType(ResolvableType.forClassWithGenerics(
-                            CommandHandlingTestFixture.class, State.class, MyCommand.class, Void.class)))
+            assertThat(context.getBeanNamesForType(
+                            ResolvableType.forClassWithGenerics(CommandHandlingTestFixture.class, MyCommand1.class)))
                     .singleElement()
                     .satisfies(beanName -> {
                         assertThat(context).getBean(beanName).isInstanceOf(CommandHandlingTestFixture.class);
@@ -49,8 +47,8 @@ public class CommandHandlingTestAutoConfigurationTest {
     @Test
     public void lazyInitialized_CommandHandlingTestFixture_beanMethodWithUnresolvableDependency() {
         contextRunner.run(context -> {
-            assertThat(context.getBeanNamesForType(ResolvableType.forClassWithGenerics(
-                            CommandHandlingTestFixture.class, State.class, MyCommand.class, UUID.class)))
+            assertThat(context.getBeanNamesForType(
+                            ResolvableType.forClassWithGenerics(CommandHandlingTestFixture.class, MyCommand2.class)))
                     .singleElement()
                     .satisfies(beanName -> {
                         assertThatThrownBy(() -> context.getBean(beanName))
@@ -63,8 +61,8 @@ public class CommandHandlingTestAutoConfigurationTest {
     @Test
     public void initialized_CommandHandlingTestFixture_for_CommandHandlingAnnotation() {
         contextRunner.run(context -> {
-            assertThat(context.getBeanNamesForType(ResolvableType.forClassWithGenerics(
-                            CommandHandlingTestFixture.class, State.class, MyCommand.class, String.class)))
+            assertThat(context.getBeanNamesForType(
+                            ResolvableType.forClassWithGenerics(CommandHandlingTestFixture.class, MyCommand3.class)))
                     .singleElement()
                     .satisfies(beanName -> {
                         assertThat(context).getBean(beanName).isInstanceOf(CommandHandlingTestFixture.class);
@@ -75,8 +73,8 @@ public class CommandHandlingTestAutoConfigurationTest {
     @Test
     public void initialized_CommandHandlingTestFixture_programmaticBeanRegistration() {
         contextRunner.run(context -> {
-            assertThat(context.getBeanNamesForType(ResolvableType.forClassWithGenerics(
-                            CommandHandlingTestFixture.class, State.class, MyCommand.class, Boolean.class)))
+            assertThat(context.getBeanNamesForType(
+                            ResolvableType.forClassWithGenerics(CommandHandlingTestFixture.class, MyCommand4.class)))
                     .singleElement()
                     .satisfies(beanName -> {
                         assertThat(context).getBean(beanName).isInstanceOf(CommandHandlingTestFixture.class);

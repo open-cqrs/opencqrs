@@ -8,7 +8,7 @@ def define_env(env):
 
     @env.macro
     def esdb_ref() -> str:
-        return f"[{esdb_name()}](https://eventsourcingdb.io)"
+        return f"[{esdb_name()}](https://www.eventsourcingdb.io)"
 
     @env.macro
     def javadoc_class_ref(classname: str, base_url: str = "https://docs.opencqrs.com/javadoc") -> str:
@@ -31,4 +31,4 @@ def define_env(env):
         url = f"{base_url}/{full_path}.html"
         short_classname = parts[-1]
 
-        return f'<a href="{url}" title="{classname}" style="color: inherit;"><code>{short_classname}</code></a>'
+        return f'<a target="_blank" href="{url}" title="{classname}" style="color: inherit;"><code>{short_classname}</code></a>'

@@ -1,13 +1,13 @@
 ---
 title: Extension Points
-description: Building Application Components using {{ custom.framework_name }}
+description: Building Application Components using OpenCQRS
 ---
 
 {{ custom.framework_name }} offers three core extension points for application developers to implement their CQRS applications:
  
-* `CommandHandler`{ title="com.opencqrs.framework.command.CommandHandler" } [definitions](command_handler/index.md) encapsulate the command handling logic for changing the system's state by publishing new events
-* `StateRebuildingHandler`{ title="com.opencqrs.framework.command.StateRebuildingHandler" } [definitions](state_rebuilding_handler/index.md) support the reconstruction of write models from events, on which commands are executed
-* `EventHandler`{ title="com.opencqrs.framework.eventhandler.EventHandler" } [definitions](event_handler/index.md) encapsulate event processing logic
+* {{ javadoc_class_ref("com.opencqrs.framework.command.CommandHandler") }} [definitions](command_handler/index.md) encapsulate the command handling logic for changing the system's state by publishing new events
+* {{ javadoc_class_ref("com.opencqrs.framework.command.StateRebuildingHandler") }} [definitions](state_rebuilding_handler/index.md) support the [reconstruction of write models](../../concepts/event_sourcing/index.md#reconstructing-the-write-model) from events, on which commands are executed
+* {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.EventHandler") }} [definitions](event_handler/index.md) encapsulate event processing logic for [read model projection](../../concepts/event_sourcing/index.md#projecting-a-read-model)
 
 ## Command Handling
 

@@ -7,8 +7,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.EsdbClientAutoConfiguration;
-import com.opencqrs.framework.State;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -26,13 +24,13 @@ public class CommandHandlingTestSliceTest {
 
     @Test
     public void fixtureAutoCreatedWithProperGenericTypes_beanNoDependency(
-            @Autowired ObjectProvider<CommandHandlingTestFixture<State, MyCommand, Void>> fixture) {
+            @Autowired ObjectProvider<CommandHandlingTestFixture<MyCommand1>> fixture) {
         assertThat(fixture.getIfAvailable()).isNotNull();
     }
 
     @Test
     public void fixtureAutoCreatedWithProperGenericTypes_beanUnresolvableDependency(
-            @Autowired ObjectProvider<CommandHandlingTestFixture<State, MyCommand, UUID>> fixture) {
+            @Autowired ObjectProvider<CommandHandlingTestFixture<MyCommand2>> fixture) {
         assertThatThrownBy(fixture::getIfAvailable)
                 .hasCauseInstanceOf(UnsatisfiedDependencyException.class)
                 .hasMessageContaining("chdUnresolvableDependency");
@@ -40,19 +38,18 @@ public class CommandHandlingTestSliceTest {
 
     @Test
     public void fixtureAutoCreatedWithProperGenericTypes_beanCommandHandling(
-            @Autowired ObjectProvider<CommandHandlingTestFixture<State, MyCommand, String>> fixture) {
+            @Autowired ObjectProvider<CommandHandlingTestFixture<MyCommand3>> fixture) {
         assertThat(fixture.getIfAvailable()).isNotNull();
     }
 
     @Test
     public void fixtureAutoCreatedWithProperGenericTypes_programmaticBeanRegistration(
-            @Autowired ObjectProvider<CommandHandlingTestFixture<State, MyCommand, Boolean>> fixture) {
+            @Autowired ObjectProvider<CommandHandlingTestFixture<MyCommand4>> fixture) {
         assertThat(fixture.getIfAvailable()).isNotNull();
     }
 
     @Test
-    public void fixtureNotCreated(
-            @Autowired ObjectProvider<CommandHandlingTestFixture<String, Command, Boolean>> fixture) {
+    public void fixtureNotCreated(@Autowired ObjectProvider<CommandHandlingTestFixture<Command>> fixture) {
         assertThat(fixture.getIfAvailable()).isNull();
     }
 

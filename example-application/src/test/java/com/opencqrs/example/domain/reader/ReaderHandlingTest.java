@@ -13,7 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class ReaderHandlingTest {
 
     @Test
-    public void canRegister(@Autowired CommandHandlingTestFixture<UUID, RegisterReaderCommand, UUID> fixture) {
+    public void canRegister(@Autowired CommandHandlingTestFixture<RegisterReaderCommand> fixture) {
         var readerId = UUID.randomUUID();
         fixture.givenNothing()
                 .when(new RegisterReaderCommand(readerId, "Hugo Tester"))

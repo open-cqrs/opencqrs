@@ -1,5 +1,5 @@
 ---
-description: An overview of the {{ custom.framework_name }} modules and when to use them
+description: An overview of the OpenCQRS modules and when to use them
 ---
 
 The following diagram depicts the {{ custom.framework_name }} framework modules, their categorization and interdependencies:

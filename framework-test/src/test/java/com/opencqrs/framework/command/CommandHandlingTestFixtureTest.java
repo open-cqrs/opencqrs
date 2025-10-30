@@ -314,7 +314,7 @@ public class CommandHandlingTestFixtureTest {
                                                     return new State(true);
                                                 }));
 
-                CommandHandlingTestFixture<State, DummyCommand, Void> givenCommandFixture = fixtureBuilder.using(
+                CommandHandlingTestFixture<DummyCommand> givenCommandFixture = fixtureBuilder.using(
                         State.class, (CommandHandler.ForInstanceAndCommand<State, DummyCommand, Void>) (i, c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -886,7 +886,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionPristineViolated_byCommand_successfully(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -906,7 +906,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionPristineViolated_byStubbing_successfully(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -927,7 +927,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionPristineNotViolated_failing(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -947,7 +947,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionExistsViolated_successfully(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -966,7 +966,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionExistsNotViolated_byCommand_failing(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -987,7 +987,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionExistsNotViolated_byStubbing_failing(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -1008,7 +1008,7 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void commandSubjectConditionNone_mustNotBeSpecified() {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -1023,7 +1023,7 @@ public class CommandHandlingTestFixtureTest {
             @EnumSource(value = Command.SubjectCondition.class, mode = EnumSource.Mode.EXCLUDE, names = "NONE")
             @NullSource
             public void commandSubjectConditionMustNotBeUsedWithStateStubbing(Command.SubjectCondition condition) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
