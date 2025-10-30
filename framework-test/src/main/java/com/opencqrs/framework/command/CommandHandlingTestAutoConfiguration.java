@@ -48,13 +48,11 @@ public class CommandHandlingTestAutoConfiguration {
                 BeanDefinition bd = registry.getBeanDefinition(beanName);
                 if (CommandHandlerDefinition.class.getName().equals(bd.getBeanClassName())) {
                     ResolvableType resolvableType = bd.getResolvableType();
-                    Class<?> instanceType = resolvableType.resolveGeneric(0);
                     Class<?> commandType = resolvableType.resolveGeneric(1);
-                    Class<?> resultType = resolvableType.resolveGeneric(2);
 
-                    if (instanceType != null && commandType != null && resultType != null) {
-                        ResolvableType fixtureType = ResolvableType.forClassWithGenerics(
-                                CommandHandlingTestFixture.class, instanceType, commandType, resultType);
+                    if (commandType != null) {
+                        ResolvableType fixtureType =
+                                ResolvableType.forClassWithGenerics(CommandHandlingTestFixture.class, commandType);
 
                         bd.setLazyInit(true);
 
@@ -95,11 +93,9 @@ public class CommandHandlingTestAutoConfiguration {
                             if (factoryMethod.get() != null) {
                                 ResolvableType factoryMethodReturnType =
                                         ResolvableType.forMethodReturnType(factoryMethod.get());
-                                ResolvableType stateType = factoryMethodReturnType.getGeneric(0);
                                 ResolvableType commandType = factoryMethodReturnType.getGeneric(1);
-                                ResolvableType resultType = factoryMethodReturnType.getGeneric(2);
                                 ResolvableType fixtureType = ResolvableType.forClassWithGenerics(
-                                        CommandHandlingTestFixture.class, stateType, commandType, resultType);
+                                        CommandHandlingTestFixture.class, commandType);
 
                                 RootBeanDefinition fixture = new RootBeanDefinition();
                                 fixture.setTargetType(fixtureType);

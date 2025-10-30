@@ -1,9 +1,9 @@
 ---
-description: Creating an initial {{ custom.framework_name }} Spring Boot application connected to an {{ esdb_name() }}
+description: Creating an initial OpenCQRS Spring Boot application connected to an {{ esdb_name() }}
 ---
 
 This tutorial will enable you to develop [Spring Boot](https://spring.io/projects/spring-boot) {{ custom.framework_name }} applications 
-by introducing you to the necessary building blocks used throughout this [Getting Started](/tutorials/README.md) series.
+by introducing you to the necessary building blocks used throughout this [Getting Started](../README.md) series.
 This involves the required infrastructure components and project dependencies. You will be
 creating an initial, running Spring Boot application, that will be extended throughout the following
 tutorials.

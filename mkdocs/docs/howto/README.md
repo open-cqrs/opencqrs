@@ -1,24 +1,11 @@
-# How-To Guides
+# Guides
 
-* explicit type registration
-* abstract type persistence (Jackson specific)
-* upcasting single event
-  * payload
-  * metadata
-  * raw?
-* upcasting split events & discard
-* atomic jdbc projector (retool)
-* non-atomic projector (mail)
-* command-sending projector
-* subject conditions
-* sub-aggregates / hierarchical subjects
-* ?how to structure your code-base?
-* sagas
-* Managing persistent progress
-* Deploying in multi-JVM environments (using Spring Integration)
-  * locking (jdbc, hazelcast, ....)
-  * progress
-* Parallelizing your event handlers
-* Command Metadata & Propagation
-* How to propagate errors correctly
-* (how to use EsdbClient)
+This section provides step-by-step guides that demonstrate how to apply the [concepts](../concepts/README.md) in practice.
+They focus on practical implementation details and best practices for working with the {{ custom.framework_name }}.
+
+The following guides are currently available:
+
+- [Registering Explicit Event Types](explicit_type_registration/index.md) – Learn how to declare and register event types so that the system can reliably identify, serialize, and deserialize them.
+- [Upcasting Events](upcasting_events/index.md) – Understand how to evolve existing events to new versions, ensuring compatibility as your domain and event schemas change over time.
+
+Additional guides will be added over time to cover more advanced usage patterns and common scenarios.  

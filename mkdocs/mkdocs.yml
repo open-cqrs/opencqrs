@@ -2,26 +2,28 @@
 site_name: OpenCQRS
 site_url: https://docs.opencqrs.com
 repo_url: https://github.com/open-cqrs/opencqrs
-copyright: Copyright &copy; 2025 OpenCQRS and contributors
 
 plugins:
   - social
   - macros
 
 extra:
+  generator: false
   custom:
     framework_name: OpenCQRS
-    framework_version: 1.0-rc6
-    esdb_version: 1.0.3
-    spring_boot_version: 3.4.6
+    framework_version: 1.0.0
+    esdb_version: 1.1.0
+    spring_boot_version: 3.5.6
   homepage: https://www.opencqrs.com
   social:
+    - icon: fontawesome/solid/envelope
+      link: "mailto:opencqrs@digitalfrontiers.de"
     - icon: fontawesome/solid/blog
       link: https://blog.digitalfrontiers.de
-    - icon: fontawesome/brands/x-twitter
-      link: https:/x.com/dxfrontiers
     - icon: fontawesome/brands/linkedin
       link: https://www.linkedin.com/company/digital-frontiers-gmbh-co-kg
+    - icon: fontawesome/solid/globe
+      link: https://www.digitalfrontiers.de
 
 extra_javascript:
   - js/open_external_in_new_tab.js
@@ -48,6 +50,7 @@ theme:
     - navigation.tabs
     - navigation.indexes
     - content.code.copy
+    - content.code.annotate
 
 markdown_extensions:
   - abbr
@@ -97,9 +100,7 @@ nav:
   - Guides:
     - howto/README.md
     - Registering explicit Event Types: howto/explicit_type_registration/index.md
-    - Scaling Event Processing: howto/scaling_event_processing/index.md
-    - Upcasting a Single Event: howto/upcaster_single_event/index.md
-    - Persisting Abstract Event Classes: howto/abstract_type_persistence/index.md
+    - Upcasting Events: howto/upcasting_events/index.md
   - Reference:
     - reference/README.md
     - Modules: reference/modules/index.md
@@ -113,9 +114,12 @@ nav:
       - Event Handling Processor: reference/core_components/event_handling_processor/index.md
     - Extension Points:
         - reference/extension_points/index.md
-        - Definining Command Handlers: reference/extension_points/command_handler/index.md
+        - Defining Command Handlers: reference/extension_points/command_handler/index.md
         - Defining State Rebuilding Handlers: reference/extension_points/state_rebuilding_handler/index.md
         - Defining Event Handlers: reference/extension_points/event_handler/index.md
+    - Test Support:
+        - reference/test_support/index.md
+        - Command Handling Tests: reference/test_support/command_handling_test_fixture/index.md
   - Concepts:
     - concepts/README.md
     - Events: concepts/events/index.md

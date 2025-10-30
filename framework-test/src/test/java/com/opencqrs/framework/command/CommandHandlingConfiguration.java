@@ -3,7 +3,6 @@ package com.opencqrs.framework.command;
 
 import com.opencqrs.framework.MyEvent;
 import com.opencqrs.framework.State;
-import java.util.UUID;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.RootBeanDefinition;
@@ -22,21 +21,21 @@ public class CommandHandlingConfiguration {
     }
 
     @Bean
-    public CommandHandlerDefinition<State, MyCommand, Void> chdNoDependency() {
+    public CommandHandlerDefinition<State, MyCommand1, Void> chdNoDependency() {
         return new CommandHandlerDefinition<>(
-                State.class, MyCommand.class, (CommandHandler.ForCommand<State, MyCommand, Void>)
+                State.class, MyCommand1.class, (CommandHandler.ForCommand<State, MyCommand1, Void>)
                         (command, commandEventPublisher) -> null);
     }
 
     @Bean
-    public CommandHandlerDefinition<State, MyCommand, UUID> chdUnresolvableDependency(MyCommand noSuchBean) {
+    public CommandHandlerDefinition<State, MyCommand2, Void> chdUnresolvableDependency(Runnable noSuchBean) {
         return new CommandHandlerDefinition<>(
-                State.class, MyCommand.class, (CommandHandler.ForCommand<State, MyCommand, UUID>)
+                State.class, MyCommand2.class, (CommandHandler.ForCommand<State, MyCommand2, Void>)
                         (command, commandEventPublisher) -> null);
     }
 
     @CommandHandling
-    public String handle(State instance, MyCommand command) {
+    public String handle(State instance, MyCommand3 command) {
         return "test";
     }
 
@@ -49,13 +48,13 @@ public class CommandHandlingConfiguration {
                 RootBeanDefinition chd = new RootBeanDefinition();
                 chd.setBeanClass(CommandHandlerDefinition.class);
                 chd.setTargetType(ResolvableType.forClassWithGenerics(
-                        CommandHandlerDefinition.class, State.class, MyCommand.class, Boolean.class));
+                        CommandHandlerDefinition.class, State.class, MyCommand4.class, Void.class));
 
                 ConstructorArgumentValues values = new ConstructorArgumentValues();
                 values.addGenericArgumentValue(State.class);
-                values.addGenericArgumentValue(MyCommand.class);
-                values.addGenericArgumentValue((CommandHandler.ForCommand<State, MyCommand, Boolean>)
-                        (command, commandEventPublisher) -> null);
+                values.addGenericArgumentValue(MyCommand4.class);
+                values.addGenericArgumentValue(
+                        (CommandHandler.ForCommand<State, MyCommand4, Void>) (command, commandEventPublisher) -> null);
 
                 chd.setConstructorArgumentValues(values);
                 registry.registerBeanDefinition("myProgrammaticCommandHandlerDefinition", chd);
