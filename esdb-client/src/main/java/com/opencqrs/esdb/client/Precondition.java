@@ -8,7 +8,11 @@ import java.util.List;
  * Sealed interface for preconditions used for {@link EsdbClient#write(List, List) event publication} to ensure
  * consistency within the underlying event store.
  */
-public sealed interface Precondition permits Precondition.SubjectIsOnEventId, Precondition.SubjectIsPristine {
+public sealed interface Precondition
+        permits Precondition.SubjectIsOnEventId,
+                Precondition.SubjectIsPristine,
+                Precondition.SubjectIsPopulated,
+                Precondition.IsEventQlQueryTrue {
 
     /**
      * A precondition stating the given subject must not yet exist within the event store. This precondition is not
@@ -27,4 +31,21 @@ public sealed interface Precondition permits Precondition.SubjectIsOnEventId, Pr
      * @param eventId the expected event id
      */
     record SubjectIsOnEventId(@NotBlank String subject, @NotBlank String eventId) implements Precondition {}
+
+    /**
+     * A precondition stating the given subject must already exist within the event store, that is at least one event
+     * must have been published for that subject. This precondition is not violated by recursive subjects, that is
+     * subjects that are stored within a hierarchy underneath the given one.
+     *
+     * @param subject the path to the subject that needs to be populated
+     */
+    record SubjectIsPopulated(@NotBlank String subject) implements Precondition {}
+
+    /**
+     * A precondition stating the given EventQL query must evaluate to {@code true}. This precondition allows for
+     * complex conditional logic when publishing events.
+     *
+     * @param query the EventQL query string that must evaluate to {@code true}
+     */
+    record IsEventQlQueryTrue(@NotBlank String query) implements Precondition {}
 }

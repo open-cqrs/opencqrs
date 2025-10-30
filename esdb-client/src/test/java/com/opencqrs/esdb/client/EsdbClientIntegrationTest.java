@@ -255,6 +255,110 @@ public class EsdbClientIntegrationTest {
                         assertThat(e.data()).isEqualTo(data2);
                     });
         }
+
+        @Test
+        public void singleEventPublishedForPopulatedSubject() {
+            String subject = randomSubject();
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            subject,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
+                    List.of(new Precondition.SubjectIsPristine(subject)));
+
+            Map<String, Object> data = objectMapper.convertValue(new BookRemovedEvent("pages missing"), Map.class);
+
+            List<Event> published = client.write(
+                    List.of(new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-removed.v1", data)),
+                    List.of(new Precondition.SubjectIsPopulated(subject)));
+
+            assertThat(published).singleElement().satisfies(e -> {
+                assertThat(e.source()).isEqualTo(TEST_SOURCE);
+                assertThat(e.subject()).isEqualTo(subject);
+                assertThat(e.type()).isEqualTo("com.opencqrs.books-removed.v1");
+                assertThat(e.data()).isEqualTo(data);
+            });
+
+            assertThat(client.read(subject, Set.of()))
+                    .as("both events written")
+                    .hasSize(2);
+        }
+
+        @Test
+        public void singleEventNotPublishedForUnpopulatedSubject() {
+            String subject = randomSubject();
+
+            var eventCandidate = new EventCandidate(
+                    TEST_SOURCE,
+                    subject,
+                    "com.opencqrs.books-removed.v1",
+                    objectMapper.convertValue(new BookRemovedEvent("pages missing"), Map.class));
+
+            assertThatThrownBy(() ->
+                            client.write(List.of(eventCandidate), List.of(new Precondition.SubjectIsPopulated(subject))))
+                    .isInstanceOfSatisfying(ClientException.HttpException.HttpClientException.class, e -> {
+                        assertThat(e.getStatusCode()).isEqualTo(409);
+                        assertThat(e.getMessage()).contains("precondition failed");
+                    });
+
+            assertThat(client.read(subject, Set.of()))
+                    .as("no events written")
+                    .isEmpty();
+        }
+
+        @Test
+        public void singleEventPublishedWhenEventQlQueryTrue() {
+            String subject = randomSubject();
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            subject,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
+                    List.of(new Precondition.SubjectIsPristine(subject)));
+
+            Map<String, Object> data = objectMapper.convertValue(new BookRemovedEvent("pages missing"), Map.class);
+
+            List<Event> published = client.write(
+                    List.of(new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-removed.v1", data)),
+                    List.of(new Precondition.IsEventQlQueryTrue(
+                            "SELECT COUNT(*) as count FROM events WHERE subject = '" + subject + "' HAVING count > 0")));
+
+            assertThat(published).singleElement().satisfies(e -> {
+                assertThat(e.source()).isEqualTo(TEST_SOURCE);
+                assertThat(e.subject()).isEqualTo(subject);
+                assertThat(e.type()).isEqualTo("com.opencqrs.books-removed.v1");
+                assertThat(e.data()).isEqualTo(data);
+            });
+        }
+
+        @Test
+        public void singleEventNotPublishedWhenEventQlQueryFalse() {
+            String subject = randomSubject();
+
+            var eventCandidate = new EventCandidate(
+                    TEST_SOURCE,
+                    subject,
+                    "com.opencqrs.books-added.v1",
+                    objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class));
+
+            assertThatThrownBy(() -> client.write(
+                            List.of(eventCandidate),
+                            List.of(new Precondition.IsEventQlQueryTrue(
+                                    "SELECT COUNT(*) as count FROM events WHERE subject = '" + subject
+                                            + "' HAVING count > 0"))))
+                    .isInstanceOfSatisfying(ClientException.HttpException.HttpClientException.class, e -> {
+                        assertThat(e.getStatusCode()).isEqualTo(409);
+                        assertThat(e.getMessage()).contains("precondition failed");
+                    });
+
+            assertThat(client.read(subject, Set.of()))
+                    .as("no events written")
+                    .isEmpty();
+        }
     }
 
     @Nested

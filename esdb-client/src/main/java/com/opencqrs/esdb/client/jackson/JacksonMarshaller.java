@@ -156,6 +156,14 @@ public class JacksonMarshaller implements Marshaller {
             case Precondition.SubjectIsOnEventId p ->
                 new JacksonPrecondition.IsOnEventId(
                         "isSubjectOnEventId", new JacksonPrecondition.IsOnEventId.Payload(p.subject(), p.eventId()));
+
+            case Precondition.SubjectIsPopulated p ->
+                new JacksonPrecondition.IsPopulated(
+                        "isSubjectPopulated", new JacksonPrecondition.IsPopulated.Payload(p.subject()));
+
+            case Precondition.IsEventQlQueryTrue p ->
+                new JacksonPrecondition.IsEventQlQueryTrue(
+                        "isEventQlQueryTrue", new JacksonPrecondition.IsEventQlQueryTrue.Payload(p.query()));
         };
     }
 
@@ -166,6 +174,14 @@ public class JacksonMarshaller implements Marshaller {
 
         record IsOnEventId(String type, Payload payload) implements JacksonPrecondition {
             record Payload(String subject, String eventId) {}
+        }
+
+        record IsPopulated(String type, Payload payload) implements JacksonPrecondition {
+            record Payload(String subject) {}
+        }
+
+        record IsEventQlQueryTrue(String type, Payload payload) implements JacksonPrecondition {
+            record Payload(String query) {}
         }
     }
 
