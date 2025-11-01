@@ -163,7 +163,9 @@ public class JacksonMarshaller implements Marshaller {
 
             case Precondition.EventQlQueryIsTrue p ->
                 new JacksonPrecondition.EventQlQueryIsTrue(
-                        "isEventQlQueryTrue", new JacksonPrecondition.EventQlQueryIsTrue.Payload(p.query().queryString()));
+                        "isEventQlQueryTrue",
+                        new JacksonPrecondition.EventQlQueryIsTrue.Payload(
+                                p.query().queryString()));
         };
     }
 
