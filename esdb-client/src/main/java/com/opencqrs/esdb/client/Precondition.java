@@ -1,7 +1,9 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
+import com.opencqrs.esdb.client.eventql.EventQuery;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**
@@ -12,7 +14,7 @@ public sealed interface Precondition
         permits Precondition.SubjectIsOnEventId,
                 Precondition.SubjectIsPristine,
                 Precondition.SubjectIsPopulated,
-                Precondition.IsEventQlQueryTrue {
+                Precondition.EventQlQueryIsTrue {
 
     /**
      * A precondition stating the given subject must not yet exist within the event store. This precondition is not
@@ -42,10 +44,10 @@ public sealed interface Precondition
     record SubjectIsPopulated(@NotBlank String subject) implements Precondition {}
 
     /**
-     * A precondition stating the given EventQL query must evaluate to {@code true}. This precondition allows for
-     * complex conditional logic when publishing events.
+     * A precondition stating the given {@link com.opencqrs.esdb.client.eventql.EventQuery} must evaluate to
+     * {@code true}. This precondition allows for complex conditional logic when publishing events.
      *
-     * @param query the EventQL query string that must evaluate to {@code true}
+     * @param query the EventQL query that must evaluate to {@code true}
      */
-    record IsEventQlQueryTrue(@NotBlank String query) implements Precondition {}
+    record EventQlQueryIsTrue(@NotNull EventQuery query) implements Precondition {}
 }

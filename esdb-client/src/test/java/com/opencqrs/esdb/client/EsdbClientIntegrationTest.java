@@ -320,8 +320,8 @@ public class EsdbClientIntegrationTest {
 
             List<Event> published = client.write(
                     List.of(new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-removed.v1", data)),
-                    List.of(new Precondition.IsEventQlQueryTrue(
-                            "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO COUNT() > 0")));
+                    List.of(new Precondition.EventQlQueryIsTrue(
+                            EventQueryBuilder.fromEventQlString("FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO COUNT() > 0"))));
 
             assertThat(published).singleElement().satisfies(e -> {
                 assertThat(e.source()).isEqualTo(TEST_SOURCE);
@@ -343,8 +343,8 @@ public class EsdbClientIntegrationTest {
 
             assertThatThrownBy(() -> client.write(
                             List.of(eventCandidate),
-                            List.of(new Precondition.IsEventQlQueryTrue(
-                                    "FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO COUNT() > 0"))))
+                            List.of(new Precondition.EventQlQueryIsTrue(
+                                    EventQueryBuilder.fromEventQlString("FROM e IN events WHERE e.subject == '" + subject + "' PROJECT INTO COUNT() > 0")))))
                     .isInstanceOfSatisfying(ClientException.HttpException.HttpClientException.class, e -> {
                         assertThat(e.getStatusCode()).isEqualTo(409);
                         assertThat(e.getMessage()).contains("precondition failed");
