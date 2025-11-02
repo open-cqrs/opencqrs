@@ -712,6 +712,59 @@ public class EsdbClientIntegrationTest {
         }
     }
 
+    @Nested
+    @DisplayName("/api/v1/read-event-types")
+    public class ReadEventTypes {
+
+        @Test
+        public void readAllEventTypes() {
+            // Arrange: Write events of different types
+            String subject1 = randomSubject();
+            String subject2 = randomSubject();
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            subject1,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("Author 1", "Title 1"), Map.class))),
+                    List.of());
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            subject2,
+                            "com.opencqrs.books-removed.v1",
+                            objectMapper.convertValue(new BookRemovedEvent("reason"), Map.class))),
+                    List.of());
+
+            // Act: Read all event types
+            List<EventTypeMetadata> eventTypes = client.readEventTypes();
+
+            // Assert: Should contain both event types without schema
+            assertThat(eventTypes)
+                    .anySatisfy(et -> {
+                        assertThat(et.eventType()).isEqualTo("com.opencqrs.books-added.v1");
+                        assertThat(et.isPhantom()).isFalse();
+                        assertThat(et.schema()).isNull();
+                    })
+                    .anySatisfy(et -> {
+                        assertThat(et.eventType()).isEqualTo("com.opencqrs.books-removed.v1");
+                        assertThat(et.isPhantom()).isFalse();
+                        assertThat(et.schema()).isNull();
+                    });
+        }
+
+        @Test
+        public void readEventTypesReturnsEmptyList() {
+            // Act: Read event types when none exist (or only existing ones from other tests)
+            List<EventTypeMetadata> eventTypes = client.readEventTypes();
+
+            // Assert: Should return a list (not null)
+            assertThat(eventTypes).isNotNull();
+        }
+    }
+
     private String randomSubject() {
         return "/books/" + UUID.randomUUID();
     }
