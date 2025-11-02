@@ -199,6 +199,28 @@ public final class EsdbClient implements AutoCloseable {
     }
 
     /**
+     * Reads metadata for a specific event type from the underlying event store.
+     *
+     * @param eventType the event type to read
+     * @return the {@link EventTypeMetadata} for the requested event type
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code, e.g. 404 if the event
+     *     type does not exist
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
+    public EventTypeMetadata readEventType(String eventType) throws ClientException {
+        HttpRequest httpRequest = newJsonRequest("/api/v1/read-event-type")
+                .POST(HttpRequest.BodyPublishers.ofString(marshaller.toReadEventTypeRequest(eventType)))
+                .build();
+
+        var response = httpRequestErrorHandler.handle(
+                httpRequest, headers -> HttpResponse.BodySubscribers.ofString(Util.fromHttpHeaders(headers)));
+
+        return marshaller.fromReadEventTypeResponse(response);
+    }
+
+    /**
      * Queries the underlying event store using <a
      * href="https://docs.eventsourcingdb.io/reference/eventql/">EventQL</a>.
      *
