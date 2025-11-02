@@ -199,8 +199,8 @@ public final class EsdbClient implements AutoCloseable {
     }
 
     /**
-     * Reads all subjects from the underlying event store that are descendants of the given base subject.
-     * The base subject itself is included in the result.
+     * Reads all subjects from the underlying event store that are descendants of the given base subject. The base
+     * subject itself is included in the result.
      *
      * @param baseSubject the base subject to read from
      * @return a list of subject strings, may be empty

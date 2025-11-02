@@ -742,8 +742,7 @@ public class EsdbClientIntegrationTest {
             List<String> subjects = client.readSubjects("/");
 
             // Assert: Should contain both subjects and root itself
-            assertThat(subjects)
-                    .contains("/", subject1, subject2);
+            assertThat(subjects).contains("/", subject1, subject2);
         }
 
         @Test
@@ -781,8 +780,7 @@ public class EsdbClientIntegrationTest {
             List<String> subjects = client.readSubjects(baseSubject);
 
             // Assert: Should contain base subject and children
-            assertThat(subjects)
-                    .containsExactlyInAnyOrder(baseSubject, childSubject1, childSubject2);
+            assertThat(subjects).containsExactlyInAnyOrder(baseSubject, childSubject1, childSubject2);
         }
 
         @Test

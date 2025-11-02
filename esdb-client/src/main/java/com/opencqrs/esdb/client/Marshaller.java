@@ -99,16 +99,15 @@ public interface Marshaller {
      *
      * @see Event
      */
-    sealed interface ResponseElement permits Marshaller.ResponseElement.Heartbeat, Event, Marshaller.ResponseElement.SubjectElement {
+    sealed interface ResponseElement
+            permits Marshaller.ResponseElement.Heartbeat, Event, Marshaller.ResponseElement.SubjectElement {
 
         /**
          * Represents a heart beat returned from the event store to ensure the underlying HTTP connection is kept alive.
          */
         record Heartbeat() implements ResponseElement {}
 
-        /**
-         * Represents a subject returned from the event store when reading subjects.
-         */
+        /** Represents a subject returned from the event store when reading subjects. */
         record SubjectElement(String subject) implements ResponseElement {}
     }
 
