@@ -93,6 +93,7 @@ public class EventHandlingProcessorTest {
     private Progress lastProgress;
 
     private Event submitEvent(Object payload, Map<String, ?> metaData) {
+        Instant time = Instant.now();
         Event raw = new Event(
                 "test",
                 observeSubject,
@@ -100,10 +101,11 @@ public class EventHandlingProcessorTest {
                 Map.of("irrelevant", true),
                 "spec-version",
                 String.valueOf(eventId.getAndIncrement()),
-                Instant.now(),
+                time,
                 "content-type",
                 "1",
-                "0");
+                "0",
+                time.toString());
         submittedEvents.put(raw, new EventData<>(metaData, payload));
         assertThat(eventQueue.add(raw)).as("could not submit event to queue").isTrue();
         return raw;
@@ -180,7 +182,8 @@ public class EventHandlingProcessorTest {
                                                 raw.time(),
                                                 raw.dataContentType(),
                                                 raw.hash(),
-                                                raw.predecessorHash())),
+                                                raw.predecessorHash(),
+                                                raw.time().toString())),
                                 raw);
                     });
                     return null;

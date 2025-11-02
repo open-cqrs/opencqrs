@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class EventUpcastersTest {
 
+    private final Instant sourceEventTime = Instant.now();
     private final Event sourceEvent = new Event(
             "source",
             "subject",
@@ -24,10 +25,11 @@ public class EventUpcastersTest {
             Map.of("sourced", 1),
             "1.0",
             "0",
-            Instant.now(),
+            sourceEventTime,
             "application/json",
             "1",
-            "0");
+            "0",
+            sourceEventTime.toString());
 
     @Mock(strictness = Mock.Strictness.LENIENT)
     private EventUpcaster upcaster1;

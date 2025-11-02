@@ -53,7 +53,8 @@ public class EventUpcasters {
                         event.time(),
                         event.dataContentType(),
                         event.hash(),
-                        event.predecessorHash()))
+                        event.predecessorHash(),
+                        event.timeFromServer()))
                 .collect(toCollection(() -> result));
         return true;
     }

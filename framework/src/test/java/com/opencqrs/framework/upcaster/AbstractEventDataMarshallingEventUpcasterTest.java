@@ -69,6 +69,7 @@ public class AbstractEventDataMarshallingEventUpcasterTest {
 
     @Test
     public void upcastsUnmarshalledEventDataToMultipleEvents() {
+        Instant time = Instant.now();
         Stream<Event> upcasted = eventUpcasters.upcast(new Event(
                 "source",
                 "subject",
@@ -77,10 +78,11 @@ public class AbstractEventDataMarshallingEventUpcasterTest {
                         Map.of("key1", "not-upcasted", "key2", "unaffected"), new BookAddedEvent("not-upcasted"))),
                 "1.0",
                 "001",
-                Instant.now(),
+                time,
                 "application/json",
                 "hash",
-                "predecessor"));
+                "predecessor",
+                time.toString()));
 
         assertThat(upcasted)
                 .hasSize(2)

@@ -79,7 +79,8 @@ public class CommandRouterTest {
                                         raw.time(),
                                         raw.dataContentType(),
                                         raw.hash(),
-                                        raw.predecessorHash())),
+                                        raw.predecessorHash(),
+                                        raw.time().toString())),
                         raw));
     };
 
@@ -101,6 +102,7 @@ public class CommandRouterTest {
 
         doAnswer(invocation -> {
                     Consumer<Event> consumer = invocation.getArgument(2);
+                    Instant time1 = Instant.now();
                     consumer.accept(new Event(
                             "test",
                             command.getSubject(),
@@ -108,10 +110,12 @@ public class CommandRouterTest {
                             eventDataMarshaller.serialize(new EventData<>(Map.of("purpose", "testing"), sourcedEvent1)),
                             "1.0",
                             "2345",
-                            Instant.now(),
+                            time1,
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            time1.toString()));
+                    Instant time2 = Instant.now();
                     consumer.accept(new Event(
                             "test",
                             command.getSubject() + "/pages/42",
@@ -119,10 +123,11 @@ public class CommandRouterTest {
                             eventDataMarshaller.serialize(new EventData<>(Map.of(), sourcedEvent2)),
                             "1.0",
                             "89437534",
-                            Instant.now(),
+                            time2,
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            time2.toString()));
                     return null;
                 })
                 .when(client)
@@ -247,6 +252,7 @@ public class CommandRouterTest {
             case EXISTS ->
                 doAnswer(invocation -> {
                             Consumer<Event> consumer = invocation.getArgument(2);
+                            Instant time = Instant.now();
                             consumer.accept(new Event(
                                     "test",
                                     command.getSubject(),
@@ -255,10 +261,11 @@ public class CommandRouterTest {
                                             new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
                                     "1.0",
                                     "2345",
-                                    Instant.now(),
+                                    time,
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    time.toString()));
                             return null;
                         })
                         .when(client)
@@ -267,6 +274,7 @@ public class CommandRouterTest {
             case PRISTINE ->
                 doAnswer(invocation -> {
                             Consumer<Event> consumer = invocation.getArgument(2);
+                            Instant time = Instant.now();
                             consumer.accept(new Event(
                                     "test",
                                     command.getSubject() + "/child/42",
@@ -275,10 +283,11 @@ public class CommandRouterTest {
                                             new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
                                     "1.0",
                                     "2345",
-                                    Instant.now(),
+                                    time,
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    time.toString()));
                             return null;
                         })
                         .when(client)
@@ -315,6 +324,7 @@ public class CommandRouterTest {
             case EXISTS ->
                 doAnswer(invocation -> {
                             Consumer<Event> consumer = invocation.getArgument(2);
+                            Instant time = Instant.now();
                             consumer.accept(new Event(
                                     "test",
                                     command.getSubject() + "/child/42",
@@ -323,10 +333,11 @@ public class CommandRouterTest {
                                             new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
                                     "1.0",
                                     "2345",
-                                    Instant.now(),
+                                    time,
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    time.toString()));
                             return null;
                         })
                         .when(client)
@@ -335,6 +346,7 @@ public class CommandRouterTest {
             case PRISTINE ->
                 doAnswer(invocation -> {
                             Consumer<Event> consumer = invocation.getArgument(2);
+                            Instant time = Instant.now();
                             consumer.accept(new Event(
                                     "test",
                                     command.getSubject(),
@@ -343,10 +355,11 @@ public class CommandRouterTest {
                                             new EventData<>(Map.of("purpose", "testing"), sourcedEvent)),
                                     "1.0",
                                     "2345",
-                                    Instant.now(),
+                                    time,
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    time.toString()));
                             return null;
                         })
                         .when(client)
@@ -410,6 +423,7 @@ public class CommandRouterTest {
         var sourcedEvent = new BookAddedEvent("4711");
         var metaData = Map.of("purpose", "testing");
         var command = new BorrowBookCommand("4711");
+        Instant time = Instant.now();
         var rawEvent = new Event(
                 "test",
                 command.getSubject(),
@@ -417,10 +431,11 @@ public class CommandRouterTest {
                 eventDataMarshaller.serialize(new EventData<>(metaData, sourcedEvent)),
                 "1.0",
                 "2345",
-                Instant.now(),
+                time,
                 "application/json",
                 UUID.randomUUID().toString(),
-                UUID.randomUUID().toString());
+                UUID.randomUUID().toString(),
+                time.toString());
 
         doAnswer(invocation -> {
                     Consumer<Event> consumer = invocation.getArgument(2);
@@ -464,6 +479,7 @@ public class CommandRouterTest {
 
         doAnswer(invocation -> {
                     Consumer<Event> consumer = invocation.getArgument(2);
+                    Instant time = Instant.now();
                     consumer.accept(new Event(
                             "test",
                             command.getSubject(),
@@ -471,10 +487,11 @@ public class CommandRouterTest {
                             eventDataMarshaller.serialize(new EventData<>(Map.of(), sourcedEvent)),
                             "1.0",
                             "2345",
-                            Instant.now(),
+                            time,
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            time.toString()));
                     return null;
                 })
                 .when(client)
@@ -604,6 +621,7 @@ public class CommandRouterTest {
 
         doAnswer(invocation -> {
                     Consumer<Event> consumer = invocation.getArgument(2);
+                    Instant time = Instant.now();
                     consumer.accept(new Event(
                             "test",
                             command.getSubject(),
@@ -611,10 +629,11 @@ public class CommandRouterTest {
                             eventDataMarshaller.serialize(new EventData<>(Map.of(), sourcedEvent)),
                             "1.0",
                             "2345",
-                            Instant.now(),
+                            time,
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            time.toString()));
                     return null;
                 })
                 .when(client)

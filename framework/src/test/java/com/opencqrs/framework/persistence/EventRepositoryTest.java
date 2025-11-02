@@ -74,6 +74,7 @@ public class EventRepositoryTest {
         private EventReader.ClientRequestor clientRequestor =
                 (c, eventConsumer) -> c.read("/test", Set.of(new Option.LowerBoundInclusive("0815")), eventConsumer);
 
+        private Instant rawEventTime = Instant.now();
         private Event rawEvent = new Event(
                 eventSource.source(),
                 "/test/1",
@@ -81,11 +82,13 @@ public class EventRepositoryTest {
                 Map.of("raw", 42),
                 "1.0",
                 "0",
-                Instant.now(),
+                rawEventTime,
                 "application/json",
                 "1",
-                "0");
+                "0",
+                rawEventTime.toString());
 
+        private Instant upcastedEventTime = Instant.now();
         private Event upcastedEvent = new Event(
                 eventSource.source(),
                 "/test/1",
@@ -93,10 +96,11 @@ public class EventRepositoryTest {
                 Map.of("upcasted", 43),
                 "1.0",
                 "0",
-                Instant.now(),
+                upcastedEventTime,
                 "application/json",
                 "1",
-                "0");
+                "0",
+                upcastedEventTime.toString());
 
         private BookAddedEvent convertedEvent = new BookAddedEvent("4711");
         private Map<String, ?> convertedMetaData = Map.of("purpose", "test");
@@ -242,6 +246,7 @@ public class EventRepositoryTest {
             var event1 = new BookAddedEvent("4711");
             var metaData1 = Map.of("trace", "001");
             var serialized1 = Map.of("payload", "{ isbn=4711 }", "metadata", "{ trace=001 }");
+            Instant time1 = Instant.now();
             var published1 = new Event(
                     "source",
                     "subject/4711",
@@ -249,13 +254,15 @@ public class EventRepositoryTest {
                     serialized1,
                     "1.0",
                     "0",
-                    Instant.now(),
+                    time1,
                     "json",
                     "hash",
-                    "predecessor");
+                    "predecessor",
+                    time1.toString());
 
             var event2 = new BookAddedEvent("4712");
             var serialized2 = Map.of("payload", "{ isbn=4712 }", "metadata", "{}");
+            Instant time2 = Instant.now();
             var published2 = new Event(
                     "source",
                     "subject/4712",
@@ -263,10 +270,11 @@ public class EventRepositoryTest {
                     serialized1,
                     "1.0",
                     "0",
-                    Instant.now(),
+                    time2,
                     "json",
                     "hash",
-                    "predecessor");
+                    "predecessor",
+                    time2.toString());
 
             doReturn("book-added.v1").when(eventTypeResolver).getEventType(BookAddedEvent.class);
             doReturn(serialized1).when(eventDataMarshaller).serialize(new EventData<>(metaData1, event1));
@@ -302,6 +310,7 @@ public class EventRepositoryTest {
             var event1 = new BookAddedEvent("4711");
             var metaData1 = Map.of("trace", "001");
             var serialized1 = Map.of("payload", "{ isbn=4711 }", "metadata", "{ trace=001 }");
+            Instant time1 = Instant.now();
             var published1 = new Event(
                     "source",
                     "subject/4711",
@@ -309,13 +318,15 @@ public class EventRepositoryTest {
                     serialized1,
                     "1.0",
                     "0",
-                    Instant.now(),
+                    time1,
                     "json",
                     "hash",
-                    "predecessor");
+                    "predecessor",
+                    time1.toString());
 
             var event2 = new BookAddedEvent("4712");
             var serialized2 = Map.of("payload", "{ isbn=4712 }", "metadata", "{}");
+            Instant time2 = Instant.now();
             var published2 = new Event(
                     "source",
                     "subject/4712",
@@ -323,10 +334,11 @@ public class EventRepositoryTest {
                     serialized1,
                     "1.0",
                     "0",
-                    Instant.now(),
+                    time2,
                     "json",
                     "hash",
-                    "predecessor");
+                    "predecessor",
+                    time2.toString());
 
             doReturn("book-added.v1").when(eventTypeResolver).getEventType(BookAddedEvent.class);
             doReturn(serialized1).when(eventDataMarshaller).serialize(new EventData<>(metaData1, event1));
