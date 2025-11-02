@@ -73,10 +73,11 @@ public class JacksonMarshaller implements Marshaller {
                             e.data,
                             e.specversion,
                             e.id,
-                            e.time,
+                            Instant.parse(e.time),
                             e.datacontenttype,
                             e.hash,
-                            e.predecessorhash))
+                            e.predecessorhash,
+                            e.time))
                     .toList();
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
@@ -137,10 +138,11 @@ public class JacksonMarshaller implements Marshaller {
                             event.payload.data,
                             event.payload.specversion,
                             event.payload.id,
-                            event.payload.time,
+                            Instant.parse(event.payload.time),
                             event.payload.datacontenttype,
                             event.payload.hash,
-                            event.payload.predecessorhash);
+                            event.payload.predecessorhash,
+                            event.payload.time);
             };
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
@@ -215,7 +217,7 @@ public class JacksonMarshaller implements Marshaller {
                     @NotNull Map<String, ?> data,
                     @NotBlank String specversion,
                     @NotBlank String id,
-                    @NotNull Instant time,
+                    @NotBlank String time,
                     @NotBlank String datacontenttype,
                     @NotBlank String hash,
                     @NotBlank String predecessorhash) {}
@@ -244,6 +246,12 @@ public class JacksonMarshaller implements Marshaller {
                                 case EventQueryRowHandler.AsEvent consumer -> {
                                     var jacksonEvent = objectMapper.convertValue(
                                             row.payload(), JacksonResponseElement.Event.Payload.class);
+                                    Instant parsedTime;
+                                    try {
+                                        parsedTime = Instant.parse(jacksonEvent.time);
+                                    } catch (java.time.format.DateTimeParseException e) {
+                                        throw new IllegalArgumentException("Invalid time format", e);
+                                    }
                                     consumer.accept(new Event(
                                             jacksonEvent.source,
                                             jacksonEvent.subject,
@@ -251,10 +259,11 @@ public class JacksonMarshaller implements Marshaller {
                                             jacksonEvent.data,
                                             jacksonEvent.specversion,
                                             jacksonEvent.id,
-                                            jacksonEvent.time,
+                                            parsedTime,
                                             jacksonEvent.datacontenttype,
                                             jacksonEvent.hash,
-                                            jacksonEvent.predecessorhash));
+                                            jacksonEvent.predecessorhash,
+                                            jacksonEvent.time));
                                 }
                                 case EventQueryRowHandler.AsMap consumer ->
                                     consumer.accept((Map<String, ?>) row.payload);

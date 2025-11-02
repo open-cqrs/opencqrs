@@ -62,6 +62,21 @@ public abstract class ClientException extends RuntimeException {
         }
     }
 
+    /**
+     * Exception class thrown when event validation fails, such as when {@link Event#verifyHash()} detects a hash
+     * mismatch.
+     */
+    public static class ValidationException extends ClientException {
+
+        public ValidationException(String message) {
+            super(message);
+        }
+
+        public ValidationException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
     /** Base class for exceptions related to HTTP status codes returned from an event store. */
     public static class HttpException extends ClientException {
 

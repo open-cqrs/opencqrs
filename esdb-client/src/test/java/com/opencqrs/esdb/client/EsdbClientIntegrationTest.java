@@ -565,7 +565,7 @@ public class EsdbClientIntegrationTest {
             assertThat(ref).hasValueSatisfying(event -> {
                 assertThat(event)
                         .usingRecursiveComparison()
-                        .ignoringFields("id", "time", "hash", "predecessorHash")
+                        .ignoringFields("id", "time", "hash", "predecessorHash", "timeFromServer")
                         .isEqualTo(new Event(
                                 eventCandidate.source(),
                                 subject,
@@ -575,6 +575,7 @@ public class EsdbClientIntegrationTest {
                                 null,
                                 null,
                                 "application/json",
+                                null,
                                 null,
                                 null));
                 assertThat(event.id()).isNotBlank();
@@ -709,6 +710,114 @@ public class EsdbClientIntegrationTest {
 
             assertThat(ref.get()).isNull();
             verify(errorHandler).marshallingError(isA(ClientException.MarshallingException.class), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("Event.verifyHash()")
+    public class VerifyHash {
+
+        @Test
+        public void verifyHashSucceedsForValidEvent() {
+            String subject = randomSubject();
+            EventCandidate eventCandidate = new EventCandidate(
+                    TEST_SOURCE,
+                    subject,
+                    "com.opencqrs.books-added.v1",
+                    objectMapper.convertValue(new BookAddedEvent("J.R.R. Tolkien", "The Hobbit"), Map.class));
+
+            List<Event> writtenEvents = client.write(List.of(eventCandidate), List.of());
+
+            assertThat(writtenEvents).hasSize(1);
+            Event event = writtenEvents.get(0);
+
+            assertThatCode(() -> event.verifyHash()).doesNotThrowAnyException();
+        }
+
+        @Test
+        public void verifyHashFailsWhenHashIsManipulated() {
+            String subject = randomSubject();
+            EventCandidate eventCandidate = new EventCandidate(
+                    TEST_SOURCE,
+                    subject,
+                    "com.opencqrs.books-added.v1",
+                    objectMapper.convertValue(new BookAddedEvent("George Orwell", "1984"), Map.class));
+
+            List<Event> writtenEvents = client.write(List.of(eventCandidate), List.of());
+
+            assertThat(writtenEvents).hasSize(1);
+            Event event = writtenEvents.get(0);
+
+            // Create a manipulated event with an incorrect hash
+            Event manipulatedEvent = new Event(
+                    event.source(),
+                    event.subject(),
+                    event.type(),
+                    event.data(),
+                    event.specVersion(),
+                    event.id(),
+                    event.time(),
+                    event.dataContentType(),
+                    "0000000000000000000000000000000000000000000000000000000000000000",
+                    event.predecessorHash(),
+                    event.timeFromServer());
+
+            assertThatThrownBy(() -> manipulatedEvent.verifyHash())
+                    .isInstanceOf(ClientException.ValidationException.class)
+                    .hasMessage("Hash verification failed");
+        }
+
+        @Test
+        public void verifyHashFailsWhenDataIsManipulated() {
+            String subject = randomSubject();
+            EventCandidate eventCandidate = new EventCandidate(
+                    TEST_SOURCE,
+                    subject,
+                    "com.opencqrs.books-added.v1",
+                    objectMapper.convertValue(new BookAddedEvent("Ray Bradbury", "Fahrenheit 451"), Map.class));
+
+            List<Event> writtenEvents = client.write(List.of(eventCandidate), List.of());
+
+            assertThat(writtenEvents).hasSize(1);
+            Event event = writtenEvents.get(0);
+
+            // Create a manipulated event with different data
+            Map<String, Object> manipulatedData = Map.of("author", "Someone Else", "title", "Different Book");
+            Event manipulatedEvent = new Event(
+                    event.source(),
+                    event.subject(),
+                    event.type(),
+                    manipulatedData,
+                    event.specVersion(),
+                    event.id(),
+                    event.time(),
+                    event.dataContentType(),
+                    event.hash(),
+                    event.predecessorHash(),
+                    event.timeFromServer());
+
+            assertThatThrownBy(() -> manipulatedEvent.verifyHash())
+                    .isInstanceOf(ClientException.ValidationException.class)
+                    .hasMessage("Hash verification failed");
+        }
+
+        @Test
+        public void verifyHashSucceedsAfterReadingEvents() {
+            String subject = randomSubject();
+            EventCandidate eventCandidate = new EventCandidate(
+                    TEST_SOURCE,
+                    subject,
+                    "com.opencqrs.books-added.v1",
+                    objectMapper.convertValue(new BookAddedEvent("Isaac Asimov", "Foundation"), Map.class));
+
+            client.write(List.of(eventCandidate), List.of());
+
+            List<Event> readEvents = client.read(subject, Set.of());
+
+            assertThat(readEvents).hasSize(1);
+            Event event = readEvents.get(0);
+
+            assertThatCode(() -> event.verifyHash()).doesNotThrowAnyException();
         }
     }
 
