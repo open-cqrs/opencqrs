@@ -199,6 +199,43 @@ public final class EsdbClient implements AutoCloseable {
     }
 
     /**
+     * Reads all subjects from the underlying event store that are descendants of the given base subject.
+     * The base subject itself is included in the result.
+     *
+     * @param baseSubject the base subject to read from
+     * @return a list of subject strings, may be empty
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
+    public List<String> readSubjects(String baseSubject) throws ClientException {
+        var subjects = new ArrayList<String>();
+
+        HttpRequest httpRequest = newJsonRequest("/api/v1/read-subjects")
+                .POST(HttpRequest.BodyPublishers.ofString(marshaller.toReadSubjectsRequest(baseSubject)))
+                .build();
+
+        httpRequestErrorHandler.handle(
+                httpRequest,
+                headers -> HttpResponse.BodySubscribers.fromLineSubscriber(
+                        new AbstractLineSubscriber() {
+                            @Override
+                            public void onNext(String item) {
+                                Marshaller.ResponseElement element = marshaller.fromReadSubjectsResponseLine(item);
+                                if (element instanceof Marshaller.ResponseElement.SubjectElement subjectElement) {
+                                    subjects.add(subjectElement.subject());
+                                }
+                            }
+                        },
+                        s -> null,
+                        Util.fromHttpHeaders(headers),
+                        null));
+
+        return subjects;
+    }
+
+    /**
      * Queries the underlying event store using <a
      * href="https://docs.eventsourcingdb.io/reference/eventql/">EventQL</a>.
      *
