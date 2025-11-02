@@ -237,6 +237,29 @@ public final class EsdbClient implements AutoCloseable {
                         null));
     }
 
+    /**
+     * Registers a JSON schema for a specific event type in the underlying event store. If a schema is already
+     * registered for the given event type, a {@link ClientException.HttpException.HttpClientException} with status code
+     * {@code 409} will be thrown.
+     *
+     * @param eventType the event type to register the schema for
+     * @param schema the JSON schema as {@link com.fasterxml.jackson.databind.JsonNode}
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code, e.g. 409 if a schema
+     *     is already registered for the event type
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
+    public void registerEventSchema(String eventType, com.fasterxml.jackson.databind.JsonNode schema)
+            throws ClientException {
+        HttpRequest httpRequest = newJsonRequest("/api/v1/register-event-schema")
+                .POST(HttpRequest.BodyPublishers.ofString(marshaller.toRegisterEventSchemaRequest(eventType, schema)))
+                .build();
+
+        httpRequestErrorHandler.handle(
+                httpRequest, headers -> HttpResponse.BodySubscribers.ofString(Util.fromHttpHeaders(headers)));
+    }
+
     private void checkValidOptions(Set<Class<? extends Option>> supported, Set<Option> requested) {
         Set<Class<? extends Option>> requestedOptionClasses =
                 requested.stream().map(Option::getClass).collect(Collectors.toSet());

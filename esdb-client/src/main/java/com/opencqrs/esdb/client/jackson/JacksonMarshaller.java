@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.*;
 import com.opencqrs.esdb.client.eventql.EventQueryProcessingError;
@@ -142,6 +143,15 @@ public class JacksonMarshaller implements Marshaller {
                             event.payload.hash,
                             event.payload.predecessorhash);
             };
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public String toRegisterEventSchemaRequest(String eventType, JsonNode schema) {
+        try {
+            return objectMapper.writeValueAsString(Map.of("eventType", eventType, "schema", schema));
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
         }

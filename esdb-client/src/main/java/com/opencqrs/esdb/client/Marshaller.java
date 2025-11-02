@@ -76,6 +76,16 @@ public interface Marshaller {
     ResponseElement fromReadOrObserveResponseLine(String line);
 
     /**
+     * Used by {@link EsdbClient#registerEventSchema(String, com.fasterxml.jackson.databind.JsonNode)} to transform the
+     * given event type and schema into a valid HTTP request body to be sent to the event store.
+     *
+     * @param eventType the event type to register the schema for
+     * @param schema the JSON schema
+     * @return the JSON HTTP request body as string
+     */
+    String toRegisterEventSchemaRequest(String eventType, com.fasterxml.jackson.databind.JsonNode schema);
+
+    /**
      * Sealed interface representing a deserialized ND-JSON response line transformed via
      * {@link #fromReadOrObserveResponseLine(String)}.
      *
