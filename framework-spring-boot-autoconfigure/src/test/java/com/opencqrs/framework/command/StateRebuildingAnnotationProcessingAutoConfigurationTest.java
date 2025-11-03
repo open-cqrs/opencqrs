@@ -197,6 +197,7 @@ public class StateRebuildingAnnotationProcessingAutoConfigurationTest {
             .withConfiguration(AutoConfigurations.of(StateRebuildingAnnotationProcessingAutoConfiguration.class));
 
     private Book call(StateRebuildingHandler stateRebuildingHandler) {
+        Instant time = Instant.now();
         return (Book) ((StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent) stateRebuildingHandler)
                 .on(
                         new Book(Map.of("empty", true)),
@@ -210,10 +211,11 @@ public class StateRebuildingAnnotationProcessingAutoConfigurationTest {
                                 Map.of(),
                                 "1.0",
                                 "id001",
-                                Instant.now(),
+                                time,
                                 "application/json",
                                 "hash",
-                                "predecessor"));
+                                "predecessor",
+                                time.toString()));
     }
 
     @FunctionalInterface

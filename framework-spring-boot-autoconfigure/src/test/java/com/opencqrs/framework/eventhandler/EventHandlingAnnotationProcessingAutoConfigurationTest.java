@@ -177,6 +177,7 @@ public class EventHandlingAnnotationProcessingAutoConfigurationTest {
             .withConfiguration(AutoConfigurations.of(EventHandlingAnnotationProcessingAutoConfiguration.class));
 
     private Map<String, Object> call(EventHandler eventHandler) {
+        Instant time = Instant.now();
         handlerResponse.set(new HashMap<>());
         ((EventHandler.ForObjectAndMetaDataAndRawEvent) eventHandler)
                 .handle(
@@ -189,10 +190,11 @@ public class EventHandlingAnnotationProcessingAutoConfigurationTest {
                                 Map.of(),
                                 "1.0",
                                 "id001",
-                                Instant.now(),
+                                time,
                                 "application/json",
                                 "hash",
-                                "predecessor"));
+                                "predecessor",
+                                time.toString()));
         return handlerResponse.get();
     }
 

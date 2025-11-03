@@ -398,6 +398,7 @@ public class CommandHandlingTestFixture<C extends Command> {
                     case Stub.Time time -> withTime(time.time());
                     case Stub.TimeDelta timeDelta -> withTime(time().plus(timeDelta.duration()));
                     case Stub.Event event -> {
+                        Instant eventTime = event.time() != null ? event.time() : time();
                         var rawEvent = new Event(
                                 CommandHandlingTestFixture.class.getSimpleName(),
                                 event.subject() != null
@@ -409,10 +410,11 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 event.id() != null
                                         ? event.id()
                                         : UUID.randomUUID().toString(),
-                                event.time() != null ? event.time() : time(),
+                                eventTime,
                                 "application/test",
                                 UUID.randomUUID().toString(),
-                                UUID.randomUUID().toString());
+                                UUID.randomUUID().toString(),
+                                eventTime.toString());
                         AtomicReference<Object> reference = new AtomicReference<>(state());
                         if (!Util.applyUsingHandlers(
                                 stateRebuildingHandlerDefinitions.stream()
