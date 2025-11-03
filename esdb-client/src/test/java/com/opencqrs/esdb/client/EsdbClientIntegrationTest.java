@@ -810,6 +810,34 @@ public class EsdbClientIntegrationTest {
         }
     }
 
+    @Nested
+    @DisplayName("/api/v1/register-event-schema")
+    public class RegisterEventSchema {
+
+        @Test
+        public void registerSchemaSuccessfully() throws Exception {
+            String eventType = "com.opencqrs.test-event.v" + UUID.randomUUID();
+            var schema =
+                    objectMapper.readTree("{\"type\": \"object\", \"properties\": {\"name\": {\"type\": \"string\"}}}");
+
+            assertThatCode(() -> client.registerEventSchema(eventType, schema)).doesNotThrowAnyException();
+        }
+
+        @Test
+        public void registeringSameSchemaAgainThrows409() throws Exception {
+            String eventType = "com.opencqrs.duplicate-test-event.v" + UUID.randomUUID();
+            var schema =
+                    objectMapper.readTree("{\"type\": \"object\", \"properties\": {\"id\": {\"type\": \"number\"}}}");
+
+            client.registerEventSchema(eventType, schema);
+
+            assertThatThrownBy(() -> client.registerEventSchema(eventType, schema))
+                    .isInstanceOfSatisfying(ClientException.HttpException.HttpClientException.class, e -> {
+                        assertThat(e.getStatusCode()).isEqualTo(409);
+                    });
+        }
+    }
+
     private String randomSubject() {
         return "/books/" + UUID.randomUUID();
     }
