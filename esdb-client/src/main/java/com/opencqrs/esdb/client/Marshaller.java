@@ -76,17 +76,37 @@ public interface Marshaller {
     ResponseElement fromReadOrObserveResponseLine(String line);
 
     /**
+     * Used by {@link EsdbClient#readEventTypes()} to transform the HTTP request to be sent to the event store.
+     *
+     * @return the JSON HTTP request body as string
+     */
+    String toReadEventTypesRequest();
+
+    /**
+     * Used by {@link EsdbClient#readEventTypes()} to transform an ND-JSON line from the HTTP response stream to a
+     * {@link ResponseElement}.
+     *
+     * @param line the ND-JSON element as string
+     * @return an unmarshalled {@link ResponseElement}
+     */
+    ResponseElement fromReadEventTypesResponseLine(String line);
+
+    /**
      * Sealed interface representing a deserialized ND-JSON response line transformed via
      * {@link #fromReadOrObserveResponseLine(String)}.
      *
      * @see Event
      */
-    sealed interface ResponseElement permits Marshaller.ResponseElement.Heartbeat, Event {
+    sealed interface ResponseElement
+            permits Marshaller.ResponseElement.Heartbeat, Event, Marshaller.ResponseElement.EventTypeElement {
 
         /**
          * Represents a heart beat returned from the event store to ensure the underlying HTTP connection is kept alive.
          */
         record Heartbeat() implements ResponseElement {}
+
+        /** Represents an event type returned from the event store when reading event types. */
+        record EventTypeElement(EventTypeMetadata metadata) implements ResponseElement {}
     }
 
     /**

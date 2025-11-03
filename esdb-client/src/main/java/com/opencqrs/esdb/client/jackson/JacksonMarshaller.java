@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.*;
 import com.opencqrs.esdb.client.eventql.EventQueryProcessingError;
@@ -141,6 +142,36 @@ public class JacksonMarshaller implements Marshaller {
                             event.payload.datacontenttype,
                             event.payload.hash,
                             event.payload.predecessorhash);
+                case JacksonResponseElement.EventType eventType ->
+                    throw new ClientException.MarshallingException(
+                            new IllegalArgumentException("Unexpected eventType in read/observe response"));
+            };
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public String toReadEventTypesRequest() {
+        try {
+            return objectMapper.writeValueAsString(Map.of());
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public ResponseElement fromReadEventTypesResponseLine(String line) {
+        try {
+            JacksonResponseElement jacksonResponseElement = objectMapper.readValue(line, JacksonResponseElement.class);
+            return switch (jacksonResponseElement) {
+                case JacksonResponseElement.Heartbeat heartbeat -> new ResponseElement.Heartbeat();
+                case JacksonResponseElement.EventType eventType ->
+                    new ResponseElement.EventTypeElement(new EventTypeMetadata(
+                            eventType.payload.eventType, eventType.payload.isPhantom, eventType.payload.schema));
+                case JacksonResponseElement.Event event ->
+                    throw new ClientException.MarshallingException(
+                            new IllegalArgumentException("Unexpected event in readEventTypes response"));
             };
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
@@ -221,6 +252,7 @@ public class JacksonMarshaller implements Marshaller {
     @JsonSubTypes({
         @JsonSubTypes.Type(value = JacksonResponseElement.Heartbeat.class, name = "heartbeat"),
         @JsonSubTypes.Type(value = JacksonResponseElement.Event.class, name = "event"),
+        @JsonSubTypes.Type(value = JacksonResponseElement.EventType.class, name = "eventType"),
     })
     sealed interface JacksonResponseElement {
         record Heartbeat() implements JacksonResponseElement {}
@@ -237,6 +269,10 @@ public class JacksonMarshaller implements Marshaller {
                     @NotBlank String datacontenttype,
                     @NotBlank String hash,
                     @NotBlank String predecessorhash) {}
+        }
+
+        record EventType(@NotNull Payload payload) implements JacksonResponseElement {
+            record Payload(@NotBlank String eventType, boolean isPhantom, JsonNode schema) {}
         }
     }
 

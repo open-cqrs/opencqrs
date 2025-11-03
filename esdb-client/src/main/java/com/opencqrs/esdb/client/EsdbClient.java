@@ -199,6 +199,42 @@ public final class EsdbClient implements AutoCloseable {
     }
 
     /**
+     * Reads all event types from the underlying event store. This includes both event types with written events and
+     * phantom event types that have only been registered via schema.
+     *
+     * @return a list of {@link EventTypeMetadata}, may be empty
+     * @throws ClientException.TransportException in case of connection or network errors
+     * @throws ClientException.HttpException in case of errors depending on the HTTP status code
+     * @throws ClientException.MarshallingException in case of serialization errors, typically caused by the associated
+     *     {@link Marshaller}
+     */
+    public List<EventTypeMetadata> readEventTypes() throws ClientException {
+        var eventTypes = new ArrayList<EventTypeMetadata>();
+
+        HttpRequest httpRequest = newJsonRequest("/api/v1/read-event-types")
+                .POST(HttpRequest.BodyPublishers.ofString(marshaller.toReadEventTypesRequest()))
+                .build();
+
+        httpRequestErrorHandler.handle(
+                httpRequest,
+                headers -> HttpResponse.BodySubscribers.fromLineSubscriber(
+                        new AbstractLineSubscriber() {
+                            @Override
+                            public void onNext(String item) {
+                                Marshaller.ResponseElement element = marshaller.fromReadEventTypesResponseLine(item);
+                                if (element instanceof Marshaller.ResponseElement.EventTypeElement eventTypeElement) {
+                                    eventTypes.add(eventTypeElement.metadata());
+                                }
+                            }
+                        },
+                        s -> null,
+                        Util.fromHttpHeaders(headers),
+                        null));
+
+        return eventTypes;
+    }
+
+    /**
      * Queries the underlying event store using <a
      * href="https://docs.eventsourcingdb.io/reference/eventql/">EventQL</a>.
      *
