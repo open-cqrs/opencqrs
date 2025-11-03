@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.*;
 import com.opencqrs.esdb.client.eventql.EventQueryProcessingError;
@@ -146,6 +147,31 @@ public class JacksonMarshaller implements Marshaller {
             throw new ClientException.MarshallingException(e);
         }
     }
+
+    @Override
+    public String toReadEventTypeRequest(String eventType) {
+        try {
+            return objectMapper.writeValueAsString(Map.of("eventType", eventType));
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public EventTypeMetadata fromReadEventTypeResponse(String response) {
+        try {
+            JacksonEventTypeMetadata jacksonEventTypeMetadata =
+                    objectMapper.readValue(response, JacksonEventTypeMetadata.class);
+            return new EventTypeMetadata(
+                    jacksonEventTypeMetadata.eventType,
+                    jacksonEventTypeMetadata.isPhantom,
+                    jacksonEventTypeMetadata.schema);
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    record JacksonEventTypeMetadata(@NotBlank String eventType, boolean isPhantom, JsonNode schema) {}
 
     private JacksonPrecondition toJackson(Precondition precondition) {
         return switch (precondition) {

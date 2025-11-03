@@ -76,6 +76,23 @@ public interface Marshaller {
     ResponseElement fromReadOrObserveResponseLine(String line);
 
     /**
+     * Used by {@link EsdbClient#readEventType(String)} to transform the HTTP request to be sent to the event store.
+     *
+     * @param eventType the event type to read
+     * @return the JSON HTTP request body as string
+     */
+    String toReadEventTypeRequest(String eventType);
+
+    /**
+     * Used by {@link EsdbClient#readEventType(String)} to transform the HTTP response body to a
+     * {@link EventTypeMetadata}.
+     *
+     * @param response the JSON HTTP response body as string
+     * @return the unmarshalled {@link EventTypeMetadata}
+     */
+    EventTypeMetadata fromReadEventTypeResponse(String response);
+
+    /**
      * Sealed interface representing a deserialized ND-JSON response line transformed via
      * {@link #fromReadOrObserveResponseLine(String)}.
      *

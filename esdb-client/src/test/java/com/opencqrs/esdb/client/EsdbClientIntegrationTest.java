@@ -810,6 +810,42 @@ public class EsdbClientIntegrationTest {
         }
     }
 
+    @Nested
+    @DisplayName("/api/v1/read-event-type")
+    public class ReadEventType {
+
+        @Test
+        public void readSingleEventType() {
+            // Arrange: Write an event to create the event type
+            String subject = randomSubject();
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            subject,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("Author", "Title"), Map.class))),
+                    List.of());
+
+            // Act: Read the specific event type
+            EventTypeMetadata eventTypeMetadata = client.readEventType("com.opencqrs.books-added.v1");
+
+            // Assert
+            assertThat(eventTypeMetadata.eventType()).isEqualTo("com.opencqrs.books-added.v1");
+            assertThat(eventTypeMetadata.isPhantom()).isFalse();
+            assertThat(eventTypeMetadata.schema()).isNull();
+        }
+
+        @Test
+        public void readNonExistentEventTypeThrows404() {
+            // Act & Assert: Reading non-existent event type should throw 404
+            assertThatThrownBy(() -> client.readEventType("com.opencqrs.non.existent"))
+                    .isInstanceOfSatisfying(ClientException.HttpException.HttpClientException.class, e -> {
+                        assertThat(e.getStatusCode()).isEqualTo(404);
+                    });
+        }
+    }
+
     private String randomSubject() {
         return "/books/" + UUID.randomUUID();
     }
