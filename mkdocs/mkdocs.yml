@@ -12,7 +12,7 @@ extra:
   custom:
     framework_name: OpenCQRS
     framework_version: 1.0.0
-    esdb_version: 1.1.0
+    esdb_version: 1.2.0
     spring_boot_version: 3.5.6
   homepage: https://www.opencqrs.com
   social:
