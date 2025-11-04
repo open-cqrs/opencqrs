@@ -887,7 +887,7 @@ public class EsdbClientIntegrationTest {
             List<String> subjects = client.readSubjects("/non-existent");
 
             // Assert: Should return empty list (or at least not fail)
-            assertThat(subjects).isNotNull();
+            assertThat(subjects).isNotNull().isEmpty();
         }
     }
 
