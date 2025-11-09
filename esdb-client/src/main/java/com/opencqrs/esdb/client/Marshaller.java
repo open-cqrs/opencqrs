@@ -86,12 +86,12 @@ public interface Marshaller {
 
     /**
      * Used by {@link EsdbClient#readSubjects(String)} to transform an ND-JSON line from the HTTP response stream to a
-     * {@link ResponseElement}.
+     * {@link String} subject.
      *
      * @param line the ND-JSON element as string
-     * @return an unmarshalled {@link ResponseElement}
+     * @return an event subject
      */
-    ResponseElement fromReadSubjectsResponseLine(String line);
+    String fromReadSubjectsResponseLine(String line);
 
     /**
      * Sealed interface representing a deserialized ND-JSON response line transformed via
