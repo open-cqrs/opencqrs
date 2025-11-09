@@ -222,10 +222,7 @@ public final class EsdbClient implements AutoCloseable {
                         new AbstractLineSubscriber() {
                             @Override
                             public void onNext(String item) {
-                                Marshaller.ResponseElement element = marshaller.fromReadSubjectsResponseLine(item);
-                                if (element instanceof Marshaller.ResponseElement.SubjectElement subjectElement) {
-                                    subjects.add(subjectElement.subject());
-                                }
+                                subjects.add(marshaller.fromReadSubjectsResponseLine(item));
                             }
                         },
                         s -> null,

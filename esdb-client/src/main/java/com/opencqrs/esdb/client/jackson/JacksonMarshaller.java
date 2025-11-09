@@ -159,17 +159,12 @@ public class JacksonMarshaller implements Marshaller {
     }
 
     @Override
-    public ResponseElement fromReadSubjectsResponseLine(String line) {
+    public String fromReadSubjectsResponseLine(String line) {
         try {
-            JacksonResponseElement jacksonResponseElement = objectMapper.readValue(line, JacksonResponseElement.class);
-            return switch (jacksonResponseElement) {
-                case JacksonResponseElement.Heartbeat heartbeat -> new ResponseElement.Heartbeat();
-                case JacksonResponseElement.Subject subject ->
-                    new ResponseElement.SubjectElement(subject.payload.subject);
-                case JacksonResponseElement.Event event ->
-                    throw new ClientException.MarshallingException(
-                            new IllegalArgumentException("Unexpected event in readSubjects response"));
-            };
+            return objectMapper
+                    .readValue(line, JacksonResponseElement.Subject.class)
+                    .payload
+                    .subject();
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
         }
