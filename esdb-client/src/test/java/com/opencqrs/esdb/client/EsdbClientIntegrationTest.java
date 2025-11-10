@@ -810,6 +810,87 @@ public class EsdbClientIntegrationTest {
         }
     }
 
+    @Nested
+    @DisplayName("/api/v1/read-subjects")
+    public class ReadSubjects {
+
+        @Test
+        public void readSubjectsForRoot() {
+            // Arrange: Write events for different subjects
+            String subject1 = randomSubject();
+            String subject2 = randomSubject();
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            subject1,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("Author 1", "Title 1"), Map.class))),
+                    List.of());
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            subject2,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("Author 2", "Title 2"), Map.class))),
+                    List.of());
+
+            // Act: Read all subjects from root
+            List<String> subjects = client.readSubjects("/");
+
+            // Assert: Should contain both subjects and root itself
+            assertThat(subjects).contains("/", subject1, subject2);
+        }
+
+        @Test
+        public void readSubjectsForSpecificSubject() {
+            // Arrange: Write events for hierarchical subjects
+            String baseSubject = randomSubject();
+            String childSubject1 = baseSubject + "/child1";
+            String childSubject2 = baseSubject + "/child2";
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            baseSubject,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("Author", "Base"), Map.class))),
+                    List.of());
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            childSubject1,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("Author", "Child 1"), Map.class))),
+                    List.of());
+
+            client.write(
+                    List.of(new EventCandidate(
+                            TEST_SOURCE,
+                            childSubject2,
+                            "com.opencqrs.books-added.v1",
+                            objectMapper.convertValue(new BookAddedEvent("Author", "Child 2"), Map.class))),
+                    List.of());
+
+            // Act: Read subjects for base subject
+            List<String> subjects = client.readSubjects(baseSubject);
+
+            // Assert: Should contain base subject and children
+            assertThat(subjects).containsExactlyInAnyOrder(baseSubject, childSubject1, childSubject2);
+        }
+
+        @Test
+        public void readSubjectsForNonExistentSubject() {
+            // Act: Read subjects for non-existent subject
+            List<String> subjects = client.readSubjects("/non-existent");
+
+            // Assert: Should return empty list (or at least not fail)
+            assertThat(subjects).isNotNull().isEmpty();
+        }
+    }
+
     private String randomSubject() {
         return "/books/" + UUID.randomUUID();
     }

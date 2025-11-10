@@ -76,17 +76,39 @@ public interface Marshaller {
     ResponseElement fromReadOrObserveResponseLine(String line);
 
     /**
+     * Used by {@link EsdbClient#readSubjects(String)} to transform the given base subject into a valid HTTP request
+     * body to be sent to the event store.
+     *
+     * @param baseSubject the base subject to include within the request body
+     * @return the JSON HTTP request body as string
+     */
+    String toReadSubjectsRequest(String baseSubject);
+
+    /**
+     * Used by {@link EsdbClient#readSubjects(String)} to transform an ND-JSON line from the HTTP response stream to a
+     * {@link String} subject.
+     *
+     * @param line the ND-JSON element as string
+     * @return an event subject
+     */
+    String fromReadSubjectsResponseLine(String line);
+
+    /**
      * Sealed interface representing a deserialized ND-JSON response line transformed via
      * {@link #fromReadOrObserveResponseLine(String)}.
      *
      * @see Event
      */
-    sealed interface ResponseElement permits Marshaller.ResponseElement.Heartbeat, Event {
+    sealed interface ResponseElement
+            permits Marshaller.ResponseElement.Heartbeat, Event, Marshaller.ResponseElement.SubjectElement {
 
         /**
          * Represents a heart beat returned from the event store to ensure the underlying HTTP connection is kept alive.
          */
         record Heartbeat() implements ResponseElement {}
+
+        /** Represents a subject returned from the event store when reading subjects. */
+        record SubjectElement(String subject) implements ResponseElement {}
     }
 
     /**

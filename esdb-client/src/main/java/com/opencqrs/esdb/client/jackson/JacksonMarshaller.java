@@ -141,7 +141,30 @@ public class JacksonMarshaller implements Marshaller {
                             event.payload.datacontenttype,
                             event.payload.hash,
                             event.payload.predecessorhash);
+                case JacksonResponseElement.Subject subject ->
+                    new ResponseElement.SubjectElement(subject.payload.subject);
             };
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public String toReadSubjectsRequest(String baseSubject) {
+        try {
+            return objectMapper.writeValueAsString(Map.of("baseSubject", baseSubject));
+        } catch (JsonProcessingException e) {
+            throw new ClientException.MarshallingException(e);
+        }
+    }
+
+    @Override
+    public String fromReadSubjectsResponseLine(String line) {
+        try {
+            return objectMapper
+                    .readValue(line, JacksonResponseElement.Subject.class)
+                    .payload
+                    .subject();
         } catch (JsonProcessingException e) {
             throw new ClientException.MarshallingException(e);
         }
@@ -221,6 +244,7 @@ public class JacksonMarshaller implements Marshaller {
     @JsonSubTypes({
         @JsonSubTypes.Type(value = JacksonResponseElement.Heartbeat.class, name = "heartbeat"),
         @JsonSubTypes.Type(value = JacksonResponseElement.Event.class, name = "event"),
+        @JsonSubTypes.Type(value = JacksonResponseElement.Subject.class, name = "subject"),
     })
     sealed interface JacksonResponseElement {
         record Heartbeat() implements JacksonResponseElement {}
@@ -237,6 +261,10 @@ public class JacksonMarshaller implements Marshaller {
                     @NotBlank String datacontenttype,
                     @NotBlank String hash,
                     @NotBlank String predecessorhash) {}
+        }
+
+        record Subject(@NotNull Payload payload) implements JacksonResponseElement {
+            record Payload(@NotBlank String subject) {}
         }
     }
 
