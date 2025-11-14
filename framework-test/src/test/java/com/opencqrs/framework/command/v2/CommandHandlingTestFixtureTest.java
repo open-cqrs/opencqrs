@@ -1,19 +1,10 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
-package com.opencqrs.framework.command;
-
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
+package com.opencqrs.framework.command.v2;
 
 import com.opencqrs.esdb.client.Event;
+import com.opencqrs.framework.command.*;
+import com.opencqrs.framework.command.CommandHandlingTestFixture;
 import com.opencqrs.framework.persistence.CapturedEvent;
-import java.io.Serializable;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,6 +12,18 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.io.Serializable;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 public class CommandHandlingTestFixtureTest {
 
@@ -38,7 +41,7 @@ public class CommandHandlingTestFixtureTest {
                         AnotherState.class, EventA.class, (StateRebuildingHandler.FromObject)
                                 (i, e) -> new AnotherState())
             };
-            CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(eshds)
+            com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(eshds)
                     .using(new CommandHandlerDefinition(
                             AnotherState.class,
                             DummyCommand.class,
@@ -62,7 +65,7 @@ public class CommandHandlingTestFixtureTest {
                         AnotherState.class, EventA.class, (StateRebuildingHandler.FromObject)
                                 (i, e) -> new AnotherState())
             };
-            CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(eshds)
+            com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(eshds)
                     .using(new CommandHandlerDefinition(
                             AnotherState.class,
                             DummyCommand.class,
@@ -81,8 +84,8 @@ public class CommandHandlingTestFixtureTest {
     @Nested
     public class Given {
 
-        CommandHandlingTestFixture.Builder<State> subject =
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions();
+        com.opencqrs.framework.command.CommandHandlingTestFixture.Builder<State> subject =
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions();
 
         @Nested
         @DisplayName("givenNothing")
@@ -93,7 +96,7 @@ public class CommandHandlingTestFixtureTest {
                 StateRebuildingHandler.FromObjectAndRawEvent<State, Object> stateRebuildingHandler = mock();
                 AtomicReference<State> slot = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 State.class, Object.class, stateRebuildingHandler))
                         .using(State.class, (CommandHandler.ForInstanceAndCommand<State, DummyCommand, Void>)
                                 (i, c, p) -> {
@@ -117,7 +120,7 @@ public class CommandHandlingTestFixtureTest {
             public void defaultTimeInitialized() {
                 AtomicReference<Instant> slot = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 State.class, Object.class, (StateRebuildingHandler.FromObjectAndRawEvent<State, Object>)
                                         (state, event, raw) -> {
                                             slot.set(raw.time());
@@ -137,7 +140,7 @@ public class CommandHandlingTestFixtureTest {
                 Instant expected = Instant.now().plusSeconds(42);
                 AtomicReference<Instant> slot = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 State.class, Object.class, (StateRebuildingHandler.FromObjectAndRawEvent<State, Object>)
                                         (state, event, raw) -> {
                                             slot.set(raw.time());
@@ -157,7 +160,7 @@ public class CommandHandlingTestFixtureTest {
                 Instant expected = Instant.now().plusSeconds(42);
                 AtomicReference<Instant> slot = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 State.class, Object.class, (StateRebuildingHandler.FromObjectAndRawEvent<State, Object>)
                                         (state, event, raw) -> {
                                             slot.set(raw.time());
@@ -184,7 +187,7 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<Instant> slot1 = new AtomicReference<>();
                 AtomicReference<Instant> slot2 = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
                                         State.class, EventA.class, (StateRebuildingHandler.FromObjectAndRawEvent<
                                                         State, EventA>)
@@ -243,7 +246,7 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<String> subjectA = new AtomicReference<>();
                 AtomicReference<String> subjectB = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
                                         State.class,
                                         EventA.class,
@@ -280,7 +283,7 @@ public class CommandHandlingTestFixtureTest {
             public void subjectNotAppliedToGivenEventsIfExplicitlySpecified() {
                 AtomicReference<String> subject = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 State.class,
                                 EventA.class,
                                 (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<State, EventA>)
@@ -302,8 +305,8 @@ public class CommandHandlingTestFixtureTest {
             public void subjectNotAppliedToEventsPublishedByGivenCommand() {
                 AtomicReference<String> subject = new AtomicReference<>();
 
-                CommandHandlingTestFixture.Builder<State> fixtureBuilder =
-                        CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.Builder<State> fixtureBuilder =
+                        com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
                                         State.class,
                                         EventA.class,
@@ -314,7 +317,7 @@ public class CommandHandlingTestFixtureTest {
                                                     return new State(true);
                                                 }));
 
-                CommandHandlingTestFixture<State, DummyCommand, Void> givenCommandFixture = fixtureBuilder.using(
+                com.opencqrs.framework.command.CommandHandlingTestFixture<DummyCommand> givenCommandFixture = fixtureBuilder.using(
                         State.class, (CommandHandler.ForInstanceAndCommand<State, DummyCommand, Void>) (i, c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -335,7 +338,7 @@ public class CommandHandlingTestFixtureTest {
             public void commandSubjectAppliedToEvent() {
                 AtomicReference<String> subject = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
                                         State.class,
                                         EventA.class,
@@ -380,7 +383,7 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<Event> raw = new AtomicReference<>();
                 AtomicReference<State> state = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 State.class,
                                 EventA.class,
                                 (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<State, EventA>)
@@ -425,7 +428,7 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<Event> raw = new AtomicReference<>();
                 AtomicReference<State> state = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 State.class,
                                 EventA.class,
                                 (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<State, EventA>)
@@ -497,7 +500,7 @@ public class CommandHandlingTestFixtureTest {
                 StateRebuildingHandler.FromObjectAndRawEvent<State, Object> stateRebuildingHandler = mock();
                 AtomicReference<State> slot = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 State.class, Object.class, stateRebuildingHandler))
                         .using(State.class, (CommandHandler.ForInstanceAndCommand<State, DummyCommand, Void>)
                                 (i, c, p) -> {
@@ -522,7 +525,7 @@ public class CommandHandlingTestFixtureTest {
 
                 DummyCommand command = new DummyCommand();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 State.class,
                                 EventA.class,
                                 (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<State, EventA>)
@@ -563,7 +566,7 @@ public class CommandHandlingTestFixtureTest {
 
                 DummyCommand command = new DummyCommand();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
                                         State.class,
                                         EventA.class,
@@ -616,7 +619,7 @@ public class CommandHandlingTestFixtureTest {
 
                 DummyCommand command = new DummyCommand();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
                                         State.class,
                                         EventA.class,
@@ -681,7 +684,7 @@ public class CommandHandlingTestFixtureTest {
             public void givenCommandCapturedEventsApplied() {
                 Instant instant = Instant.now().minusSeconds(42);
 
-                var builder = CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                var builder = com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                         new StateRebuildingHandlerDefinition<>(
                                 State.class,
                                 EventA.class,
@@ -749,8 +752,8 @@ public class CommandHandlingTestFixtureTest {
     @Nested
     public class Expect {
 
-        CommandHandlingTestFixture.Builder<State> subject =
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+        com.opencqrs.framework.command.CommandHandlingTestFixture.Builder<State> subject =
+                com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                         eshIdentity(EventA.class), eshIdentity(EventB.class), eshIdentity(EventC.class));
 
         @Nested
@@ -886,7 +889,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionPristineViolated_byCommand_successfully(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                com.opencqrs.framework.command.CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -906,7 +909,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionPristineViolated_byStubbing_successfully(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                com.opencqrs.framework.command.CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -927,7 +930,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionPristineNotViolated_failing(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                com.opencqrs.framework.command.CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -947,7 +950,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionExistsViolated_successfully(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                com.opencqrs.framework.command.CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -966,7 +969,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionExistsNotViolated_byCommand_failing(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                com.opencqrs.framework.command.CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -987,7 +990,7 @@ public class CommandHandlingTestFixtureTest {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             public void commandSubjectionConditionExistsNotViolated_byStubbing_failing(boolean specified) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                com.opencqrs.framework.command.CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -1008,7 +1011,7 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void commandSubjectConditionNone_mustNotBeSpecified() {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                com.opencqrs.framework.command.CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -1023,7 +1026,7 @@ public class CommandHandlingTestFixtureTest {
             @EnumSource(value = Command.SubjectCondition.class, mode = EnumSource.Mode.EXCLUDE, names = "NONE")
             @NullSource
             public void commandSubjectConditionMustNotBeUsedWithStateStubbing(Command.SubjectCondition condition) {
-                CommandHandlingTestFixture<State, DummyCommand, Long> fixture =
+                com.opencqrs.framework.command.CommandHandlingTestFixture<DummyCommand> fixture =
                         subject.using(State.class, (CommandHandler.ForCommand<State, DummyCommand, Long>) (c, p) -> {
                             p.publish(new EventA("test"));
                             return null;
@@ -1100,8 +1103,8 @@ public class CommandHandlingTestFixtureTest {
         @DisplayName("expectState")
         public class ExpectState {
 
-            CommandHandlingTestFixture.Builder<State> subject =
-                    CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+            com.opencqrs.framework.command.CommandHandlingTestFixture.Builder<State> subject =
+                    com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                             new StateRebuildingHandlerDefinition<>(
                                     State.class, EventA.class, (StateRebuildingHandler.FromObject<State, EventA>)
                                             (instance, event) -> new State(false)),
@@ -1163,8 +1166,8 @@ public class CommandHandlingTestFixtureTest {
         @DisplayName("expectStateExtracting")
         public class ExpectStateExtracting {
 
-            CommandHandlingTestFixture.Builder<State> subject =
-                    CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+            com.opencqrs.framework.command.CommandHandlingTestFixture.Builder<State> subject =
+                    com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                             new StateRebuildingHandlerDefinition<>(
                                     State.class, EventA.class, (StateRebuildingHandler.FromObject<State, EventA>)
                                             (instance, event) -> new State(false)),
@@ -1233,8 +1236,8 @@ public class CommandHandlingTestFixtureTest {
         @DisplayName("expectStateSatisfying")
         public class ExpectStateSatisfying {
 
-            CommandHandlingTestFixture.Builder<State> subject =
-                    CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+            com.opencqrs.framework.command.CommandHandlingTestFixture.Builder<State> subject =
+                    com.opencqrs.framework.command.CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                             new StateRebuildingHandlerDefinition<>(
                                     State.class, EventA.class, (StateRebuildingHandler.FromObject<State, EventA>)
                                             (instance, event) -> new State(false)),
@@ -2822,8 +2825,8 @@ public class CommandHandlingTestFixtureTest {
         private final CapturedEvent captured =
                 new CapturedEvent(command.getSubject(), new EventA("test"), Map.of("key1", true), List.of());
 
-        private final CommandHandlingTestFixture.EventAsserter subject =
-                new CommandHandlingTestFixture.EventAsserter(command, captured);
+        private final com.opencqrs.framework.command.CommandHandlingTestFixture.EventAsserter subject =
+                new com.opencqrs.framework.command.CommandHandlingTestFixture.EventAsserter(command, captured);
 
         @Nested
         @DisplayName("payloadType")
@@ -2887,7 +2890,7 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nullProperty_notFailing() {
-                var subject = new CommandHandlingTestFixture.EventAsserter(
+                var subject = new com.opencqrs.framework.command.CommandHandlingTestFixture.EventAsserter(
                         command, new CapturedEvent(command.getSubject(), new EventA(null), Map.of(), List.of()));
 
                 assertThatCode(() -> subject.payloadExtracting(EventA::name, null))
@@ -2974,7 +2977,7 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void empty_notFailing() {
-                var subject = new CommandHandlingTestFixture.EventAsserter(
+                var subject = new com.opencqrs.framework.command.CommandHandlingTestFixture.EventAsserter(
                         command,
                         new CapturedEvent(command.getSubject(), new EventA("irrelevant"), Map.of(), List.of()));
 

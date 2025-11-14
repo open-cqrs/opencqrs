@@ -1,13 +1,23 @@
-package com.opencqrs.framework.command;
+package com.opencqrs.framework.command.v2;
+
+import com.opencqrs.framework.command.*;
 
 import java.time.Instant;
+import java.util.Map;
 
 public class Main {
 
+    record EventA(String id) {}
+
     @SuppressWarnings("unchecked")
     public static void main(String[] args) {
+        StateRebuildingHandlerDefinition<Object, EventA> srhd = new StateRebuildingHandlerDefinition<>(
+                Object.class, EventA.class,
+                (StateRebuildingHandler.FromObject<Object, EventA>) (state, event) -> state != null ? state : new Object()
+        );
+
         CommandHandlingTestFixture<Object, Command, String> fixture = CommandHandlingTestFixture
-                .withStateRebuildingHandlerDefinitions()
+                .withStateRebuildingHandlerDefinitions(srhd)
                 .using(Object.class, new CommandHandler.ForInstanceAndCommand<Object, Command, String>() {
                     @Override
                     public String handle(Object state, Command command, CommandEventPublisher<Object> publisher) {
@@ -16,7 +26,7 @@ public class Main {
                 });
 
         CommandHandlingTestFixture<Object, Command, String> anotherFixture = CommandHandlingTestFixture
-                .withStateRebuildingHandlerDefinitions()
+                .withStateRebuildingHandlerDefinitions(srhd)
                 .using(Object.class, new CommandHandler.ForInstanceAndCommand<Object, Command, String>() {
                     @Override
                     public String handle(Object state, Command command, CommandEventPublisher<Object> publisher) {
@@ -50,6 +60,13 @@ public class Main {
 
         fixture
                 .given()
+                // Example: provide an initial event via Given().event(...) using a framework test event type
+                .usingSubject("/examples/subject")
+                .event(e -> e
+                        .payload(new EventA("4711"))
+                        .time(Instant.now())
+                        .metaData(Map.of("source", "given")))
+                .usingCommandSubject()
                 .command(anotherFixture, anotherCommand)
                 .time(Instant.now())
                 .when(testCommand)
@@ -62,23 +79,29 @@ public class Main {
                 .stateExtracting(Object::toString, "expectedString") // state gerade ziehen nach Vorlage der Validatoren
                 .and()
                 .allEvents()
-                .single(e -> e // VarArgs aus single nehmen und schauen wo VarArgs Sinn ergeben
+                .single(e -> e
                                 .comparing("UserRegistered")
                                 .ofType(String.class)
                                 .satisfying(event -> {
                                     assert event != null;
                                     assert event.toString().contains("user");
                                 })
-                                .asserting(assertion -> assertion.payloadType(String.class)),
-                        e -> e
+                                .asserting(assertion -> assertion.payloadType(String.class)))
+                .single(e -> {
+                    e.ofType(String.class);
+                    e.comparing("UserRegistered");
+                    e.asserting(a -> a.noMetaData());
+                    e.asserting(a -> a.subject("/users/123"));
+                })
+                .single(e -> e
                                 .comparing("EmailSent")
                                 .ofType(String.class)
                                 .satisfying(event -> {
                                     assert event != null;
                                     assert event.toString().contains("email");
                                 })
-                                .asserting(assertion -> assertion.payload("EmailSent")),
-                        e -> e
+                                .asserting(assertion -> assertion.payload("EmailSent")))
+                .single(e -> e
                                 .comparing("AuditLogCreated")
                                 .ofType(String.class)
                                 .satisfying(event -> {
@@ -87,25 +110,23 @@ public class Main {
                                 })
                                 .asserting(assertion -> assertion.payloadSatisfying(payload -> {
                                     assert payload.toString().startsWith("Audit");
-                                }))
-                )
+                                })))
                 .exactly(e -> e
                         .comparing("UserRegistered")
                 )
                 .and()
                 .nextEvents()
-                .single(e -> e // Jedes e mit all seinen Validatoren darf einmal vorkommen
+                .single(e -> e
                                 .comparing("Event1")
                                 .ofType(String.class)
                                 .satisfying(event -> {
                                     assert event != null;
                                     assert event.toString().contains("user");
                                 })
-                                .asserting(assertion -> assertion.payloadType(String.class)),
-                        e -> e
+                                .asserting(assertion -> assertion.payloadType(String.class)))
+                .single(e -> e
                                 .ofType(String.class)
-                                .comparing("Event2")
-                )
+                                .comparing("Event2"))
                 .exactly(e -> e // Erwartet exakte Reihenfolge dieser Events // Betrachtet so viele Events wie übergeben
                         .ofType(String.class)
                 )

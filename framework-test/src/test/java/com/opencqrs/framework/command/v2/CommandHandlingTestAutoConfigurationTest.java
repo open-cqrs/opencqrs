@@ -1,0 +1,87 @@
+/* Copyright (C) 2025 OpenCQRS and contributors */
+package com.opencqrs.framework.command.v2;
+
+import com.opencqrs.framework.command.CommandHandlingAnnotationProcessingAutoConfiguration;
+import com.opencqrs.framework.command.CommandHandlingTestAutoConfiguration;
+import com.opencqrs.framework.command.CommandHandlingTestFixture;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.UnsatisfiedDependencyException;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.ResolvableType;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+public class CommandHandlingTestAutoConfigurationTest {
+
+    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(
+                    CommandHandlingTestAutoConfiguration.class,
+                    CommandHandlingAnnotationProcessingAutoConfiguration.class))
+            .withUserConfiguration(CommandHandlingConfiguration.class);
+
+    @Test
+    public void initialized_CommandHandlingTestFixture_Builder() {
+        contextRunner.run(context -> {
+            assertThat(context).hasSingleBean(com.opencqrs.framework.command.CommandHandlingTestFixture.Builder.class);
+            assertThat(context)
+                    .getBean(com.opencqrs.framework.command.CommandHandlingTestFixture.Builder.class)
+                    .satisfies(builder -> {
+                        assertThat(builder.stateRebuildingHandlerDefinitions)
+                                .singleElement()
+                                .isSameAs(context.getBean("myStateRebuildingHandlerDefinition"));
+                    });
+        });
+    }
+
+    @Test
+    public void initialized_CommandHandlingTestFixture_beanMethodNoDependency() {
+        contextRunner.run(context -> {
+            assertThat(context.getBeanNamesForType(
+                            ResolvableType.forClassWithGenerics(com.opencqrs.framework.command.CommandHandlingTestFixture.class, MyCommand1.class)))
+                    .singleElement()
+                    .satisfies(beanName -> {
+                        assertThat(context).getBean(beanName).isInstanceOf(com.opencqrs.framework.command.CommandHandlingTestFixture.class);
+                    });
+        });
+    }
+
+    @Test
+    public void lazyInitialized_CommandHandlingTestFixture_beanMethodWithUnresolvableDependency() {
+        contextRunner.run(context -> {
+            assertThat(context.getBeanNamesForType(
+                            ResolvableType.forClassWithGenerics(com.opencqrs.framework.command.CommandHandlingTestFixture.class, MyCommand2.class)))
+                    .singleElement()
+                    .satisfies(beanName -> {
+                        assertThatThrownBy(() -> context.getBean(beanName))
+                                .hasCauseInstanceOf(UnsatisfiedDependencyException.class)
+                                .hasMessageContaining("chdUnresolvableDependency");
+                    });
+        });
+    }
+
+    @Test
+    public void initialized_CommandHandlingTestFixture_for_CommandHandlingAnnotation() {
+        contextRunner.run(context -> {
+            assertThat(context.getBeanNamesForType(
+                            ResolvableType.forClassWithGenerics(com.opencqrs.framework.command.CommandHandlingTestFixture.class, MyCommand3.class)))
+                    .singleElement()
+                    .satisfies(beanName -> {
+                        assertThat(context).getBean(beanName).isInstanceOf(com.opencqrs.framework.command.CommandHandlingTestFixture.class);
+                    });
+        });
+    }
+
+    @Test
+    public void initialized_CommandHandlingTestFixture_programmaticBeanRegistration() {
+        contextRunner.run(context -> {
+            assertThat(context.getBeanNamesForType(
+                            ResolvableType.forClassWithGenerics(com.opencqrs.framework.command.CommandHandlingTestFixture.class, MyCommand4.class)))
+                    .singleElement()
+                    .satisfies(beanName -> {
+                        assertThat(context).getBean(beanName).isInstanceOf(CommandHandlingTestFixture.class);
+                    });
+        });
+    }
+}

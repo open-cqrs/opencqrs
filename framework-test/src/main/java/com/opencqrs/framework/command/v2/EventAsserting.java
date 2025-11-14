@@ -1,4 +1,4 @@
-package com.opencqrs.framework.command;
+package com.opencqrs.framework.command.v2;
 
 import java.util.Map;
 import java.util.function.Consumer;
