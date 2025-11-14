@@ -1,4 +1,7 @@
-package com.opencqrs.framework.command;
+package com.opencqrs.framework.command.v2;
+
+import com.opencqrs.framework.command.Command;
+import com.opencqrs.framework.command.CommandHandlingTestFixture;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -21,7 +24,7 @@ public interface GivenDsl {
         Given<I, R> usingCommandSubject();
         
         ExpectDsl.Initializing<I, R> when(Object command);
-        ExpectDsl.Initializing<I, R> when(Object command, java.util.Map<String, ?> metaData);
+        ExpectDsl.Initializing<I, R> when(Object command, Map<String, ?> metaData);
     }
     
     interface EventSpecifier<I, R> {

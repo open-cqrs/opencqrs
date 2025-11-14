@@ -1,4 +1,6 @@
-package com.opencqrs.framework.command;
+package com.opencqrs.framework.command.v2;
+
+import com.opencqrs.framework.command.Command;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -45,7 +47,7 @@ public interface ExpectDsl<I, R> {
     interface All<I, R> {
 
         All<I, R> count(int count);
-        All<I, R> single(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers);
+        All<I, R> single(Consumer<EventValidator<I, R>> consumer);
         All<I, R> any(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers);
         All<I, R> exactly(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers); // Ist exactly() auf All terminating für All? Danach kann ja nichts mehr kommen und es müsste alles abgefragt sein. Es sei denn, man will danach noch mit z.B. single() auf eine Sache validieren?
         All<I, R> all(Consumer<EventValidator<I, R>> consumer);
@@ -65,7 +67,7 @@ public interface ExpectDsl<I, R> {
          * ein Event des Typs erwarte. Das selbe gilt für none(). Das hat aber den Nachteil, dass danach alle Events
          * konsumiert wären.
          */
-        Next<I, R> single(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers); // konsumiert zwar events, setzt den iterator dann aber wieder an den Ausgang zurück
+        Next<I, R> single(Consumer<EventValidator<I, R>> consumer); // konsumiert zwar events, setzt den iterator dann aber wieder an den Ausgang zurück
         Next<I, R> any(Consumer<EventValidator<I, R>>  consumer, Consumer<EventValidator<I, R>>... consumers); // Prüft Anzahl der übergebenen Events in beliebiger Reihenfolge
         Next<I, R> exactly(Consumer<EventValidator<I, R>>  consumer, Consumer<EventValidator<I, R>>... consumers); // Püft Anzahl der übergebenen Events in exakter Reihenfolge
         Next<I, R> none(Consumer<EventValidator<I, R>> consumer, Consumer<EventValidator<I, R>>... consumers);
