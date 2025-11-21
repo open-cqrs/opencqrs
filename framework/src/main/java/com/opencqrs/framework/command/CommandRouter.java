@@ -3,9 +3,10 @@ package com.opencqrs.framework.command;
 
 import static java.util.stream.Collectors.*;
 
-import com.opencqrs.esdb.client.Event;
-import com.opencqrs.esdb.client.Option;
-import com.opencqrs.esdb.client.Precondition;
+import com.opencqrs.esdb.client.*;
+import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
+import com.opencqrs.esdb.client.eventql.EventQueryProcessingError;
+import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
 import com.opencqrs.framework.CqrsFrameworkException;
 import com.opencqrs.framework.command.cache.NoStateRebuildingCache;
 import com.opencqrs.framework.command.cache.StateRebuildingCache;
@@ -17,6 +18,7 @@ import com.opencqrs.framework.persistence.ImmediateEventPublisher;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -114,7 +116,6 @@ public final class CommandRouter {
      *       {@linkplain StateRebuildingCache#fetchAndMerge(StateRebuildingCache.CacheKey, Function) fetched}
      *   <li>newer (than cached) events are {@linkplain EventReader#consumeAsObject(EventReader.ClientRequestor,
      *       BiConsumer)} read} from the underlying event store, upcasted and converted to Java objects
-     *   <li>the {@link Command#getSubjectCondition()} is checked
      *   <li>the events are applied to all matching {@link StateRebuildingHandler}s to reconstruct the instance state
      *   <li>the {@linkplain StateRebuildingCache cache is updated} with the reconstructed instance state
      *   <li>the command is {@linkplain CommandHandler executed} on the instance
@@ -146,7 +147,6 @@ public final class CommandRouter {
      *       {@linkplain StateRebuildingCache#fetchAndMerge(StateRebuildingCache.CacheKey, Function) fetched}
      *   <li>newer (than cached) events are {@linkplain EventReader#consumeAsObject(EventReader.ClientRequestor,
      *       BiConsumer)} read} from the underlying event store, upcasted and converted to Java objects
-     *   <li>the {@link Command#getSubjectCondition()} is checked
      *   <li>the events are applied to all matching {@link StateRebuildingHandler}s to reconstruct the instance state
      *   <li>the {@linkplain StateRebuildingCache cache is updated} with the reconstructed instance state
      *   <li>the command is {@linkplain CommandHandler executed} on the instance
@@ -174,115 +174,150 @@ public final class CommandRouter {
         Optional<List<StateRebuildingHandlerDefinition<Object, Object>>> relevantSRHDs =
                 Optional.ofNullable(stateRebuildingHandlerDefinitions.get(commandHandlerDefinition.instanceClass()));
 
-        var fromCacheMerged = stateRebuildingCache.fetchAndMerge(
-                new StateRebuildingCache.CacheKey<>(
-                        command.getSubject(),
-                        commandHandlerDefinition.instanceClass(),
-                        commandHandlerDefinition.sourcingMode()),
-                cached -> {
-                    Set<Option> options = new HashSet<>();
-                    if (cached.eventId() != null) {
-                        options.add(new Option.LowerBoundExclusive(cached.eventId()));
+        switch (commandHandlerDefinition.commandHandlingMode()) {
+            case CommandHandling.UsingQuery commandHandlingMode -> {
+                List<SourcedEvent> sourcedEvents = new ArrayList<>();
+                AtomicReference<String> latestSourcedId = new AtomicReference<>(null);
+
+                EventQueryErrorHandler eqeh = new EventQueryErrorHandler() {
+                    @Override
+                    public void queryProcessingError(EventQueryProcessingError error) {
+                        throw new CqrsFrameworkException.NonTransientException("query result row of type error");
                     }
 
-                    EventReader.ClientRequestor clientRequestor =
-                            switch (commandHandlerDefinition.sourcingMode()) {
-                                case NONE -> (client, eventConsumer) -> {};
-                                case LOCAL ->
-                                    (client, eventConsumer) ->
-                                            client.read(command.getSubject(), options, eventConsumer);
-                                case RECURSIVE ->
-                                    (client, eventConsumer) -> {
-                                        options.add(new Option.Recursive());
-                                        client.read(command.getSubject(), options, eventConsumer);
-                                    };
-                            };
-
-                    AtomicReference<String> latestSourcedId = new AtomicReference<>(cached.eventId());
-                    Map<String, String> sourcedSubjectIds = new HashMap<>(cached.sourcedSubjectIds());
-                    List<SourcedEvent> sourcedEvents = new ArrayList<>();
-
-                    eventReader.consumeRaw(clientRequestor, (rawCallback, raw) -> {
-                        latestSourcedId.set(raw.id());
-                        sourcedSubjectIds.put(raw.subject(), raw.id());
-                        rawCallback.upcast((upcastedCallback, upcasted) -> upcastedCallback.convert(
-                                (metadata, o) -> sourcedEvents.add(new SourcedEvent(o, metadata, raw))));
-                    });
-
-                    switch (command.getSubjectCondition()) {
-                        case NONE -> {}
-                        case EXISTS -> {
-                            if (!sourcedSubjectIds.containsKey(command.getSubject())) {
-                                throw new CommandSubjectDoesNotExistException(
-                                        "subject condition violated, no event was sourced matching the subject of the given command: "
-                                                + command.getClass().getName(),
-                                        command);
-                            }
-                        }
-                        case PRISTINE -> {
-                            if (sourcedSubjectIds.containsKey(command.getSubject())) {
-                                throw new CommandSubjectAlreadyExistsException(
-                                        "subject condition violated, at least one event was sourced matching the subject of given command: "
-                                                + command.getClass().getName(),
-                                        command);
-                            }
-                        }
+                    @Override
+                    public void marshallingError(ClientException.MarshallingException exception, String row) {
+                        throw new CqrsFrameworkException.NonTransientException("failed to convert row into Event", exception);
                     }
-
-                    final AtomicReference<Object> instance = new AtomicReference<>(cached.instance());
-                    sourcedEvents.forEach(sourced -> relevantSRHDs.ifPresent(srhds -> Util.applyUsingHandlers(
-                            srhds, instance, sourced.raw.subject(), sourced.event, sourced.metaData, sourced.raw)));
-
-                    return new StateRebuildingCache.CacheValue<>(
-                            latestSourcedId.get(), instance.get(), sourcedSubjectIds);
-                });
-
-        var eventCapturer = new CommandEventCapturer<>(
-                fromCacheMerged.instance(), command.getSubject(), relevantSRHDs.orElseGet(List::of));
-
-        R result =
-                switch (commandHandlerDefinition.handler()) {
-                    case CommandHandler.ForCommand<Object, Command, R> handler ->
-                        handler.handle(command, eventCapturer);
-                    case CommandHandler.ForInstanceAndCommand<Object, Command, R> handler ->
-                        handler.handle(fromCacheMerged.instance(), command, eventCapturer);
-                    case CommandHandler.ForInstanceAndCommandAndMetaData<Object, Command, R> handler ->
-                        handler.handle(fromCacheMerged.instance(), command, metaData, eventCapturer);
                 };
 
-        if (!eventCapturer.getEvents().isEmpty()) {
-            Map<String, ?> propagationMetaData = new HashMap<>(metaData);
-            propagationMetaData.keySet().retainAll(propagationKeys);
+                EventReader.ClientRequestor clientRequestor = (client, eventConsumer) ->
+                        client.query(
+                                commandHandlingMode.query(command),
+                                (EventQueryRowHandler.AsEvent ) eventConsumer::accept,
+                                eqeh
+                        );
 
-            var events = eventCapturer.getEvents().stream()
-                    .map(it -> new CapturedEvent(
-                            it.subject(),
-                            it.event(),
-                            PropagationUtil.propagateMetaData(it.metaData(), propagationMetaData, propagationMode),
-                            it.preconditions()))
-                    .toList();
+                eventReader.consumeRaw(clientRequestor, (rawCallback, raw) -> {
+                    latestSourcedId.set(raw.id());
+                    rawCallback.upcast((upcastedCallback, upcasted) -> upcastedCallback.convert(
+                            (metadata, o) -> sourcedEvents.add(new SourcedEvent(o, metadata, raw))));
+                });
 
-            List<Precondition> additionalPreconditions = events.stream()
-                    .map(CapturedEvent::subject)
-                    .filter(subject -> subject.startsWith(command.getSubject()))
-                    .filter(subject -> !fromCacheMerged.sourcedSubjectIds().containsKey(subject))
-                    .map(Precondition.SubjectIsPristine::new)
-                    .collect(toList());
-            fromCacheMerged.sourcedSubjectIds().entrySet().stream()
-                    .map(e -> new Precondition.SubjectIsOnEventId(e.getKey(), e.getValue()))
-                    .collect(toCollection(() -> additionalPreconditions));
-            events.stream()
-                    .flatMap(e -> e.preconditions().stream())
-                    .collect(toCollection(() -> additionalPreconditions));
-            immediateEventPublisher.publish(events, additionalPreconditions);
+                throw new RuntimeException("using query not yet implemented");
+            }
+            case CommandHandling.UsingSubject commandHandlingMode -> {
+                var fromCacheMerged = stateRebuildingCache.fetchAndMerge(
+                        new StateRebuildingCache.CacheKey<>(
+                                command.getSubject(),
+                                commandHandlerDefinition.instanceClass(),
+                                commandHandlingMode.sourcingMode()),
+                        cached -> {
+                            Set<Option> options = new HashSet<>();
+                            if (cached.eventId() != null) {
+                                options.add(new Option.LowerBoundExclusive(cached.eventId()));
+                            }
+
+                            EventReader.ClientRequestor clientRequestor =
+                                    switch (commandHandlingMode.sourcingMode()) {
+                                        case NONE -> (client, eventConsumer) -> {
+                                        };
+                                        case LOCAL -> (client, eventConsumer) ->
+                                                client.read(command.getSubject(), options, eventConsumer);
+                                        case RECURSIVE -> (client, eventConsumer) -> {
+                                            options.add(new Option.Recursive());
+                                            client.read(command.getSubject(), options, eventConsumer);
+                                        };
+                                    };
+
+                            AtomicReference<String> latestSourcedId = new AtomicReference<>(cached.eventId());
+                            Map<String, String> sourcedSubjectIds = new HashMap<>(cached.sourcedSubjectIds());
+                            List<SourcedEvent> sourcedEvents = new ArrayList<>();
+
+                            eventReader.consumeRaw(clientRequestor, (rawCallback, raw) -> {
+                                latestSourcedId.set(raw.id());
+                                sourcedSubjectIds.put(raw.subject(), raw.id());
+                                rawCallback.upcast((upcastedCallback, upcasted) -> upcastedCallback.convert(
+                                        (metadata, o) -> sourcedEvents.add(new SourcedEvent(o, metadata, raw))));
+                            });
+
+                            switch (commandHandlingMode.subjectCondition()) {
+                                case NONE -> {
+                                }
+                                case EXISTS -> {
+                                    if (!sourcedSubjectIds.containsKey(command.getSubject())) {
+                                        throw new CommandSubjectDoesNotExistException(
+                                                "subject condition violated, no event was sourced matching the subject of the given command: "
+                                                        + command.getClass().getName(),
+                                                command);
+                                    }
+                                }
+                                case PRISTINE -> {
+                                    if (sourcedSubjectIds.containsKey(command.getSubject())) {
+                                        throw new CommandSubjectAlreadyExistsException(
+                                                "subject condition violated, at least one event was sourced matching the subject of given command: "
+                                                        + command.getClass().getName(),
+                                                command);
+                                    }
+                                }
+                            }
+
+                            final AtomicReference<Object> instance = new AtomicReference<>(cached.instance());
+                            sourcedEvents.forEach(sourced -> relevantSRHDs.ifPresent(srhds -> Util.applyUsingHandlers(
+                                    srhds, instance, sourced.raw.subject(), sourced.event, sourced.metaData, sourced.raw)));
+
+                            return new StateRebuildingCache.CacheValue<>(
+                                    latestSourcedId.get(), instance.get(), sourcedSubjectIds);
+                        });
+
+                var eventCapturer = new CommandEventCapturer<>(
+                        fromCacheMerged.instance(), command.getSubject(), relevantSRHDs.orElseGet(List::of));
+
+                R result =
+                        switch (commandHandlerDefinition.handler()) {
+                            case CommandHandler.ForCommand<Object, Command, R> handler ->
+                                    handler.handle(command, eventCapturer);
+                            case CommandHandler.ForInstanceAndCommand<Object, Command, R> handler ->
+                                    handler.handle(fromCacheMerged.instance(), command, eventCapturer);
+                            case CommandHandler.ForInstanceAndCommandAndMetaData<Object, Command, R> handler ->
+                                    handler.handle(fromCacheMerged.instance(), command, metaData, eventCapturer);
+                        };
+
+                if (!eventCapturer.getEvents().isEmpty()) {
+                    Map<String, ?> propagationMetaData = new HashMap<>(metaData);
+                    propagationMetaData.keySet().retainAll(propagationKeys);
+
+                    var events = eventCapturer.getEvents().stream()
+                            .map(it -> new CapturedEvent(
+                                    it.subject(),
+                                    it.event(),
+                                    PropagationUtil.propagateMetaData(it.metaData(), propagationMetaData, propagationMode),
+                                    it.preconditions()))
+                            .toList();
+
+                    List<Precondition> additionalPreconditions = events.stream()
+                            .map(CapturedEvent::subject)
+                            .filter(subject -> subject.startsWith(command.getSubject()))
+                            .filter(subject -> !fromCacheMerged.sourcedSubjectIds().containsKey(subject))
+                            .map(Precondition.SubjectIsPristine::new)
+                            .collect(toList());
+                    fromCacheMerged.sourcedSubjectIds().entrySet().stream()
+                            .map(e -> new Precondition.SubjectIsOnEventId(e.getKey(), e.getValue()))
+                            .collect(toCollection(() -> additionalPreconditions));
+                    events.stream()
+                            .flatMap(e -> e.preconditions().stream())
+                            .collect(toCollection(() -> additionalPreconditions));
+                    immediateEventPublisher.publish(events, additionalPreconditions);
+                }
+                return result;
+            }
         }
-        return result;
     }
 
     record SourcedEvent(Object event, Map<String, ?> metaData, Event raw) {}
 
     private <T> Set<T> findDuplicates(Stream<T> input) {
-        return input.collect(collectingAndThen(groupingBy(Function.identity(), Collectors.counting()), frequencyMap -> {
+        return input.collect(collectingAndThen(groupingBy(Function.identity(), counting()), frequencyMap -> {
             frequencyMap.values().removeIf(count -> count == 1);
             return frequencyMap.keySet();
         }));

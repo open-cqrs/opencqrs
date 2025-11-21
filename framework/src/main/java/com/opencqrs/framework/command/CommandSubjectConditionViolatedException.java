@@ -3,14 +3,14 @@ package com.opencqrs.framework.command;
 
 import com.opencqrs.framework.CqrsFrameworkException;
 
-/** Exception thrown if {@link Command.SubjectCondition} is violated. */
+/** Exception thrown if {@link CommandHandling.UsingSubject.SubjectCondition} is violated. */
 public abstract class CommandSubjectConditionViolatedException extends CqrsFrameworkException.NonTransientException {
 
     private final Command command;
-    private final Command.SubjectCondition subjectCondition;
+    private final CommandHandling.UsingSubject.SubjectCondition subjectCondition;
 
     public CommandSubjectConditionViolatedException(
-            String message, Command command, Command.SubjectCondition subjectCondition) {
+            String message, Command command, CommandHandling.UsingSubject.SubjectCondition subjectCondition) {
         super(message);
         this.command = command;
         this.subjectCondition = subjectCondition;
@@ -20,7 +20,7 @@ public abstract class CommandSubjectConditionViolatedException extends CqrsFrame
         return command;
     }
 
-    public Command.SubjectCondition getSubjectCondition() {
+    public CommandHandling.UsingSubject.SubjectCondition getSubjectCondition() {
         return subjectCondition;
     }
 }

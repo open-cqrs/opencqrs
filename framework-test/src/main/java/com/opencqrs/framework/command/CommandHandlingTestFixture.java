@@ -741,7 +741,7 @@ public class CommandHandlingTestFixture<C extends Command> {
 
             var stateStubbed = stubs.stream().anyMatch(s -> s.getClass().equals(Stub.State.class));
             if (!stateStubbed) {
-                switch (command.getSubjectCondition()) {
+                switch (commandHandler.commandHandlingMode()) {
                     case PRISTINE -> {
                         if (stubResult.get().subjects().contains(command.getSubject())) {
                             return new Expect(
