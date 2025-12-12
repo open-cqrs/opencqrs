@@ -80,7 +80,9 @@ public class AbstractEventDataMarshallingEventUpcasterTest {
                 Instant.now(),
                 "application/json",
                 "hash",
-                "predecessor"));
+                "predecessor",
+                null,
+                null));
 
         assertThat(upcasted)
                 .hasSize(2)

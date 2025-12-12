@@ -8,6 +8,11 @@ import com.opencqrs.framework.eventhandler.progress.InMemoryProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.JdbcProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
+import com.opencqrs.framework.tracing.DefaultEventTracingContextExtractor;
+import com.opencqrs.framework.tracing.EventTracingContextExtractor;
+import com.opencqrs.framework.tracing.EventTracingContextGetter;
+import com.opencqrs.framework.tracing.OpenTelemetryEventTracingContextExtractor;
+import io.opentelemetry.api.OpenTelemetry;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -321,6 +326,10 @@ public class EventHandlingProcessorAutoConfiguration {
 
                     DefaultPartitionKeyResolver partitionKeyResolver = new DefaultPartitionKeyResolver(
                             processorSettings.lifeCycle().partitions());
+
+                    EventTracingContextExtractor eventTracingContextExtractor =
+                            parentContext.getBean(EventTracingContextExtractor.class);
+
                     for (int partition = 0;
                             partition < processorSettings.lifeCycle().partitions();
                             partition++) {
@@ -337,11 +346,14 @@ public class EventHandlingProcessorAutoConfiguration {
                         values.addGenericArgumentValue(sequenceResolver);
                         values.addGenericArgumentValue(partitionKeyResolver);
 
+                        // TODO: Put Extractor here.
+                        values.addGenericArgumentValue(eventTracingContextExtractor);
+
                         GenericBeanDefinition backOff = new GenericBeanDefinition();
                         backOff.setBeanClass(BackOff.class);
                         backOff.setInstanceSupplier(() -> createBackOff(processorSettings.retry()));
                         values.addGenericArgumentValue(backOff);
-
+                        // TODO: backOff and ehds switched up?
                         values.addGenericArgumentValue(ehds);
                         processor.setConstructorArgumentValues(values);
 
@@ -473,5 +485,17 @@ public class EventHandlingProcessorAutoConfiguration {
     @Bean
     public NoEventSequenceResolver openCqrsNoEventSequenceResolver() {
         return new NoEventSequenceResolver();
+    }
+
+    @Bean
+    @ConditionalOnBean(OpenTelemetry.class)
+    public EventTracingContextExtractor openCqrsOpenTelemetryEventTracingContextExtractor(OpenTelemetry openTelemetry) {
+        return new OpenTelemetryEventTracingContextExtractor(openTelemetry, new EventTracingContextGetter());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(OpenTelemetry.class)
+    public EventTracingContextExtractor openCqrsDefaultEventTracingContextExtractor() {
+        return new DefaultEventTracingContextExtractor();
     }
 }

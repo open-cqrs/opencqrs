@@ -14,6 +14,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-integration")
     implementation("org.springframework.integration:spring-integration-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    runtimeOnly("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
     runtimeOnly("com.h2database:h2")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
