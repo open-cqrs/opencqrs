@@ -465,7 +465,7 @@ public class CommandRouterTest {
     public void eventsSourcedToHandlersForAssignableSuperClass() {
         var dummyState = new Book("4711", false);
         var sourcedEvent = new BookAddedEvent("4711");
-        var command = new AddBookCommand("4711");
+        var command = new BorrowBookCommand("4711");
 
         doAnswer(invocation -> {
                     Consumer<Event> consumer = invocation.getArgument(2);
@@ -503,8 +503,9 @@ public class CommandRouterTest {
                 new StateRebuildingHandlerDefinition<>(Object.class, MyEvent.class, srh4),
                 new StateRebuildingHandlerDefinition<>(Book.class, BookAddedEvent.class, srh5));
 
-        CommandHandlerDefinition<Book, AddBookCommand, Void> chd = new CommandHandlerDefinition<>(
-                Book.class, AddBookCommand.class, (CommandHandler.ForInstanceAndCommand<Book, AddBookCommand, Void>)
+        CommandHandlerDefinition<Book, BorrowBookCommand, Void> chd = new CommandHandlerDefinition<>(
+                Book.class, BorrowBookCommand.class, (CommandHandler.ForInstanceAndCommand<
+                                Book, BorrowBookCommand, Void>)
                         (book, cmd, eventPublisher) -> null);
 
         new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), stateRebuildingHandlerDefinitions)
