@@ -18,7 +18,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -209,22 +208,26 @@ public final class CommandRouter {
                                 (metadata, o) -> sourcedEvents.add(new SourcedEvent(o, metadata, raw))));
                     });
 
-                    switch (command.getSubjectCondition()) {
-                        case NONE -> {}
-                        case EXISTS -> {
-                            if (!sourcedSubjectIds.containsKey(command.getSubject())) {
-                                throw new CommandSubjectDoesNotExistException(
-                                        "subject condition violated, no event was sourced matching the subject of the given command: "
-                                                + command.getClass().getName(),
-                                        command);
+                    if (!commandHandlerDefinition.sourcingMode().equals(SourcingMode.NONE)) {
+                        switch (command.getSubjectCondition()) {
+                            case NONE -> {}
+                            case EXISTS -> {
+                                if (!sourcedSubjectIds.containsKey(command.getSubject())) {
+                                    throw new CommandSubjectDoesNotExistException(
+                                            "subject condition violated, no event was sourced matching the subject of"
+                                                    + " the given command: "
+                                                    + command.getClass().getName(),
+                                            command);
+                                }
                             }
-                        }
-                        case PRISTINE -> {
-                            if (sourcedSubjectIds.containsKey(command.getSubject())) {
-                                throw new CommandSubjectAlreadyExistsException(
-                                        "subject condition violated, at least one event was sourced matching the subject of given command: "
-                                                + command.getClass().getName(),
-                                        command);
+                            case PRISTINE -> {
+                                if (sourcedSubjectIds.containsKey(command.getSubject())) {
+                                    throw new CommandSubjectAlreadyExistsException(
+                                            "subject condition violated, at least one event was sourced matching the"
+                                                    + " subject of given command: "
+                                                    + command.getClass().getName(),
+                                            command);
+                                }
                             }
                         }
                     }
@@ -264,10 +267,18 @@ public final class CommandRouter {
 
             List<Precondition> additionalPreconditions = events.stream()
                     .map(CapturedEvent::subject)
-                    .filter(subject -> subject.startsWith(command.getSubject()))
+                    .filter(subject -> switch (commandHandlerDefinition.sourcingMode()) {
+                        case NONE -> false;
+                        case LOCAL -> subject.equals(command.getSubject());
+                        case RECURSIVE -> subject.startsWith(command.getSubject());
+                    })
                     .filter(subject -> !fromCacheMerged.sourcedSubjectIds().containsKey(subject))
                     .map(Precondition.SubjectIsPristine::new)
                     .collect(toList());
+            switch (command.getSubjectCondition()) {
+                case PRISTINE -> additionalPreconditions.add(new Precondition.SubjectIsPristine(command.getSubject()));
+                case EXISTS -> additionalPreconditions.add(new Precondition.SubjectIsPopulated(command.getSubject()));
+            }
             fromCacheMerged.sourcedSubjectIds().entrySet().stream()
                     .map(e -> new Precondition.SubjectIsOnEventId(e.getKey(), e.getValue()))
                     .collect(toCollection(() -> additionalPreconditions));
@@ -282,7 +293,7 @@ public final class CommandRouter {
     record SourcedEvent(Object event, Map<String, ?> metaData, Event raw) {}
 
     private <T> Set<T> findDuplicates(Stream<T> input) {
-        return input.collect(collectingAndThen(groupingBy(Function.identity(), Collectors.counting()), frequencyMap -> {
+        return input.collect(collectingAndThen(groupingBy(Function.identity(), counting()), frequencyMap -> {
             frequencyMap.values().removeIf(count -> count == 1);
             return frequencyMap.keySet();
         }));

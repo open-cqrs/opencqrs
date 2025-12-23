@@ -9,4 +9,9 @@ public record AddBookCommand(String isbn) implements Command {
     public String getSubject() {
         return "/books/" + isbn;
     }
+
+    @Override
+    public SubjectCondition getSubjectCondition() {
+        return SubjectCondition.PRISTINE;
+    }
 }
