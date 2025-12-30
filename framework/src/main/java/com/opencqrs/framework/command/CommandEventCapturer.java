@@ -19,7 +19,8 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
     private final List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions;
     private final String subject;
 
-    final AtomicReference<I> previousInstance;
+    // Make this private again after the refactor is finished and the v2 package is removed
+    public final AtomicReference<I> previousInstance;
 
     public CommandEventCapturer(
             I initialInstance,

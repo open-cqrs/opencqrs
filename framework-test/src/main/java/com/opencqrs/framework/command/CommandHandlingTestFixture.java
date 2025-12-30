@@ -161,7 +161,7 @@ public class CommandHandlingTestFixture<C extends Command> {
      * @param <I> the generic type of the instance to be event sourced before handling the command
      */
     public static class Builder<I> {
-        final List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions;
+        public final List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions;
 
         private Builder(List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions) {
             this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;

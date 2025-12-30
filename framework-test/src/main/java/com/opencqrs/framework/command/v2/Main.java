@@ -16,7 +16,7 @@ public class Main {
                 (StateRebuildingHandler.FromObject<Object, EventA>) (state, event) -> state != null ? state : new Object()
         );
 
-        CommandHandlingTestFixture<Object, Command, String> fixture = CommandHandlingTestFixture
+        CommandHandlingTestFixture<Command> fixture = CommandHandlingTestFixture
                 .withStateRebuildingHandlerDefinitions(srhd)
                 .using(Object.class, new CommandHandler.ForInstanceAndCommand<Object, Command, String>() {
                     @Override
@@ -25,7 +25,7 @@ public class Main {
                     }
                 });
 
-        CommandHandlingTestFixture<Object, Command, String> anotherFixture = CommandHandlingTestFixture
+        CommandHandlingTestFixture<Command> anotherFixture = CommandHandlingTestFixture
                 .withStateRebuildingHandlerDefinitions(srhd)
                 .using(Object.class, new CommandHandler.ForInstanceAndCommand<Object, Command, String>() {
                     @Override
@@ -68,6 +68,7 @@ public class Main {
                         .metaData(Map.of("source", "given")))
                 .usingCommandSubject()
                 .command(anotherFixture, anotherCommand)
+                .state(new Object())
                 .time(Instant.now())
                 .when(testCommand)
                 .succeeds()
@@ -77,7 +78,7 @@ public class Main {
                 .havingState(new Object()) // having gerade ziehen nach Vorlage der Validatoren
                 .stateSatisfying(state -> System.out.println("State: " + state)) // state gerade ziehen nach Vorlage der Validatoren
                 .stateExtracting(Object::toString, "expectedString") // state gerade ziehen nach Vorlage der Validatoren
-                .and()
+                .then()
                 .allEvents()
                 .single(e -> e
                                 .comparing("UserRegistered")
@@ -114,7 +115,7 @@ public class Main {
                 .exactly(e -> e
                         .comparing("UserRegistered")
                 )
-                .and()
+                .then()
                 .nextEvents()
                 .single(e -> e
                                 .comparing("Event1")
