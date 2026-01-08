@@ -1,17 +1,15 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.eventhandler;
 
-import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.BeanRegistry;
 
 /** Interface to be implemented for registering {@link EventHandlingProcessorLifecycleController} beans. */
 @FunctionalInterface
 public interface EventHandlingProcessorLifecycleRegistration {
 
     /**
-     * Implementations are expected to {@linkplain BeanDefinitionRegistry#registerBeanDefinition(String, BeanDefinition)
-     * register} an {@link EventHandlingProcessorLifecycleController} within the given {@link BeanDefinitionRegistry},
-     * if needed.
+     * Implementations are expected to {@linkplain BeanRegistry#registerBean(Class)} register} an
+     * {@link EventHandlingProcessorLifecycleController} within the given {@link BeanRegistry}, if needed.
      *
      * @param registry the registry to be used for bean registration
      * @param eventHandlingProcessorBeanName the name of the {@link EventHandlingProcessor} bean to refer to for
@@ -19,7 +17,7 @@ public interface EventHandlingProcessorLifecycleRegistration {
      * @param processorSettings the processor settings
      */
     void registerLifecycleBean(
-            BeanDefinitionRegistry registry,
+            BeanRegistry registry,
             String eventHandlingProcessorBeanName,
             EventHandlingProperties.ProcessorSettings processorSettings);
 }

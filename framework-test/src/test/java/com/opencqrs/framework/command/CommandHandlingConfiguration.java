@@ -3,12 +3,13 @@ package com.opencqrs.framework.command;
 
 import com.opencqrs.framework.MyEvent;
 import com.opencqrs.framework.State;
-import org.springframework.beans.factory.config.ConstructorArgumentValues;
-import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
-import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.beans.factory.BeanRegistrar;
+import org.springframework.beans.factory.BeanRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.ResolvableType;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.env.Environment;
 
 @CommandHandlerConfiguration
 public class CommandHandlingConfiguration {
@@ -40,25 +41,19 @@ public class CommandHandlingConfiguration {
     }
 
     @Configuration
+    @Import(MyConfig.MyBeanRegistrar.class)
     public static class MyConfig {
 
-        @Bean
-        public static BeanDefinitionRegistryPostProcessor programmaticCommandHandlerDefinitionRegistration() {
-            return registry -> {
-                RootBeanDefinition chd = new RootBeanDefinition();
-                chd.setBeanClass(CommandHandlerDefinition.class);
-                chd.setTargetType(ResolvableType.forClassWithGenerics(
-                        CommandHandlerDefinition.class, State.class, MyCommand4.class, Void.class));
-
-                ConstructorArgumentValues values = new ConstructorArgumentValues();
-                values.addGenericArgumentValue(State.class);
-                values.addGenericArgumentValue(MyCommand4.class);
-                values.addGenericArgumentValue(
-                        (CommandHandler.ForCommand<State, MyCommand4, Void>) (command, commandEventPublisher) -> null);
-
-                chd.setConstructorArgumentValues(values);
-                registry.registerBeanDefinition("myProgrammaticCommandHandlerDefinition", chd);
-            };
+        static class MyBeanRegistrar implements BeanRegistrar {
+            @Override
+            public void register(BeanRegistry registry, Environment env) {
+                registry.registerBean(
+                        "myProgrammaticCommandHandlerDefinition",
+                        new ParameterizedTypeReference<CommandHandlerDefinition<State, MyCommand4, Void>>() {},
+                        spec -> spec.supplier(supplierContext -> new CommandHandlerDefinition<>(
+                                State.class, MyCommand4.class, (CommandHandler.ForCommand<State, MyCommand4, Void>)
+                                        (command, commandEventPublisher) -> null)));
+            }
         }
     }
 }
