@@ -43,7 +43,9 @@ public class CqrsConfiguration {
     @Bean
     public JdbcProgressTracker jdbcProgressTracker(
             DataSource dataSource, PlatformTransactionManager transactionManager) {
-        return new JdbcProgressTracker(dataSource, transactionManager);
+        var result = new JdbcProgressTracker(dataSource, transactionManager);
+        result.setProceedTransactionally(true);
+        return result;
     }
 
     @Bean
