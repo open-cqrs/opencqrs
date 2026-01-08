@@ -8,7 +8,7 @@
 gradle.beforeProject {
     extensions.extraProperties["frameworkVersions"] = mapOf(
         "esdb.version" to "1.2.0",
-        "spring.boot.version" to "3.5.6",
+        "spring.boot.version" to "4.0.1",
     )
     extensions.extraProperties["memorySettings"] = mapOf(
         "test.min-heap-size" to "2048m",

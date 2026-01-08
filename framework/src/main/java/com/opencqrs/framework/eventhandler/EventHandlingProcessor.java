@@ -388,6 +388,15 @@ public class EventHandlingProcessor implements Runnable {
     }
 
     /**
+     * Retrieves the current execution state.
+     *
+     * @return {@code true} if currently running, {@code false} otherwise.
+     */
+    public boolean isRunning() {
+        return running.get() != null;
+    }
+
+    /**
      * Stops {@code this} by {@linkplain ExecutorService#shutdownNow() shutting down} the thread pool initialized during
      * {@link #start()}.
      */

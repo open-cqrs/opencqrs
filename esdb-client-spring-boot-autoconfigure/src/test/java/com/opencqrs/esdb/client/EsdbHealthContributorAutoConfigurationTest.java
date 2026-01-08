@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
-import org.springframework.boot.actuate.health.HealthContributor;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
@@ -31,7 +31,7 @@ public class EsdbHealthContributorAutoConfigurationTest {
     @ParameterizedTest
     @ValueSource(
             classes = {
-                HealthContributor.class,
+                HealthIndicator.class,
                 EsdbClient.class,
             })
     public void conditionallyDisabledByMissingClass(Class<?> clazz) {
@@ -66,7 +66,7 @@ public class EsdbHealthContributorAutoConfigurationTest {
     public void conditionallyDisabledHealthContributorByExistingBean(String beanName) {
         runner.withConfiguration(AutoConfigurations.of(EsdbHealthContributorAutoConfiguration.class))
                 .withBean(EsdbClient.class, Mockito::mock)
-                .withBean(beanName, HealthContributor.class, Mockito::mock)
+                .withBean(beanName, HealthIndicator.class, Mockito::mock)
                 .run(context -> {
                     assertThat(context)
                             .hasNotFailed()

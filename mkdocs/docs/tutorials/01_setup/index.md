@@ -157,7 +157,7 @@ lines to your _build script_ (depending on the build system chosen before):
     dependencies {
         implementation("org.springframework.boot:spring-boot-starter-actuator")
         implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-        implementation("org.springframework.boot:spring-boot-starter-web")
+        implementation("org.springframework.boot:spring-boot-starter-webmvc")
         runtimeOnly("com.h2database:h2")
         implementation("com.opencqrs:framework-spring-boot-starter:{{ custom.framework_version }}")
         testImplementation("com.opencqrs:framework-test:{{ custom.framework_version }}")
@@ -171,7 +171,7 @@ lines to your _build script_ (depending on the build system chosen before):
     dependencies {
         implementation 'org.springframework.boot:spring-boot-starter-actuator'
         implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-webmvc'
         runtimeOnly 'com.h2database:h2'
         implementation 'com.opencqrs:framework-spring-boot-starter:{{ custom.framework_version }}'
         testImplementation 'com.opencqrs:framework-test:{{ custom.framework_version }}'
@@ -193,7 +193,7 @@ lines to your _build script_ (depending on the build system chosen before):
             </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-web</artifactId>
+                <artifactId>spring-boot-starter-webmvc</artifactId>
             </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>

@@ -179,7 +179,7 @@ public record EventHandlingProperties(ProcessorSettings standard, Map<String, Pr
                 Duration maxInterval,
                 Duration maxElapsedTime,
                 Double multiplier,
-                Integer maxAttempts) {
+                Long maxAttempts) {
 
             /** The back-off policy. */
             public enum Policy {
