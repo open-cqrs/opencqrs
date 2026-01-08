@@ -4,8 +4,6 @@ package com.opencqrs.esdb.client.jackson;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.*;
 import com.opencqrs.esdb.client.eventql.EventQueryProcessingError;
 import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
@@ -17,6 +15,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /** {@link ObjectMapper} based {@link Marshaller} implementation. */
 public class JacksonMarshaller implements Marshaller {
@@ -31,7 +31,7 @@ public class JacksonMarshaller implements Marshaller {
     public Map<String, Object> fromJsonResponse(String response) {
         try {
             return objectMapper.readValue(response, Map.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }
@@ -40,7 +40,7 @@ public class JacksonMarshaller implements Marshaller {
     public Health fromHealthResponse(String response) {
         try {
             return objectMapper.readValue(response, Health.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }
@@ -52,7 +52,7 @@ public class JacksonMarshaller implements Marshaller {
         try {
             return objectMapper.writeValueAsString(
                     Map.of("events", eventCandidates, "preconditions", jacksonPreconditions));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }
@@ -78,7 +78,7 @@ public class JacksonMarshaller implements Marshaller {
                             e.hash,
                             e.predecessorhash))
                     .toList();
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }
@@ -118,7 +118,7 @@ public class JacksonMarshaller implements Marshaller {
 
         try {
             return objectMapper.writeValueAsString(Map.of("subject", subject, "options", jacksonOptions));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }
@@ -144,7 +144,7 @@ public class JacksonMarshaller implements Marshaller {
                 case JacksonResponseElement.Subject subject ->
                     new ResponseElement.SubjectElement(subject.payload.subject);
             };
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }
@@ -153,7 +153,7 @@ public class JacksonMarshaller implements Marshaller {
     public String toReadSubjectsRequest(String baseSubject) {
         try {
             return objectMapper.writeValueAsString(Map.of("baseSubject", baseSubject));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }
@@ -165,7 +165,7 @@ public class JacksonMarshaller implements Marshaller {
                     .readValue(line, JacksonResponseElement.Subject.class)
                     .payload
                     .subject();
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }
@@ -272,7 +272,7 @@ public class JacksonMarshaller implements Marshaller {
     public String toQueryRequest(String query) {
         try {
             return objectMapper.writeValueAsString(Map.of("query", query));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }
@@ -310,16 +310,14 @@ public class JacksonMarshaller implements Marshaller {
                                 }
                                 case EventQueryRowHandler.AsScalar consumer -> consumer.accept(row.payload());
                             }
-                        } catch (ClassCastException e) {
+                        } catch (ClassCastException | JacksonException e) {
                             errorHandler.marshallingError(new ClientException.MarshallingException(e), line);
-                        } catch (IllegalArgumentException e) {
-                            errorHandler.marshallingError(new ClientException.MarshallingException(e.getCause()), line);
                         }
                     });
                 case JacksonQueryResponseElement.Error error -> new QueryResponseElement.Error(error.payload());
             };
 
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ClientException.MarshallingException(e);
         }
     }

@@ -5,18 +5,18 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import com.opencqrs.framework.BookAddedEvent;
 import com.opencqrs.framework.CqrsFrameworkException;
 import java.io.IOException;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.json.JsonTest;
 import org.springframework.boot.test.json.JacksonTester;
 import org.springframework.boot.test.json.JsonContent;
 import org.springframework.context.annotation.Import;
+import tools.jackson.databind.DatabindException;
 
 @JsonTest
 @Import({
@@ -55,10 +55,9 @@ public class JacksonEventDataMarshallerTest {
 
     @Test
     public void serializationErrorMappedToNonTransientException() {
-        assertThatThrownBy(() -> subject.serialize(
-                        new EventData<>(Map.of("answer", 42, "flag", true), new NonSerializableEvent() {})))
+        assertThatThrownBy(() -> subject.serialize(new EventData<>(Map.of("answer", 42, "flag", true), 42L)))
                 .isInstanceOf(CqrsFrameworkException.NonTransientException.class)
-                .hasCauseInstanceOf(InvalidDefinitionException.class);
+                .hasCauseInstanceOf(DatabindException.class);
     }
 
     @Test
@@ -102,9 +101,9 @@ public class JacksonEventDataMarshallerTest {
                 """)
                 .getObject();
 
-        assertThatThrownBy(() -> subject.deserialize(json, NonSerializableEvent.class))
+        assertThatThrownBy(() -> subject.deserialize(json, Long.class))
                 .isInstanceOf(CqrsFrameworkException.NonTransientException.class)
-                .hasCauseInstanceOf(InvalidDefinitionException.class);
+                .hasCauseInstanceOf(DatabindException.class);
     }
 
     @Test
@@ -123,8 +122,6 @@ public class JacksonEventDataMarshallerTest {
                 .extractingJsonPathStringValue("$.payload.x.type")
                 .isEqualTo("y");
     }
-
-    interface NonSerializableEvent {}
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", include = JsonTypeInfo.As.PROPERTY)
     @JsonSubTypes(@JsonSubTypes.Type(value = PolymorphicEvent.A.class, name = "a"))
