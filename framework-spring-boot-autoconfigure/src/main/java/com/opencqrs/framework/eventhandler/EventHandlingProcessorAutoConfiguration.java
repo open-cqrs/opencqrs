@@ -13,13 +13,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.logging.Logger;
-import org.springframework.beans.MutablePropertyValues;
-import org.springframework.beans.factory.config.ConstructorArgumentValues;
-import org.springframework.beans.factory.config.RuntimeBeanReference;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
-import org.springframework.beans.factory.support.GenericBeanDefinition;
-import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.beans.factory.BeanRegistrar;
+import org.springframework.beans.factory.BeanRegistry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -154,7 +149,7 @@ public class EventHandlingProcessorAutoConfiguration {
 
     public static final long DEFAULT_ACTIVE_PARTITIONS = 1;
 
-    private static BeanDefinitionRegistryPostProcessor eventHandlingProcessorBeanRegistration(
+    private static BeanRegistrar eventHandlingProcessorBeanRegistrar(
             EventHandlingProperties eventHandlingProperties,
             List<EventHandlerDefinition> eventHandlerDefinitions,
             ApplicationContext parentContext) {
@@ -173,7 +168,7 @@ public class EventHandlingProcessorAutoConfiguration {
                         ExponentialBackOff.DEFAULT_MULTIPLIER,
                         ExponentialBackOff.DEFAULT_MAX_ATTEMPTS));
 
-        return registry -> eventHandlerDefinitions.stream()
+        return (registry, env) -> eventHandlerDefinitions.stream()
                 .filter(ehd -> ehd.group() != null)
                 .collect(groupingBy(EventHandlerDefinition::group))
                 .forEach((group, ehds) -> {
@@ -324,29 +319,21 @@ public class EventHandlingProcessorAutoConfiguration {
                     for (int partition = 0;
                             partition < processorSettings.lifeCycle().partitions();
                             partition++) {
-                        RootBeanDefinition processor = new RootBeanDefinition();
-                        processor.setBeanClass(EventHandlingProcessor.class);
-
-                        ConstructorArgumentValues values = new ConstructorArgumentValues();
-                        values.addGenericArgumentValue(partition);
-                        values.addGenericArgumentValue(processorSettings.fetch().subject());
-                        values.addGenericArgumentValue(processorSettings.fetch().recursive());
-                        values.addGenericArgumentValue(new RuntimeBeanReference(EventReader.class));
-
-                        values.addGenericArgumentValue(progressTracker);
-                        values.addGenericArgumentValue(sequenceResolver);
-                        values.addGenericArgumentValue(partitionKeyResolver);
-
-                        GenericBeanDefinition backOff = new GenericBeanDefinition();
-                        backOff.setBeanClass(BackOff.class);
-                        backOff.setInstanceSupplier(() -> createBackOff(processorSettings.retry()));
-                        values.addGenericArgumentValue(backOff);
-
-                        values.addGenericArgumentValue(ehds);
-                        processor.setConstructorArgumentValues(values);
-
                         var beanName = "openCqrsEventHandlingProcessor_" + group + "_" + partition;
-                        registry.registerBeanDefinition(beanName, processor);
+                        final int finalPartition = partition;
+                        registry.registerBean(
+                                beanName,
+                                EventHandlingProcessor.class,
+                                spec -> spec.supplier(ctx -> new EventHandlingProcessor(
+                                        finalPartition,
+                                        processorSettings.fetch().subject(),
+                                        processorSettings.fetch().recursive(),
+                                        ctx.bean(EventReader.class),
+                                        progressTracker,
+                                        sequenceResolver,
+                                        partitionKeyResolver,
+                                        ehds,
+                                        createBackOff(processorSettings.retry()))));
 
                         Settings settings = new Settings(
                                 group,
@@ -379,7 +366,8 @@ public class EventHandlingProcessorAutoConfiguration {
             EventHandlingProperties eventHandlingProperties,
             List<EventHandlerDefinition> eventHandlerDefinitions) {
         GenericApplicationContext context = new GenericApplicationContext(applicationContext);
-        context.addBeanFactoryPostProcessor(eventHandlingProcessorBeanRegistration(
+
+        context.register(eventHandlingProcessorBeanRegistrar(
                 eventHandlingProperties, eventHandlerDefinitions, applicationContext));
         return context;
     }
@@ -388,17 +376,16 @@ public class EventHandlingProcessorAutoConfiguration {
     public EventHandlingProcessorLifecycleRegistration
             openCqrsSmartLifecycleEventHandlingProcessorLifecycleControllerRegistration() {
         return (registry, eventHandlingProcessorBeanName, processorSettings) -> {
-            RootBeanDefinition processorLifecycle = new RootBeanDefinition();
-            processorLifecycle.setBeanClass(SmartLifecycleEventHandlingProcessorLifecycleController.class);
-            ConstructorArgumentValues processorArgs = new ConstructorArgumentValues();
-            processorArgs.addGenericArgumentValue(new RuntimeBeanReference(eventHandlingProcessorBeanName));
-            processorLifecycle.setConstructorArgumentValues(processorArgs);
-            MutablePropertyValues lifeCycleProperties = new MutablePropertyValues();
-            lifeCycleProperties.add("autoStartup", processorSettings.lifeCycle().autoStart());
-            processorLifecycle.setPropertyValues(lifeCycleProperties);
-
             var beanName = eventHandlingProcessorBeanName + "_lifecycle";
-            registry.registerBeanDefinition(beanName, processorLifecycle);
+            registry.registerBean(
+                    beanName,
+                    SmartLifecycleEventHandlingProcessorLifecycleController.class,
+                    spec -> spec.supplier(ctx -> {
+                        var controller = new SmartLifecycleEventHandlingProcessorLifecycleController(
+                                ctx.bean(eventHandlingProcessorBeanName, EventHandlingProcessor.class));
+                        controller.setAutoStartup(processorSettings.lifeCycle().autoStart());
+                        return controller;
+                    }));
 
             log.info(() ->
                     "registered application context life-cycle controller '" + beanName + "' with: Settings[autoStart="
@@ -418,31 +405,34 @@ public class EventHandlingProcessorAutoConfiguration {
         public record Registration(LockRegistry lockRegistry) implements EventHandlingProcessorLifecycleRegistration {
             @Override
             public void registerLifecycleBean(
-                    BeanDefinitionRegistry registry,
+                    BeanRegistry registry,
                     String eventHandlingProcessorBeanName,
                     EventHandlingProperties.ProcessorSettings processorSettings) {
-                RootBeanDefinition processorLifecycle = new RootBeanDefinition();
-                processorLifecycle.setBeanClass(LeaderElectionEventHandlingProcessorLifecycleController.class);
-                ConstructorArgumentValues processorArgs = new ConstructorArgumentValues();
-                processorArgs.addGenericArgumentValue(new RuntimeBeanReference(eventHandlingProcessorBeanName));
-                processorLifecycle.setConstructorArgumentValues(processorArgs);
-                registry.registerBeanDefinition(eventHandlingProcessorBeanName + "_lifecycle", processorLifecycle);
 
-                RootBeanDefinition lockRegistryLeaderInitiator = new RootBeanDefinition();
-                lockRegistryLeaderInitiator.setBeanClass(LockRegistryLeaderInitiator.class);
-                ConstructorArgumentValues initiatorArgs = new ConstructorArgumentValues();
-                initiatorArgs.addGenericArgumentValue(lockRegistry);
-                initiatorArgs.addGenericArgumentValue(processorLifecycle);
-                lockRegistryLeaderInitiator.setConstructorArgumentValues(initiatorArgs);
-                MutablePropertyValues initiatorProperties = new MutablePropertyValues();
-                initiatorProperties.add(
-                        "autoStartup", processorSettings.lifeCycle().autoStart());
-                lockRegistryLeaderInitiator.setPropertyValues(initiatorProperties);
+                var lifeCycleControllerBeanName = eventHandlingProcessorBeanName + "_lifecycle";
+                registry.registerBean(
+                        lifeCycleControllerBeanName,
+                        LeaderElectionEventHandlingProcessorLifecycleController.class,
+                        spec -> spec.supplier(ctx -> new LeaderElectionEventHandlingProcessorLifecycleController(
+                                ctx.bean(eventHandlingProcessorBeanName, EventHandlingProcessor.class))));
 
-                var beanName = eventHandlingProcessorBeanName + "_lockRegistryLeaderInitiator";
-                registry.registerBeanDefinition(beanName, lockRegistryLeaderInitiator);
+                var initiatorBeanName = eventHandlingProcessorBeanName + "_lockRegistryLeaderInitiator";
+                registry.registerBean(
+                        initiatorBeanName,
+                        LockRegistryLeaderInitiator.class,
+                        spec -> spec.supplier(ctx -> {
+                            var initiator = new LockRegistryLeaderInitiator(
+                                    lockRegistry,
+                                    ctx.bean(
+                                            lifeCycleControllerBeanName,
+                                            LeaderElectionEventHandlingProcessorLifecycleController.class));
+                            initiator.setAutoStartup(
+                                    processorSettings.lifeCycle().autoStart());
+                            return initiator;
+                        }));
 
-                log.info(() -> "registered leader election life-cycle controller '" + beanName + "' with: "
+                log.info(() -> "registered leader election life-cycle controller '" + lifeCycleControllerBeanName
+                        + " and lock registry initiator '" + initiatorBeanName + "' with: "
                         + new Settings(processorSettings.lifeCycle().autoStart(), lockRegistry.toString()));
             }
         }
