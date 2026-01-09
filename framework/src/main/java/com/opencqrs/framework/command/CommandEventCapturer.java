@@ -1,6 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.command;
 
+import com.opencqrs.esdb.client.Precondition;
 import com.opencqrs.framework.persistence.CapturedEvent;
 import com.opencqrs.framework.persistence.EventCapturer;
 import java.util.List;
@@ -30,8 +31,8 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
     }
 
     @Override
-    public <E> I publish(E event, Map<String, ?> metaData) {
-        getEvents().add(new CapturedEvent(subject, event, metaData, List.of()));
+    public <E> I publish(E event, Map<String, ?> metaData, List<Precondition> preconditions) {
+        getEvents().add(new CapturedEvent(subject, event, metaData, preconditions));
 
         Util.applyUsingHandlers(stateRebuildingHandlerDefinitions, previousInstance, subject, event, metaData, null);
 
@@ -39,9 +40,10 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
     }
 
     @Override
-    public <E> I publishRelative(String subjectSuffix, E event, Map<String, ?> metaData) {
+    public <E> I publishRelative(
+            String subjectSuffix, E event, Map<String, ?> metaData, List<Precondition> preconditions) {
         String s = subject + "/" + subjectSuffix;
-        getEvents().add(new CapturedEvent(s, event, metaData, List.of()));
+        getEvents().add(new CapturedEvent(s, event, metaData, preconditions));
 
         Util.applyUsingHandlers(stateRebuildingHandlerDefinitions, previousInstance, s, event, metaData, null);
 
