@@ -14,14 +14,14 @@ import com.opencqrs.framework.eventhandler.progress.InMemoryProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.JdbcProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
-import java.io.IOException;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.LogManager;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
@@ -73,9 +73,10 @@ class EventHandlingProcessorAutoConfigurationTest {
         });
     }
 
-    @AfterEach
-    public void resetOutputCapturing() throws IOException {
-        LogManager.getLogManager().readConfiguration();
+    @BeforeAll
+    static void setupJulBridge() {
+        LogManager.getLogManager().reset();
+        SLF4JBridgeHandler.install();
     }
 
     @Test

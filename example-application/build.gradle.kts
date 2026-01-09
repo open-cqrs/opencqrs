@@ -19,6 +19,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(project(":framework-test"))
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")
+    testImplementation("org.slf4j:jul-to-slf4j")
     // https://github.com/gradle/gradle/issues/33950
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
