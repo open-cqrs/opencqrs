@@ -154,7 +154,11 @@ public class CommandRouterTest {
                             assertThat(metaData).isEqualTo(commandMetaData);
 
                             eventPublisher.publish(publishedEvent1);
-                            eventPublisher.publishRelative("pages/" + publishedEvent2.page(), publishedEvent2);
+                            eventPublisher.publishRelative(
+                                    "pages/" + publishedEvent2.page(),
+                                    publishedEvent2,
+                                    Map.of(),
+                                    List.of(new Precondition.SubjectIsPopulated("/foo")));
                             eventPublisher.publish(
                                     "/absolute",
                                     publishedEvent3,
@@ -185,7 +189,7 @@ public class CommandRouterTest {
                                         command.getSubject() + "/pages/" + publishedEvent2.page(),
                                         publishedEvent2,
                                         Map.of("propagated01", true),
-                                        List.of()),
+                                        List.of(new Precondition.SubjectIsPopulated("/foo"))),
                                 new CapturedEvent(
                                         "/absolute",
                                         publishedEvent3,
@@ -196,6 +200,7 @@ public class CommandRouterTest {
                                         command.getSubject() + "/pages/" + publishedEvent2.page()),
                                 new Precondition.SubjectIsOnEventId(command.getSubject(), "2345"),
                                 new Precondition.SubjectIsOnEventId(command.getSubject() + "/pages/42", "89437534"),
+                                new Precondition.SubjectIsPopulated("/foo"),
                                 new Precondition.SubjectIsOnEventId("/absolute", "0815")));
     }
 
