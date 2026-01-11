@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -261,7 +263,111 @@ public class CommandHandlingTestFixtureTest {
                 assertThat(subjectA).hasValue("/test-subject/a");
                 assertThat(subjectB).hasValue("/test-subject/b");
             }
+        }
 
+        @Nested
+        @DisplayName("Events")
+        public class Events {
+
+            @Test
+            public void singleEventAppliedToState() {
+                AtomicReference<String> capturedName = new AtomicReference<>();
+
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                        new StateRebuildingHandlerDefinition<>(
+                                DummyState.class, EventA.class,
+                                (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                        (state, event) -> {
+                                            capturedName.set(event.name());
+                                            return new DummyState(true);
+                                        }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                        .given()
+                        .events(new EventA("singleEventAppliedToState"))
+                        .when(new DummyCommand())
+                        .succeeds();
+
+                assertThat(capturedName).hasValue("singleEventAppliedToState");
+            }
+
+            @Test
+            public void multipleEventsAppliedToState() {
+                AtomicReference<String> capturedName = new AtomicReference<>();
+                AtomicReference<Long> capturedSize = new AtomicReference<>();
+
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventA.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                                (state, event) -> {
+                                                    capturedName.set(event.name());
+                                                    return new DummyState(true);
+                                                }),
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventB.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventB>)
+                                                (state, event) -> {
+                                                    capturedSize.set(event.size());
+                                                    return new DummyState(true);
+                                                }
+                                ))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                        .given()
+                        .events(new EventA("multipleEventsAppliedToState"), new EventB(999L))
+                        .when(new DummyCommand())
+                        .succeeds();
+
+                assertThat(capturedName).hasValue("multipleEventsAppliedToState");
+                assertThat(capturedSize).hasValue(999L);
+            }
+
+            @Test
+            public void processesEventsInGivenOrder() {
+                List<String> callOrder = new ArrayList<>();
+
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventA.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                                (state, event) -> {
+                                                    callOrder.add("A");
+                                                    return state != null ? state : new DummyState(true);
+                                                }),
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventB.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventB>)
+                                                (state, event) -> {
+                                                    callOrder.add("B");
+                                                    return state != null ? state : new DummyState(true);
+                                                }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                        .given()
+                        .events(new EventB(1L), new EventA("first"))
+                        .when(new DummyCommand())
+                        .succeeds();
+
+                assertThat(callOrder).containsExactly("B", "A");
+            }
+        }
+
+        @Nested
+        @DisplayName("Event")
+        public class Event {
+
+            @Test
+            public void eventAppliedToGivenState() {
+
+            }
+        }
+
+        @Nested
+        @DisplayName("Command")
+        public class Command {
+
+            @Test
+            public void commandAppliedToGivenState() {
+
+            }
         }
     }
 
