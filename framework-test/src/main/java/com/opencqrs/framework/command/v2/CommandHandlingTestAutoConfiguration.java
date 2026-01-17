@@ -3,6 +3,10 @@ package com.opencqrs.framework.command.v2;
 
 import com.opencqrs.framework.command.*;
 import com.opencqrs.framework.command.CommandHandlingTest;
+import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -18,14 +22,8 @@ import org.springframework.core.type.MethodMetadata;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
 
-import java.lang.reflect.Method;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 /**
- * {@linkplain ImportAutoConfiguration Auto-configuration} for
- * {@link CommandHandlingTestFixture}s.
+ * {@linkplain ImportAutoConfiguration Auto-configuration} for {@link CommandHandlingTestFixture}s.
  *
  * @see CommandHandlingTest
  */
@@ -56,8 +54,8 @@ public class CommandHandlingTestAutoConfiguration {
                     Class<?> resultType = resolvableType.resolveGeneric(2);
 
                     if (instanceType != null && commandType != null && resultType != null) {
-                        ResolvableType fixtureType = ResolvableType.forClassWithGenerics(
-                                CommandHandlingTestFixture.class, instanceType, commandType, resultType);
+                        ResolvableType fixtureType =
+                                ResolvableType.forClassWithGenerics(CommandHandlingTestFixture.class, commandType);
 
                         bd.setLazyInit(true);
 
@@ -102,7 +100,7 @@ public class CommandHandlingTestAutoConfiguration {
                                 ResolvableType commandType = factoryMethodReturnType.getGeneric(1);
                                 ResolvableType resultType = factoryMethodReturnType.getGeneric(2);
                                 ResolvableType fixtureType = ResolvableType.forClassWithGenerics(
-                                        CommandHandlingTestFixture.class, stateType, commandType, resultType);
+                                        CommandHandlingTestFixture.class, commandType);
 
                                 RootBeanDefinition fixture = new RootBeanDefinition();
                                 fixture.setTargetType(fixtureType);

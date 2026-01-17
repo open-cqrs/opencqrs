@@ -12,24 +12,24 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ResolvableType;
 
 @CommandHandlerConfiguration
-public class CommandHandlingConfiguration {
+public class V2CommandHandlingConfiguration {
 
-    @Bean
-    public StateRebuildingHandlerDefinition<State, MyEvent> myStateRebuildingHandlerDefinition() {
+    @Bean("v2MyStateRebuildingHandlerDefinition")
+    public StateRebuildingHandlerDefinition<State, MyEvent> v2MyStateRebuildingHandlerDefinition() {
         return new StateRebuildingHandlerDefinition<>(
                 State.class, MyEvent.class, (StateRebuildingHandler.FromObject<State, MyEvent>)
                         (instance, event) -> instance);
     }
 
-    @Bean
-    public CommandHandlerDefinition<State, MyCommand1, Void> chdNoDependency() {
+    @Bean("v2ChdNoDependency")
+    public CommandHandlerDefinition<State, MyCommand1, Void> v2ChdNoDependency() {
         return new CommandHandlerDefinition<>(
                 State.class, MyCommand1.class, (CommandHandler.ForCommand<State, MyCommand1, Void>)
                         (command, commandEventPublisher) -> null);
     }
 
-    @Bean
-    public CommandHandlerDefinition<State, MyCommand2, Void> chdUnresolvableDependency(Runnable noSuchBean) {
+    @Bean("v2ChdUnresolvableDependency")
+    public CommandHandlerDefinition<State, MyCommand2, Void> v2ChdUnresolvableDependency(Runnable noSuchBean) {
         return new CommandHandlerDefinition<>(
                 State.class, MyCommand2.class, (CommandHandler.ForCommand<State, MyCommand2, Void>)
                         (command, commandEventPublisher) -> null);
@@ -41,10 +41,10 @@ public class CommandHandlingConfiguration {
     }
 
     @Configuration
-    public static class MyConfig {
+    public static class V2MyConfig {
 
-        @Bean
-        public static BeanDefinitionRegistryPostProcessor programmaticCommandHandlerDefinitionRegistration() {
+        @Bean("v2ProgrammaticCommandHandlerDefinitionRegistration")
+        public static BeanDefinitionRegistryPostProcessor v2ProgrammaticCommandHandlerDefinitionRegistration() {
             return registry -> {
                 RootBeanDefinition chd = new RootBeanDefinition();
                 chd.setBeanClass(CommandHandlerDefinition.class);
@@ -58,7 +58,7 @@ public class CommandHandlingConfiguration {
                         (CommandHandler.ForCommand<State, MyCommand4, Void>) (command, commandEventPublisher) -> null);
 
                 chd.setConstructorArgumentValues(values);
-                registry.registerBeanDefinition("myProgrammaticCommandHandlerDefinition", chd);
+                registry.registerBeanDefinition("v2MyProgrammaticCommandHandlerDefinition", chd);
             };
         }
     }

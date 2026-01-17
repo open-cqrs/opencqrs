@@ -1,13 +1,12 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.command.v2;
 
-import com.opencqrs.framework.command.*;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.opencqrs.framework.command.*;
 import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
@@ -16,10 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 public class CommandHandlingTestFixtureTest {
 
@@ -29,13 +27,13 @@ public class CommandHandlingTestFixtureTest {
         @Test
         public void stateRebuildingHandlersCalledFilteredByInstanceClassBeforeCommandExecution() {
             StateRebuildingHandlerDefinition[] eshds = {
-                    new StateRebuildingHandlerDefinition(
-                            DummyState.class, EventA.class, (StateRebuildingHandler.FromObject) (i, e) -> {
-                                throw new AssertionError("wrong state rebuilding handler called");
-                    }),
-                    new StateRebuildingHandlerDefinition(
-                            AnotherDummyState.class, EventA.class, (StateRebuildingHandler.FromObject)
-                            (i, e) -> new AnotherDummyState())
+                new StateRebuildingHandlerDefinition(
+                        DummyState.class, EventA.class, (StateRebuildingHandler.FromObject) (i, e) -> {
+                            throw new AssertionError("wrong state rebuilding handler called");
+                        }),
+                new StateRebuildingHandlerDefinition(
+                        AnotherDummyState.class, EventA.class, (StateRebuildingHandler.FromObject)
+                                (i, e) -> new AnotherDummyState())
             };
 
             CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(eshds)
@@ -55,13 +53,13 @@ public class CommandHandlingTestFixtureTest {
         @Test
         public void stateRebuildingHandlersCalledFilteredByEventClassAfterCommandExecution() {
             StateRebuildingHandlerDefinition[] eshds = {
-                    new StateRebuildingHandlerDefinition(
-                            DummyState.class, EventA.class, (StateRebuildingHandler.FromObject) (i, e) -> {
-                        throw new AssertionError("wrong state rebuilding handler called");
-                    }),
-                    new StateRebuildingHandlerDefinition(
-                            AnotherDummyState.class, EventA.class, (StateRebuildingHandler.FromObject)
-                            (i, e) -> new AnotherDummyState())
+                new StateRebuildingHandlerDefinition(
+                        DummyState.class, EventA.class, (StateRebuildingHandler.FromObject) (i, e) -> {
+                            throw new AssertionError("wrong state rebuilding handler called");
+                        }),
+                new StateRebuildingHandlerDefinition(
+                        AnotherDummyState.class, EventA.class, (StateRebuildingHandler.FromObject)
+                                (i, e) -> new AnotherDummyState())
             };
 
             CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(eshds)
@@ -88,19 +86,19 @@ public class CommandHandlingTestFixtureTest {
 
             CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                             new StateRebuildingHandlerDefinition<>(
-                                    DummyState.class, EventA.class,
-                                    (StateRebuildingHandler.FromObject<DummyState, EventA>)
-                                            (state, event) -> {
-                                                receivedStates.add(state);
-                                                return new DummyState(true);
-                                            }),
+                                    DummyState.class,
+                                    EventA.class,
+                                    (StateRebuildingHandler.FromObject<DummyState, EventA>) (state, event) -> {
+                                        receivedStates.add(state);
+                                        return new DummyState(true);
+                                    }),
                             new StateRebuildingHandlerDefinition<>(
-                                    DummyState.class, EventB.class,
-                                    (StateRebuildingHandler.FromObject<DummyState, EventB>)
-                                            (state, event) -> {
-                                                receivedStates.add(state);
-                                                return new DummyState(false);
-                                            }))
+                                    DummyState.class,
+                                    EventB.class,
+                                    (StateRebuildingHandler.FromObject<DummyState, EventB>) (state, event) -> {
+                                        receivedStates.add(state);
+                                        return new DummyState(false);
+                                    }))
                     .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
                     .given()
                     .events(new EventA("first"), new EventB(42L))
@@ -128,12 +126,12 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<DummyState> slot = new AtomicReference<>();
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
-                        DummyState.class, Object.class, stateRebuildingHandler))
+                                DummyState.class, Object.class, stateRebuildingHandler))
                         .using(DummyState.class, (CommandHandler.ForInstanceAndCommand<DummyState, DummyCommand, Void>)
                                 (i, c, p) -> {
-                            slot.set(i);
-                            return null;
-                            })
+                                    slot.set(i);
+                                    return null;
+                                })
                         .given()
                         .nothing()
                         .when(new DummyCommand())
@@ -153,12 +151,14 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<Instant> slot = new AtomicReference<>();
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
-                        DummyState.class, Object.class, (StateRebuildingHandler.FromObjectAndRawEvent<DummyState, Object>)
-                        (state, event, raw) -> {
-                            slot.set(raw.time());
-                            return new DummyState(true);
-                        }))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                                DummyState.class, Object.class, (StateRebuildingHandler.FromObjectAndRawEvent<
+                                                DummyState, Object>)
+                                        (state, event, raw) -> {
+                                            slot.set(raw.time());
+                                            return new DummyState(true);
+                                        }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null)
                         .given()
                         .event(e -> e.payload(new EventA("test")))
                         .when(new DummyCommand())
@@ -174,12 +174,14 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<Instant> slot = new AtomicReference<>();
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
-                        DummyState.class, Object.class, (StateRebuildingHandler.FromObjectAndRawEvent<DummyState, Object>)
-                        (state, event, raw) -> {
-                            slot.set(raw.time());
-                            return new DummyState(true);
-                        }))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                                DummyState.class, Object.class, (StateRebuildingHandler.FromObjectAndRawEvent<
+                                                DummyState, Object>)
+                                        (state, event, raw) -> {
+                                            slot.set(raw.time());
+                                            return new DummyState(true);
+                                        }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null)
                         .given()
                         .time(expected)
                         .event(e -> e.payload(new EventA("test")))
@@ -201,21 +203,22 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<Instant> slot2 = new AtomicReference<>();
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
-                        new StateRebuildingHandlerDefinition<>(
-                                DummyState.class, EventA.class, (StateRebuildingHandler.FromObjectAndRawEvent<
-                                                DummyState, EventA>)
-                                (state, event, raw) -> {
-                                    slot1.set(raw.time());
-                                    return new DummyState(true);
-                                }),
-                        new StateRebuildingHandlerDefinition<>(
-                                DummyState.class, EventB.class, (StateRebuildingHandler.FromObjectAndRawEvent<
-                                DummyState, EventB>)
-                                (state, event, raw) -> {
-                                    slot2.set(raw.time());
-                                    return state;
-                                }))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventA.class, (StateRebuildingHandler.FromObjectAndRawEvent<
+                                                        DummyState, EventA>)
+                                                (state, event, raw) -> {
+                                                    slot1.set(raw.time());
+                                                    return new DummyState(true);
+                                                }),
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventB.class, (StateRebuildingHandler.FromObjectAndRawEvent<
+                                                        DummyState, EventB>)
+                                                (state, event, raw) -> {
+                                                    slot2.set(raw.time());
+                                                    return state;
+                                                }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null)
                         .given()
                         .time(instant)
                         .event(event -> event.payload(new EventA("test")))
@@ -239,10 +242,10 @@ public class CommandHandlingTestFixtureTest {
                 DummyState s = new DummyState(true);
 
                 subject.using(DummyState.class, (CommandHandler.ForInstanceAndCommand<DummyState, DummyCommand, Void>)
-                            (i, c, p) -> {
-                                slot.set(i);
-                                return null;
-                            })
+                                (i, c, p) -> {
+                                    slot.set(i);
+                                    return null;
+                                })
                         .given()
                         .state(s)
                         .when(new DummyCommand())
@@ -306,15 +309,14 @@ public class CommandHandlingTestFixtureTest {
             public void singleEventPayloadPassedToStateRebuildingHandler() {
                 AtomicReference<String> capturedName = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
-                        new StateRebuildingHandlerDefinition<>(
-                                DummyState.class, EventA.class,
-                                (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                                DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<DummyState, EventA>)
                                         (state, event) -> {
                                             capturedName.set(event.name());
                                             return new DummyState(true);
                                         }))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null)
                         .given()
                         .events(new EventA("singleEventAppliedToState"))
                         .when(new DummyCommand())
@@ -330,21 +332,21 @@ public class CommandHandlingTestFixtureTest {
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
-                                        DummyState.class, EventA.class,
-                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
-                                                (state, event) -> {
-                                                    capturedName.set(event.name());
-                                                    return new DummyState(true);
-                                                }),
+                                        DummyState.class,
+                                        EventA.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventA>) (state, event) -> {
+                                            capturedName.set(event.name());
+                                            return new DummyState(true);
+                                        }),
                                 new StateRebuildingHandlerDefinition<>(
-                                        DummyState.class, EventB.class,
-                                        (StateRebuildingHandler.FromObject<DummyState, EventB>)
-                                                (state, event) -> {
-                                                    capturedSize.set(event.size());
-                                                    return new DummyState(true);
-                                                }
-                                ))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                                        DummyState.class,
+                                        EventB.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventB>) (state, event) -> {
+                                            capturedSize.set(event.size());
+                                            return new DummyState(true);
+                                        }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null)
                         .given()
                         .events(new EventA("multipleEventsAppliedToState"), new EventB(999L))
                         .when(new DummyCommand())
@@ -360,20 +362,21 @@ public class CommandHandlingTestFixtureTest {
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
-                                        DummyState.class, EventA.class,
-                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
-                                                (state, event) -> {
-                                                    callOrder.add("A");
-                                                    return state != null ? state : new DummyState(true);
-                                                }),
+                                        DummyState.class,
+                                        EventA.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventA>) (state, event) -> {
+                                            callOrder.add("A");
+                                            return state != null ? state : new DummyState(true);
+                                        }),
                                 new StateRebuildingHandlerDefinition<>(
-                                        DummyState.class, EventB.class,
-                                        (StateRebuildingHandler.FromObject<DummyState, EventB>)
-                                                (state, event) -> {
-                                                    callOrder.add("B");
-                                                    return state != null ? state : new DummyState(true);
-                                                }))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                                        DummyState.class,
+                                        EventB.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventB>) (state, event) -> {
+                                            callOrder.add("B");
+                                            return state != null ? state : new DummyState(true);
+                                        }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null)
                         .given()
                         .events(new EventB(1L), new EventA("first"))
                         .when(new DummyCommand())
@@ -388,7 +391,8 @@ public class CommandHandlingTestFixtureTest {
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
                                 DummyState.class, Object.class, stateRebuildingHandler))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null)
                         .given()
                         .events()
                         .when(new DummyCommand())
@@ -403,18 +407,18 @@ public class CommandHandlingTestFixtureTest {
 
                 var fixture = CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
-                                        DummyState.class, EventA.class,
-                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
-                                                (state, event) -> {
-                                                    called.add("A");
-                                                    return state != null ? state : new DummyState(true);
-                                                }))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null);
+                                        DummyState.class,
+                                        EventA.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventA>) (state, event) -> {
+                                            called.add("A");
+                                            return state != null ? state : new DummyState(true);
+                                        }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null);
 
-                var exception = assertThrows(IllegalArgumentException.class, () ->
-                        fixture.given()
-                                .events(new EventB(42L))
-                                .when(new DummyCommand()));
+                var exception = assertThrows(
+                        IllegalArgumentException.class,
+                        () -> fixture.given().events(new EventB(42L)).when(new DummyCommand()));
 
                 assertThat(called).isEmpty();
                 assertThat(exception.getMessage()).contains("No suitable state rebuilding handler definition found");
@@ -430,16 +434,14 @@ public class CommandHandlingTestFixtureTest {
             public void eventPayloadPassedToStateRebuildingHandler() {
                 AtomicReference<String> capturedName = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
-                        new StateRebuildingHandlerDefinition<>(
-                                DummyState.class, EventA.class,
-                                (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                                DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<DummyState, EventA>)
                                         (state, event) -> {
                                             capturedName.set(event.name());
                                             return new DummyState(true);
-                                        }
-                        ))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                                        }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null)
                         .given()
                         .event(e -> e.payload(new EventA("test")))
                         .when(new DummyCommand())
@@ -452,17 +454,14 @@ public class CommandHandlingTestFixtureTest {
             public void throwsIllegalArgumentExceptionWhenPayloadNotSpecified() {
                 var fixture = CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
-                                        DummyState.class, EventA.class,
-                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                        DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<
+                                                        DummyState, EventA>)
                                                 (state, event) -> new DummyState(true)))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null);
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null);
 
                 var exception = assertThrows(
-                        IllegalArgumentException.class,
-                        () -> fixture
-                                .given()
-                                .event(e -> {})
-                );
+                        IllegalArgumentException.class, () -> fixture.given().event(e -> {}));
 
                 assertThat(exception.getMessage()).contains("Event payload must be specified using payload()");
             }
@@ -478,23 +477,20 @@ public class CommandHandlingTestFixtureTest {
 
                 var publishingFixture = CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                                 new StateRebuildingHandlerDefinition<>(
-                                        DummyState.class, EventA.class,
-                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                        DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<
+                                                        DummyState, EventA>)
                                                 (state, event) -> new DummyState(true)))
-                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                (c, p) -> {
-                                    p.publish(new EventA("fromOtherFixture"));
-                                    return null;
-                                });
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> {
+                            p.publish(new EventA("fromOtherFixture"));
+                            return null;
+                        });
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
-                                new StateRebuildingHandlerDefinition<>(
-                                        DummyState.class, EventA.class,
-                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
-                                                (state, event) -> {
-                                                    capturedEventName.set(event.name());
-                                                    return new DummyState(true);
-                                                }))
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                                DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                        (state, event) -> {
+                                            capturedEventName.set(event.name());
+                                            return new DummyState(true);
+                                        }))
                         .using(DummyState.class, (CommandHandler.ForInstanceAndCommand<DummyState, DummyCommand, Void>)
                                 (i, c, p) -> null)
                         .given()
@@ -510,7 +506,8 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<Map<String, ?>> capturedMetaData = new AtomicReference<>();
 
                 var otherFixture = CommandHandlingTestFixture.<DummyState>withStateRebuildingHandlerDefinitions()
-                        .using(DummyState.class, (CommandHandler.ForInstanceAndCommandAndMetaData<DummyState, DummyCommand, Void>)
+                        .using(DummyState.class, (CommandHandler.ForInstanceAndCommandAndMetaData<
+                                        DummyState, DummyCommand, Void>)
                                 (i, c, m, p) -> {
                                     capturedMetaData.set(m);
                                     return null;
@@ -565,7 +562,6 @@ public class CommandHandlingTestFixtureTest {
     private static <E> StateRebuildingHandlerDefinition<DummyState, E> eshIdentity(Class<E> eventClass) {
         return new StateRebuildingHandlerDefinition<>(
                 DummyState.class, eventClass, (StateRebuildingHandler.FromObject<DummyState, E>)
-                (instance, event) -> Optional.ofNullable(instance).orElse(new DummyState(true)));
+                        (instance, event) -> Optional.ofNullable(instance).orElse(new DummyState(true)));
     }
-
 }

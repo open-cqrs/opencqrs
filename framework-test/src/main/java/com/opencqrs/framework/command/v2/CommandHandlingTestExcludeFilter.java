@@ -1,12 +1,9 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.command.v2;
 
+import com.opencqrs.framework.command.CommandHandlerConfiguration;
 import java.util.Set;
 import org.springframework.boot.test.autoconfigure.filter.StandardAnnotationCustomizableTypeExcludeFilter;
-
-import com.opencqrs.framework.command.v2.CommandHandlingTest;
-import com.opencqrs.framework.command.CommandHandlerConfiguration;
-
 
 /**
  * {@link StandardAnnotationCustomizableTypeExcludeFilter} implementation for {@link CommandHandlingTest}, which

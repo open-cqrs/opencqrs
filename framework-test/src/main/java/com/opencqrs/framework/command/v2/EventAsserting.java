@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 OpenCQRS and contributors */
 package com.opencqrs.framework.command.v2;
 
 import java.util.Map;
@@ -17,8 +18,6 @@ public interface EventAsserting {
     EventAsserting metaData(Map<String, ?> expected);
 
     EventAsserting metaDataSatisfying(Consumer<Map<String, ?>> assertion);
-
-
 
     EventAsserting noMetaData();
 
