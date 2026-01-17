@@ -4,9 +4,9 @@ package com.opencqrs.framework.command.v2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.EsdbClientAutoConfiguration;
-import com.opencqrs.framework.command.*;
-import com.opencqrs.framework.command.CommandHandlingTest;
-import com.opencqrs.framework.command.CommandHandlingTestFixture;
+import com.opencqrs.framework.command.Command;
+import com.opencqrs.framework.command.CommandRouter;
+import com.opencqrs.framework.command.CommandRouterAutoConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -27,13 +27,13 @@ public class CommandHandlingTestSliceTest {
 
     @Test
     public void fixtureAutoCreatedWithProperGenericTypes_beanNoDependency(
-            @Autowired ObjectProvider<com.opencqrs.framework.command.CommandHandlingTestFixture<MyCommand1>> fixture) {
+            @Autowired ObjectProvider<com.opencqrs.framework.command.v2.CommandHandlingTestFixture<MyCommand1>> fixture) {
         assertThat(fixture.getIfAvailable()).isNotNull();
     }
 
     @Test
     public void fixtureAutoCreatedWithProperGenericTypes_beanUnresolvableDependency(
-            @Autowired ObjectProvider<com.opencqrs.framework.command.CommandHandlingTestFixture<MyCommand2>> fixture) {
+            @Autowired ObjectProvider<com.opencqrs.framework.command.v2.CommandHandlingTestFixture<MyCommand2>> fixture) {
         assertThatThrownBy(fixture::getIfAvailable)
                 .hasCauseInstanceOf(UnsatisfiedDependencyException.class)
                 .hasMessageContaining("chdUnresolvableDependency");
@@ -41,13 +41,13 @@ public class CommandHandlingTestSliceTest {
 
     @Test
     public void fixtureAutoCreatedWithProperGenericTypes_beanCommandHandling(
-            @Autowired ObjectProvider<com.opencqrs.framework.command.CommandHandlingTestFixture<MyCommand3>> fixture) {
+            @Autowired ObjectProvider<com.opencqrs.framework.command.v2.CommandHandlingTestFixture<MyCommand3>> fixture) {
         assertThat(fixture.getIfAvailable()).isNotNull();
     }
 
     @Test
     public void fixtureAutoCreatedWithProperGenericTypes_programmaticBeanRegistration(
-            @Autowired ObjectProvider<com.opencqrs.framework.command.CommandHandlingTestFixture<MyCommand4>> fixture) {
+            @Autowired ObjectProvider<com.opencqrs.framework.command.v2.CommandHandlingTestFixture<MyCommand4>> fixture) {
         assertThat(fixture.getIfAvailable()).isNotNull();
     }
 

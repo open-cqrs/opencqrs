@@ -6,11 +6,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -77,6 +80,36 @@ public class CommandHandlingTestFixtureTest {
                     .then()
                     .allEvents()
                     .exactly(event -> event.ofType(EventA.class));
+        }
+
+        @Test
+        public void stateFromPreviousHandlerPassedToNext() {
+            List<DummyState> receivedStates = new ArrayList<>();
+
+            CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                            new StateRebuildingHandlerDefinition<>(
+                                    DummyState.class, EventA.class,
+                                    (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                            (state, event) -> {
+                                                receivedStates.add(state);
+                                                return new DummyState(true);
+                                            }),
+                            new StateRebuildingHandlerDefinition<>(
+                                    DummyState.class, EventB.class,
+                                    (StateRebuildingHandler.FromObject<DummyState, EventB>)
+                                            (state, event) -> {
+                                                receivedStates.add(state);
+                                                return new DummyState(false);
+                                            }))
+                    .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                    .given()
+                    .events(new EventA("first"), new EventB(42L))
+                    .when(new DummyCommand())
+                    .succeeds();
+
+            assertThat(receivedStates).hasSize(2);
+            assertThat(receivedStates.get(0)).isNull();
+            assertThat(receivedStates.get(1)).isEqualTo(new DummyState(true));
         }
     }
 
@@ -270,7 +303,7 @@ public class CommandHandlingTestFixtureTest {
         public class Events {
 
             @Test
-            public void singleEventAppliedToState() {
+            public void singleEventPayloadPassedToStateRebuildingHandler() {
                 AtomicReference<String> capturedName = new AtomicReference<>();
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
@@ -291,7 +324,7 @@ public class CommandHandlingTestFixtureTest {
             }
 
             @Test
-            public void multipleEventsAppliedToState() {
+            public void multipleEventPayloadsPassedToRespectiveHandlers() {
                 AtomicReference<String> capturedName = new AtomicReference<>();
                 AtomicReference<Long> capturedSize = new AtomicReference<>();
 
@@ -322,7 +355,7 @@ public class CommandHandlingTestFixtureTest {
             }
 
             @Test
-            public void processesEventsInGivenOrder() {
+            public void eventsProcessedInInsertionOrder() {
                 List<String> callOrder = new ArrayList<>();
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
@@ -348,6 +381,45 @@ public class CommandHandlingTestFixtureTest {
 
                 assertThat(callOrder).containsExactly("B", "A");
             }
+
+            @Test
+            public void noEventsAddedWhenCalledWithoutArguments() {
+                StateRebuildingHandler.FromObject<DummyState, Object> stateRebuildingHandler = mock();
+
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
+                                DummyState.class, Object.class, stateRebuildingHandler))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                        .given()
+                        .events()
+                        .when(new DummyCommand())
+                        .succeeds();
+
+                verifyNoMoreInteractions(stateRebuildingHandler);
+            }
+
+            @Test
+            public void throwsWhenNoStateRebuildingHandlerMatchesEventType() {
+                List<String> called = new ArrayList<>();
+
+                var fixture = CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventA.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                                (state, event) -> {
+                                                    called.add("A");
+                                                    return state != null ? state : new DummyState(true);
+                                                }))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null);
+
+                var exception = assertThrows(IllegalArgumentException.class, () ->
+                        fixture.given()
+                                .events(new EventB(42L))
+                                .when(new DummyCommand()));
+
+                assertThat(called).isEmpty();
+                assertThat(exception.getMessage()).contains("No suitable state rebuilding handler definition found");
+                assertThat(exception.getMessage()).contains("EventB");
+            }
         }
 
         @Nested
@@ -355,8 +427,44 @@ public class CommandHandlingTestFixtureTest {
         public class Event {
 
             @Test
-            public void eventAppliedToGivenState() {
+            public void eventPayloadPassedToStateRebuildingHandler() {
+                AtomicReference<String> capturedName = new AtomicReference<>();
 
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                        new StateRebuildingHandlerDefinition<>(
+                                DummyState.class, EventA.class,
+                                (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                        (state, event) -> {
+                                            capturedName.set(event.name());
+                                            return new DummyState(true);
+                                        }
+                        ))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
+                        .given()
+                        .event(e -> e.payload(new EventA("test")))
+                        .when(new DummyCommand())
+                        .succeeds();
+
+                assertThat(capturedName).hasValue("test");
+            }
+
+            @Test
+            public void throwsIllegalArgumentExceptionWhenPayloadNotSpecified() {
+                var fixture = CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventA.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                                (state, event) -> new DummyState(true)))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null);
+
+                var exception = assertThrows(
+                        IllegalArgumentException.class,
+                        () -> fixture
+                                .given()
+                                .event(e -> {})
+                );
+
+                assertThat(exception.getMessage()).contains("Event payload must be specified using payload()");
             }
         }
 
@@ -365,8 +473,58 @@ public class CommandHandlingTestFixtureTest {
         public class Command {
 
             @Test
-            public void commandAppliedToGivenState() {
+            public void capturedEventsFromOtherFixtureAppliedAsGivenEvents() {
+                AtomicReference<String> capturedEventName = new AtomicReference<>();
 
+                var publishingFixture = CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventA.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                                (state, event) -> new DummyState(true)))
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> {
+                                    p.publish(new EventA("fromOtherFixture"));
+                                    return null;
+                                });
+
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                                new StateRebuildingHandlerDefinition<>(
+                                        DummyState.class, EventA.class,
+                                        (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                                (state, event) -> {
+                                                    capturedEventName.set(event.name());
+                                                    return new DummyState(true);
+                                                }))
+                        .using(DummyState.class, (CommandHandler.ForInstanceAndCommand<DummyState, DummyCommand, Void>)
+                                (i, c, p) -> null)
+                        .given()
+                        .command(publishingFixture, new DummyCommand())
+                        .when(new DummyCommand())
+                        .succeeds();
+
+                assertThat(capturedEventName).hasValue("fromOtherFixture");
+            }
+
+            @Test
+            public void metaDataPassedToOtherCommandHandler() {
+                AtomicReference<Map<String, ?>> capturedMetaData = new AtomicReference<>();
+
+                var otherFixture = CommandHandlingTestFixture.<DummyState>withStateRebuildingHandlerDefinitions()
+                        .using(DummyState.class, (CommandHandler.ForInstanceAndCommandAndMetaData<DummyState, DummyCommand, Void>)
+                                (i, c, m, p) -> {
+                                    capturedMetaData.set(m);
+                                    return null;
+                                });
+
+                CommandHandlingTestFixture.<DummyState>withStateRebuildingHandlerDefinitions()
+                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                (c, p) -> null)
+                        .given()
+                        .command(otherFixture, new DummyCommand(), Map.of("testKey", "testValue"))
+                        .when(new DummyCommand())
+                        .succeeds();
+
+                assertThat(capturedMetaData.get().get("testKey")).isEqualTo("testValue");
             }
         }
     }

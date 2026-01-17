@@ -44,7 +44,8 @@ public class CommandHandlingTestFixture<C extends Command> {
         }
 
         public <C extends Command> CommandHandlingTestFixture<C> using(
-                Class<I> instanceClass, CommandHandler<I, C, ?> handler) {
+                Class<I> instanceClass, CommandHandler<I, C, ?> handler
+        ) {
             return new CommandHandlingTestFixture<C>(instanceClass, stateRebuildingHandlerDefinitions, handler);
         }
     }
@@ -206,7 +207,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             this.stubs.addAll(stubs);
         }
 
-        private void addToStubs(Consumer<GivenEvent> givenEvent) {
+        private void addToStubs(Consumer<? super GivenEvent> givenEvent) {
             GivenEvent capture = new GivenEvent(new Stub.Event());
             givenEvent.accept(capture);
 
@@ -247,22 +248,71 @@ public class CommandHandlingTestFixture<C extends Command> {
         @Override
         public com.opencqrs.framework.command.v2.GivenDsl.Given events(Object... events) {
             for (Object event : events) {
-                stubs.add(new Stub.Event().withPayload(event));
+                addToStubs(e -> e.payload(event));
             }
             return this;
         }
 
+        /**
+         * Applies a single event using the {@link GivenDsl.EventSpecifier} consumer for fine-grained
+         * event specification. At minimum, {@link GivenDsl.EventSpecifier#payload(Object)} must be called.
+         *
+         * <p>Use this method when you need to specify event properties beyond just the payload, such as
+         * {@link GivenDsl.EventSpecifier#time(Instant)}, {@link GivenDsl.EventSpecifier#subject(String)},
+         * {@link GivenDsl.EventSpecifier#id(String)}, or {@link GivenDsl.EventSpecifier#metaData(Map)}.
+         * For simple payload-only events, consider using {@link #events(Object...)} instead.
+         *
+         * @param event event specification consumer
+         * @return {@code this} for further fluent API calls
+         * @throws IllegalArgumentException if {@link GivenDsl.EventSpecifier#payload(Object)} was not called
+         * @see #events(Object...)
+         */
         @Override
         public GivenDsl.Given event(Consumer<com.opencqrs.framework.command.v2.GivenDsl.EventSpecifier> event) {
-            addToStubs(event::accept);
+            addToStubs(event);
             return this;
         }
 
+        /**
+         * Executes the given {@link Command} without meta-data using the {@link CommandHandler} encapsulated
+         * within the given fixture to capture any new events published, which in turn will be applied to
+         * {@code this}. This is useful for {@link CommandHandler}s publishing complex events, in favor of
+         * stubbing the events directly.
+         *
+         * <p><strong>Be aware that stubbed events can be specified more precisely than captured ones, since the
+         * encapsulated {@link CommandHandler} is responsible for event publication using the
+         * {@link CommandEventPublisher}. Hence, {@link GivenDsl.EventSpecifier#time(Instant)} and
+         * {@link GivenDsl.EventSpecifier#id(String)} cannot be specified using this approach.</strong>
+         *
+         * @param fixture the fixture holding the command handler to execute
+         * @param command the command to execute for event capturing
+         * @return {@code this} for further fluent API calls
+         * @throws AssertionError in case the given command did not execute successfully
+         * @param <CMD> generic command type to execute
+         */
         @Override
         public <CMD extends Command> GivenDsl.Given command(CommandHandlingTestFixture<CMD> fixture, CMD command) {
             return command(fixture, command, Map.of());
         }
 
+        /**
+         * Executes the given {@link Command} with meta-data using the {@link CommandHandler} encapsulated
+         * within the given fixture to capture any new events published, which in turn will be applied to
+         * {@code this}. This is useful for {@link CommandHandler}s publishing complex events, in favor of
+         * stubbing the events directly.
+         *
+         * <p><strong>Be aware that stubbed events can be specified more precisely than captured ones, since the
+         * encapsulated {@link CommandHandler} is responsible for event publication using the
+         * {@link CommandEventPublisher}. Hence, {@link GivenDsl.EventSpecifier#time(Instant)} and
+         * {@link GivenDsl.EventSpecifier#id(String)} cannot be specified using this approach.</strong>
+         *
+         * @param fixture the fixture holding the command handler to execute
+         * @param command the command to execute for event capturing
+         * @param metaData the command meta-data
+         * @return {@code this} for further fluent API calls
+         * @throws AssertionError in case the given command did not execute successfully
+         * @param <CMD> generic command type to execute
+         */
         @Override
         @SuppressWarnings("unchecked")
         public <CMD extends Command> GivenDsl.Given command(CommandHandlingTestFixture<CMD> fixture, CMD command, Map<String, ?> metaData) {
