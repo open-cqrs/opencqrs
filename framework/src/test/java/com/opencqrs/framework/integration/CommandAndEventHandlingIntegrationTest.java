@@ -2,6 +2,7 @@
 package com.opencqrs.framework.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import com.opencqrs.esdb.client.EsdbClient;
@@ -9,12 +10,11 @@ import com.opencqrs.esdb.client.Event;
 import com.opencqrs.esdb.client.EventCandidate;
 import com.opencqrs.esdb.client.Precondition;
 import com.opencqrs.framework.*;
-import com.opencqrs.framework.command.CommandEventPublisher;
-import com.opencqrs.framework.command.CommandHandling;
-import com.opencqrs.framework.command.CommandRouter;
-import com.opencqrs.framework.command.StateRebuilding;
+import com.opencqrs.framework.client.ConcurrencyException;
+import com.opencqrs.framework.command.*;
 import com.opencqrs.framework.eventhandler.EventHandling;
 import com.opencqrs.framework.eventhandler.EventHandlingProcessorLifecycleController;
+import com.opencqrs.framework.persistence.EventRepository;
 import com.opencqrs.framework.serialization.EventData;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
 import com.opencqrs.framework.types.EventTypeResolver;
@@ -24,13 +24,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -92,6 +92,63 @@ public class CommandAndEventHandlingIntegrationTest {
         @EventHandling("group-1")
         public void countBooksLent(BookBorrowedEvent event) {
             ++booksLent;
+        }
+    }
+
+    @TestConfiguration
+    static class CommandConsistencyHandling {
+
+        @CommandHandling
+        public void handle(ConsistencyCommand command, CommandEventPublisher<Void> publisher) throws Exception {
+            command.barrier.await();
+            publisher.publish(
+                    command.subject,
+                    new BookAddedEvent("irrelevant"),
+                    Map.of(),
+                    List.of(new Precondition.SubjectIsPristine("/foo" + command.subject())));
+        }
+
+        record ConsistencyCommand(String subject, SubjectCondition subjectCondition, CyclicBarrier barrier)
+                implements Command {
+            @Override
+            public String getSubject() {
+                return subject();
+            }
+
+            @Override
+            public SubjectCondition getSubjectCondition() {
+                return subjectCondition();
+            }
+        }
+
+        @CommandHandling
+        public void handle(RelativeCommand command, CommandEventPublisher<Void> publisher) throws Exception {
+            command.barrier.await();
+            publisher.publishRelative(command.relativeSubject, new BookAddedEvent("irrelevant"));
+        }
+
+        record RelativeCommand(String subject, String relativeSubject, CyclicBarrier barrier) implements Command {
+            @Override
+            public String getSubject() {
+                return subject();
+            }
+        }
+
+        @CommandHandling(sourcingMode = SourcingMode.NONE)
+        public void handle(NoSourcingCommand command, CommandEventPublisher<Void> publisher) {
+            publisher.publish(new BookAddedEvent("irrelevant"));
+        }
+
+        record NoSourcingCommand(String subject, SubjectCondition subjectCondition) implements Command {
+            @Override
+            public String getSubject() {
+                return subject();
+            }
+
+            @Override
+            public SubjectCondition getSubjectCondition() {
+                return subjectCondition();
+            }
         }
     }
 
@@ -215,6 +272,114 @@ public class CommandAndEventHandlingIntegrationTest {
 
         commandRouter.send(new BorrowBookCommand(id));
         await().untilAsserted(() -> assertThat(configuration.booksLent).isGreaterThanOrEqualTo(1));
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = Command.SubjectCondition.class,
+            mode = EnumSource.Mode.EXCLUDE,
+            names = {"NONE"})
+    public void commandConcurrencyCommandSubjectViolationDetected(
+            Command.SubjectCondition subjectCondition, @Autowired EventRepository eventRepository)
+            throws InterruptedException {
+        var subject = "/books/" + UUID.randomUUID();
+        if (subjectCondition == Command.SubjectCondition.EXISTS) {
+            eventRepository.publish(subject, new BookAddedEvent("irrelevant"));
+        }
+
+        CommandConsistencyHandling.ConsistencyCommand command =
+                new CommandConsistencyHandling.ConsistencyCommand(subject, subjectCondition, new CyclicBarrier(2));
+
+        CompletionService<Void> completionService = new ExecutorCompletionService<>(Executors.newFixedThreadPool(2));
+        for (int i = 0; i < 2; i++) {
+            completionService.submit(() -> commandRouter.send(command));
+        }
+        Future<Void> f1 = completionService.take();
+        Future<Void> f2 = completionService.take();
+
+        switch (f1.state()) {
+            case SUCCESS -> {
+                assertThat(f2.state()).isEqualTo(Future.State.FAILED);
+                assertThat(f2.exceptionNow()).isInstanceOf(ConcurrencyException.class);
+            }
+            case FAILED -> {
+                assertThat(f2.state()).isEqualTo(Future.State.SUCCESS);
+                assertThat(f1.exceptionNow()).isInstanceOf(ConcurrencyException.class);
+            }
+        }
+    }
+
+    @Test
+    public void commandConcurrencyCustomPreconditionViolationDetected(@Autowired EventRepository eventRepository)
+            throws InterruptedException {
+        var subject = "/books/" + UUID.randomUUID();
+        eventRepository.publish("/foo" + subject, new BookAddedEvent("irrelevant"));
+
+        CommandConsistencyHandling.ConsistencyCommand command = new CommandConsistencyHandling.ConsistencyCommand(
+                subject, Command.SubjectCondition.NONE, new CyclicBarrier(2));
+
+        CompletionService<Void> completionService = new ExecutorCompletionService<>(Executors.newFixedThreadPool(2));
+        for (int i = 0; i < 2; i++) {
+            completionService.submit(() -> commandRouter.send(command));
+        }
+
+        for (int i = 0; i < 2; i++) {
+            Future<Void> f = completionService.take();
+            assertThat(f.state()).isEqualTo(Future.State.FAILED);
+            assertThat(f.exceptionNow()).isInstanceOf(ConcurrencyException.class);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void commandConcurrencyConditionViolationForRelativeSubjectsDetected(
+            Boolean relativeSubjectExists, @Autowired EventRepository eventRepository) throws InterruptedException {
+        var subject = "/books/" + UUID.randomUUID();
+        var relativeSubject = "pages/42";
+
+        if (relativeSubjectExists) {
+            eventRepository.publish(subject + "/" + relativeSubject, new BookAddedEvent("irrelevant"));
+        }
+
+        CommandConsistencyHandling.RelativeCommand command =
+                new CommandConsistencyHandling.RelativeCommand(subject, relativeSubject, new CyclicBarrier(2));
+
+        CompletionService<Void> completionService = new ExecutorCompletionService<>(Executors.newFixedThreadPool(2));
+        for (int i = 0; i < 2; i++) {
+            completionService.submit(() -> commandRouter.send(command));
+        }
+
+        Future<Void> f1 = completionService.take();
+        Future<Void> f2 = completionService.take();
+
+        switch (f1.state()) {
+            case SUCCESS -> {
+                assertThat(f2.state()).isEqualTo(Future.State.FAILED);
+                assertThat(f2.exceptionNow()).isInstanceOf(ConcurrencyException.class);
+            }
+            case FAILED -> {
+                assertThat(f2.state()).isEqualTo(Future.State.SUCCESS);
+                assertThat(f1.exceptionNow()).isInstanceOf(ConcurrencyException.class);
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = Command.SubjectCondition.class,
+            mode = EnumSource.Mode.EXCLUDE,
+            names = {"NONE"})
+    public void nonSourcedCommandConcurrencyConditionViolationDetected(
+            Command.SubjectCondition subjectCondition, @Autowired EventRepository eventRepository) {
+        var subject = "/books/" + UUID.randomUUID();
+        if (subjectCondition == Command.SubjectCondition.PRISTINE) {
+            eventRepository.publish(subject, new BookAddedEvent("irrelevant"));
+        }
+
+        CommandConsistencyHandling.NoSourcingCommand command =
+                new CommandConsistencyHandling.NoSourcingCommand(subject, subjectCondition);
+
+        assertThatThrownBy(() -> commandRouter.send(command)).isInstanceOf(ConcurrencyException.class);
     }
 
     @Test
