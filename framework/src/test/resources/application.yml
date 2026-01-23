@@ -6,10 +6,12 @@ cqrs.event-handling:
       policy: fixed
       initial-interval: 5
 
-otel:
-  traces:
-    exporter: none
-  metrics:
-    exporter: none
-  logs:
-    exporter: none
+management:
+  opentelemetry:
+    tracing:
+      export:
+        enabled: false
+  otlp:
+    metrics:
+      export:
+        enabled: false

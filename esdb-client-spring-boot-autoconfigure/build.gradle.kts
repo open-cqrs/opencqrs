@@ -5,13 +5,13 @@ dependencies {
     api(project(":esdb-client"))
     compileOnly("org.springframework.boot:spring-boot-starter-jackson")
     compileOnly("org.springframework.boot:spring-boot-starter-actuator")
-    compileOnly("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
+    compileOnly("org.springframework.boot:spring-boot-starter-opentelemetry")
     compileOnly("org.jspecify:jspecify")
     compileOnly(libs.nullawayAnnotations)
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator")
-    testImplementation("io.opentelemetry:opentelemetry-api")
+    testImplementation("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
     testImplementation("org.springframework.boot:spring-boot-starter-jackson")
     // https://github.com/gradle/gradle/issues/33950
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
