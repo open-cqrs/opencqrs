@@ -16,6 +16,22 @@ services:
         environment:
             H2_OPTIONS: "-ifNotExists"
 
+
+    zipkin:
+        image: ghcr.io/openzipkin/zipkin:latest
+        container_name: zipkin
+        environment:
+            - STORAGE_TYPE=mem
+        ports:
+            - 9411:9411
+
+    otel:
+        image: otel/opentelemetry-collector
+        volumes:
+            - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
+        ports:
+            - 4318:4318
+
     application:
         image: "opencqrs/example-application:latest"
         ports:
@@ -32,6 +48,9 @@ services:
         depends_on:
             - event-store
             - h2database
+            - zipkin
+            - otel
+            # Insert dependency to OTEL here
         deploy:
             replicas: 2
 
