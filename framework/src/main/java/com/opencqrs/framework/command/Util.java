@@ -8,9 +8,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-class Util {
+// Make this private again after the refactor is finished and the v2 package is removed
+public class Util {
 
-    static <I, E> boolean applyUsingHandlers(
+    // Make this private again after the refactor is finished and the v2 package is removed
+    public static <I, E> boolean applyUsingHandlers(
             List<StateRebuildingHandlerDefinition<I, E>> stateRebuildingHandlerDefinitions,
             AtomicReference<I> state,
             String subject,
