@@ -20,6 +20,7 @@ import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.serialization.EventData;
 import com.opencqrs.framework.tracing.EventTracingContextExtractor;
+import com.opencqrs.framework.tracing.EventTracingContextSpanBuilder;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.time.Instant;
 import java.util.*;
@@ -65,6 +66,9 @@ public class EventHandlingProcessorTest {
 
     @Mock
     private EventTracingContextExtractor contextExtractor;
+
+    @Mock
+    private EventTracingContextSpanBuilder spanBuilder;
 
     @Mock
     private PartitionKeyResolver partitionKeyResolver;
@@ -126,6 +130,7 @@ public class EventHandlingProcessorTest {
                 eventSequenceResolver,
                 partitionKeyResolver,
                 contextExtractor,
+                spanBuilder,
                 List.of(
                         new EventHandlerDefinition<>(groupId, BookAddedEvent.class, eventHandler1),
                         new EventHandlerDefinition<>(groupId, MyEvent.class, eventHandler2),
@@ -217,6 +222,14 @@ public class EventHandlingProcessorTest {
                 })
                 .when(contextExtractor)
                 .extractAndRestoreContextFromEvent(any(), any());
+        doAnswer(invocationOnMock -> {
+                    Runnable runnable = invocationOnMock.getArgument(1);
+
+                    runnable.run();
+                    return null;
+                })
+                .when(spanBuilder)
+                .executeRunnableWithNewSpan(any(), any());
         doReturn(0L).when(partitionKeyResolver).resolve("seq01");
     }
 
@@ -290,6 +303,7 @@ public class EventHandlingProcessorTest {
                 esr,
                 partitionKeyResolver,
                 contextExtractor,
+                spanBuilder,
                 List.of(
                         new EventHandlerDefinition<>(groupId, BookAddedEvent.class, eventHandler1),
                         new EventHandlerDefinition<>(groupId, MyEvent.class, eventHandler2),

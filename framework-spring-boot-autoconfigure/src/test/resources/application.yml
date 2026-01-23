@@ -1,7 +1,4 @@
-esdb:
-  server:
-    uri: http://unknown
-    api-token: not-used
+spring.application.name: test-app
 
 management:
   opentelemetry:

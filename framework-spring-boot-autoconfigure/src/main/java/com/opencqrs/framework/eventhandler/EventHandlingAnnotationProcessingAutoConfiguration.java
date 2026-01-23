@@ -4,6 +4,7 @@ package com.opencqrs.framework.eventhandler;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.reflection.AutowiredParameter;
 import com.opencqrs.framework.reflection.AutowiredParameterResolver;
+import com.opencqrs.framework.tracing.EventHandlingSpanInformationSource;
 import com.opencqrs.framework.transaction.NoTransactionOperationsAdapter;
 import com.opencqrs.framework.transaction.SpringTransactionOperationsAdapter;
 import com.opencqrs.framework.transaction.TransactionOperationsAdapter;
@@ -202,7 +203,7 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
     }
 
     static class ReflectiveMethodInvocationEventHandler extends AutowiredParameterResolver
-            implements EventHandler.ForObjectAndMetaDataAndRawEvent<Object> {
+            implements EventHandler.ForObjectAndMetaDataAndRawEvent<Object>, EventHandlingSpanInformationSource {
 
         private final Object target;
         private final ParameterPositions parameterPositions;
@@ -226,6 +227,16 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
                     resolveIncludingAutowiredParameters(parameterPositions.mapArguments(event, metaData, rawEvent));
 
             txAdapter.execute(() -> ReflectionUtils.invokeMethod(method, target, params));
+        }
+
+        @Override
+        public String getEventHandlingClass() {
+            return target.getClass().getName();
+        }
+
+        @Override
+        public String getEventHandlingMethod() {
+            return method.getName();
         }
 
         record ParameterPositions(int object, int metaData, int raw) {

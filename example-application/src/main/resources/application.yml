@@ -37,11 +37,15 @@ management:
     web:
       exposure:
         include: "beans"
-
-otel:
-  traces:
-    exporter: none
-  metrics:
-    exporter: none
-  logs:
-    exporter: none
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: "http://localhost:4318/v1/traces"
+  tracing:
+    sampling:
+      probability: 1.0 # For Demo purposes: Exports ALL traces and spans to otel collector
+  otlp:
+    metrics:
+      export:
+        enabled: false

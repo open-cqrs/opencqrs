@@ -27,6 +27,7 @@ public class OpenTelemetryEventTracingContextExtractor implements EventTracingCo
     public void extractAndRestoreContextFromEvent(Event event, Runnable runnable) {
         try (Scope ignored1 =
                 propagator.extract(Context.current(), event, textMapGetter).makeCurrent()) {
+
             runnable.run();
         }
     }

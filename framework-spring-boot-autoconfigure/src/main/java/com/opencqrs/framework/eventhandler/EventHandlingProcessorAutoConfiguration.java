@@ -8,10 +8,7 @@ import com.opencqrs.framework.eventhandler.progress.InMemoryProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.JdbcProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
-import com.opencqrs.framework.tracing.DefaultEventTracingContextExtractor;
-import com.opencqrs.framework.tracing.EventTracingContextExtractor;
-import com.opencqrs.framework.tracing.EventTracingContextGetter;
-import com.opencqrs.framework.tracing.OpenTelemetryEventTracingContextExtractor;
+import com.opencqrs.framework.tracing.*;
 import io.opentelemetry.api.OpenTelemetry;
 import java.time.Duration;
 import java.util.List;
@@ -325,32 +322,12 @@ public class EventHandlingProcessorAutoConfiguration {
                     EventTracingContextExtractor eventTracingContextExtractor =
                             parentContext.getBean(EventTracingContextExtractor.class);
 
+                    EventTracingContextSpanBuilder eventTracingContextSpanBuilder =
+                            parentContext.getBean(EventTracingContextSpanBuilder.class);
+
                     for (int partition = 0;
                             partition < processorSettings.lifeCycle().partitions();
                             partition++) {
-                        RootBeanDefinition processor = new RootBeanDefinition();
-                        processor.setBeanClass(EventHandlingProcessor.class);
-
-                        ConstructorArgumentValues values = new ConstructorArgumentValues();
-                        values.addGenericArgumentValue(partition);
-                        values.addGenericArgumentValue(processorSettings.fetch().subject());
-                        values.addGenericArgumentValue(processorSettings.fetch().recursive());
-                        values.addGenericArgumentValue(new RuntimeBeanReference(EventReader.class));
-
-                        values.addGenericArgumentValue(progressTracker);
-                        values.addGenericArgumentValue(sequenceResolver);
-                        values.addGenericArgumentValue(partitionKeyResolver);
-
-                        // TODO: Put Extractor here.
-                        values.addGenericArgumentValue(eventTracingContextExtractor);
-
-                        GenericBeanDefinition backOff = new GenericBeanDefinition();
-                        backOff.setBeanClass(BackOff.class);
-                        backOff.setInstanceSupplier(() -> createBackOff(processorSettings.retry()));
-                        values.addGenericArgumentValue(backOff);
-                        // TODO: backOff and ehds switched up?
-                        values.addGenericArgumentValue(ehds);
-                        processor.setConstructorArgumentValues(values);
 
                         var beanName = "openCqrsEventHandlingProcessor_" + group + "_" + partition;
                         final int finalPartition = partition;
@@ -365,6 +342,8 @@ public class EventHandlingProcessorAutoConfiguration {
                                         progressTracker,
                                         sequenceResolver,
                                         partitionKeyResolver,
+                                        eventTracingContextExtractor,
+                                        eventTracingContextSpanBuilder,
                                         ehds,
                                         createBackOff(processorSettings.retry()))));
 
@@ -508,5 +487,18 @@ public class EventHandlingProcessorAutoConfiguration {
     @ConditionalOnMissingBean(OpenTelemetry.class)
     public EventTracingContextExtractor openCqrsDefaultEventTracingContextExtractor() {
         return new DefaultEventTracingContextExtractor();
+    }
+
+    @Bean
+    @ConditionalOnBean(OpenTelemetry.class)
+    public EventTracingContextSpanBuilder openCqrsOpenTelemetryEventTracingContextSpanBuilder(
+            OpenTelemetry openTelemetry) {
+        return new OpenTelemetryEvenTracingContextSpanBuilder(openTelemetry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(OpenTelemetry.class)
+    public EventTracingContextSpanBuilder openCqrsDefaultEventTracingContextSpanBuilder() {
+        return new DefaultEventTracingContextSpanBuilder();
     }
 }
