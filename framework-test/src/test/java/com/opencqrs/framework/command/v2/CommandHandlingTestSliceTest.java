@@ -4,7 +4,6 @@ package com.opencqrs.framework.command.v2;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.EsdbClientAutoConfiguration;
 import com.opencqrs.framework.command.Command;
@@ -18,6 +17,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import tools.jackson.databind.ObjectMapper;
 
 @CommandHandlingTest
 public class CommandHandlingTestSliceTest {

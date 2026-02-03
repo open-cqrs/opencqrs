@@ -3,7 +3,7 @@ package com.opencqrs.framework.command.v2;
 
 import com.opencqrs.framework.command.CommandHandlerConfiguration;
 import java.util.Set;
-import org.springframework.boot.test.autoconfigure.filter.StandardAnnotationCustomizableTypeExcludeFilter;
+import org.springframework.boot.test.context.filter.annotation.StandardAnnotationCustomizableTypeExcludeFilter;
 
 /**
  * {@link StandardAnnotationCustomizableTypeExcludeFilter} implementation for {@link CommandHandlingTest}, which
@@ -22,7 +22,7 @@ public final class CommandHandlingTestExcludeFilter
     }
 
     @Override
-    protected Set<Class<?>> getDefaultIncludes() {
+    protected Set<Class<?>> getKnownIncludes() {
         return Set.of(CommandHandlerConfiguration.class);
     }
 }

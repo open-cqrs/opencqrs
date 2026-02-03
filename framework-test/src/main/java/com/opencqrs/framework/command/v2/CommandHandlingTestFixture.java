@@ -777,15 +777,20 @@ public class CommandHandlingTestFixture<C extends Command> {
                 allConsumers.add(consumer);
                 allConsumers.addAll(Arrays.asList(consumers));
 
+                int startIndex = nextEvent.nextIndex();
                 int expectedCount = allConsumers.size();
 
-                for (int i = 0; i < expectedCount; i++) {
-                    if (!nextEvent.hasNext()) {
-                        throw new AssertionError(
-                                "Expected " + expectedCount + " more events, but only " + i + " remaining");
-                    }
+                List<CapturedEvent> remainingEvents =
+                        new ArrayList<>(capturedEvents.subList(startIndex, capturedEvents.size()));
 
-                    CapturedEvent event = nextEvent.next();
+                if (remainingEvents.size() < expectedCount) {
+                    throw new AssertionError(
+                            "Expected " + expectedCount + " more events, but only " + remainingEvents.size()
+                                    + " remaining");
+                }
+
+                for (int i = 0; i < expectedCount; i++) {
+                    CapturedEvent event = remainingEvents.get(i);
                     Consumer<ExpectDsl.EventValidator> validatorConsumer = allConsumers.get(i);
 
                     EventValidatorImpl validator = new EventValidatorImpl(event);
@@ -871,7 +876,7 @@ public class CommandHandlingTestFixture<C extends Command> {
 
             @Override
             public ExpectDsl.EventValidator asserting(
-                    Consumer<com.opencqrs.framework.command.v2.EventAsserting> asserting) {
+                    Consumer<EventAsserting> asserting) {
                 asserting.accept(new EventAsserter(command, event));
                 return this;
             }

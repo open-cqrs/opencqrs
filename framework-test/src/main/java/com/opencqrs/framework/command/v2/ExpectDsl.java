@@ -47,13 +47,58 @@ public interface ExpectDsl {
         Failing violatingExactly(Command.SubjectCondition condition);
     }
 
+    /**
+     * Fluent API interface for validating individual captured events. Instances are provided to consumers
+     * passed to methods like {@link All#single(Consumer)}, {@link All#exactly(Consumer, Consumer[])} and similar.
+     *
+     * <p>All methods return {@code this} to allow chaining multiple validations on the same event.
+     */
     interface EventValidator {
+
+        /**
+         * Asserts that the event payload equals the expected value using {@link Object#equals(Object)}.
+         * This is a convenience method for simple equality checks.
+         *
+         * @param event the expected event payload
+         * @return {@code this} for further validations
+         * @throws AssertionError if the payloads are not equal
+         */
         EventValidator comparing(Object event);
 
+        /**
+         * Asserts that the event payload satisfies custom assertions. The payload is passed directly
+         * to the consumer, cast to the specified type. Use this for payload-only assertions.
+         *
+         * <p>Example: {@code e.satisfying((MyEvent ev) -> assertThat(ev.name()).isEqualTo("test"))}
+         *
+         * @param assertion a consumer receiving the event payload for custom assertions
+         * @return {@code this} for further validations
+         * @throws AssertionError if thrown by the consumer
+         * @param <E> the expected event payload type
+         * @see #asserting(Consumer) for full event access including meta-data and subject
+         */
         <E> EventValidator satisfying(Consumer<E> assertion);
 
+        /**
+         * Asserts that the event satisfies custom assertions using the full {@link EventAsserting} API.
+         * Use this when you need to assert more than just the payload, such as meta-data or subject.
+         *
+         * <p>Example: {@code e.asserting(a -> a.payloadType(MyEvent.class).subject("my-subject"))}
+         *
+         * @param asserting a consumer receiving an {@link EventAsserting} instance
+         * @return {@code this} for further validations
+         * @throws AssertionError if thrown by the consumer
+         * @see #satisfying(Consumer) for simpler payload-only assertions
+         */
         EventValidator asserting(Consumer<EventAsserting> asserting);
 
+        /**
+         * Asserts that the event payload is an instance of the specified type.
+         *
+         * @param type the expected event payload class
+         * @return {@code this} for further validations
+         * @throws AssertionError if the payload is not assignable to the expected type
+         */
         EventValidator ofType(Class<?> type);
     }
 
@@ -102,6 +147,8 @@ public interface ExpectDsl {
         Next exactly(
                 Consumer<EventValidator> consumer,
                 Consumer<EventValidator>... consumers); // Püft Anzahl der übergebenen Events in exakter Reihenfolge
+                // Hier nochmal darüber reden, was genau mit dem Iterator passieren soll / mit der subList passieren soll. Sollen für nächste Aufrufe wieder alle Events
+                // da sein oder nur die verbleibenden?
 
         Next none(Consumer<EventValidator> consumer, Consumer<EventValidator>... consumers);
 
