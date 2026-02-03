@@ -306,16 +306,14 @@ public class CommandHandlingTestFixtureTest {
             public void usingCommandSubjectAppliedToEvent() {
                 AtomicReference<String> capturedSubject = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
-                                new StateRebuildingHandlerDefinition(
-                                        DummyState.class,
-                                        EventA.class,
-                                        (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<
-                                                        Object, EventA>)
-                                                (i, e, m, s, r) -> {
-                                                    capturedSubject.set(s);
-                                                    return new DummyState(true);
-                                                }))
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition(
+                                DummyState.class,
+                                EventA.class,
+                                (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<Object, EventA>)
+                                        (i, e, m, s, r) -> {
+                                            capturedSubject.set(s);
+                                            return new DummyState(true);
+                                        }))
                         .using(DummyState.class, (CommandHandler.ForInstanceAndCommand<Object, DummyCommand, Void>)
                                 (i, c, p) -> null)
                         .given()
@@ -331,16 +329,14 @@ public class CommandHandlingTestFixtureTest {
             public void subjectNotAppliedToGivenEventsIfExplicitlySpecified() {
                 AtomicReference<String> capturedSubject = new AtomicReference<>();
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
-                                new StateRebuildingHandlerDefinition(
-                                        DummyState.class,
-                                        EventA.class,
-                                        (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<
-                                                        Object, EventA>)
-                                                (i, e, m, s, r) -> {
-                                                    capturedSubject.set(s);
-                                                    return new DummyState(true);
-                                                }))
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition(
+                                DummyState.class,
+                                EventA.class,
+                                (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<Object, EventA>)
+                                        (i, e, m, s, r) -> {
+                                            capturedSubject.set(s);
+                                            return new DummyState(true);
+                                        }))
                         .using(DummyState.class, (CommandHandler.ForInstanceAndCommand<Object, DummyCommand, Void>)
                                 (i, c, p) -> null)
                         .given()
@@ -366,16 +362,14 @@ public class CommandHandlingTestFixtureTest {
                             return null;
                         });
 
-                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
-                                new StateRebuildingHandlerDefinition(
-                                        DummyState.class,
-                                        EventA.class,
-                                        (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<
-                                                        Object, EventA>)
-                                                (i, e, m, s, r) -> {
-                                                    capturedSubject.set(s);
-                                                    return new DummyState(true);
-                                                }))
+                CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition(
+                                DummyState.class,
+                                EventA.class,
+                                (StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<Object, EventA>)
+                                        (i, e, m, s, r) -> {
+                                            capturedSubject.set(s);
+                                            return new DummyState(true);
+                                        }))
                         .using(DummyState.class, (CommandHandler.ForInstanceAndCommand<Object, DummyCommand, Void>)
                                 (i, c, p) -> null)
                         .given()
@@ -624,9 +618,7 @@ public class CommandHandlingTestFixtureTest {
                 AtomicReference<DummyState> capturedState = new AtomicReference<>();
 
                 CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(new StateRebuildingHandlerDefinition<>(
-                                DummyState.class,
-                                EventA.class,
-                                (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<DummyState, EventA>)
                                         (state, event) -> new DummyState(true)))
                         .using(DummyState.class, (CommandHandler.ForInstanceAndCommand<DummyState, DummyCommand, Void>)
                                 (instance, c, p) -> {
@@ -641,7 +633,8 @@ public class CommandHandlingTestFixtureTest {
                         .then()
                         .allEvents()
                         .count(1)
-                        .exactly(e -> e.satisfying((EventA ev) -> assertThat(ev.name()).isEqualTo("fromCommand")));
+                        .exactly(e -> e.satisfying(
+                                (EventA ev) -> assertThat(ev.name()).isEqualTo("fromCommand")));
 
                 assertThat(capturedState.get()).isNotNull();
                 assertThat(capturedState.get().valid()).isTrue();
@@ -712,14 +705,13 @@ public class CommandHandlingTestFixtureTest {
                             throw new RuntimeException("givenCommand failed");
                         });
 
-                assertThatThrownBy(
-                                () -> CommandHandlingTestFixture.<DummyState>withStateRebuildingHandlerDefinitions()
-                                        .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                                (c, p) -> null)
-                                        .given()
-                                        .command(failingFixture, new DummyCommand())
-                                        .when(new DummyCommand())
-                                        .succeeds())
+                assertThatThrownBy(() -> CommandHandlingTestFixture.<DummyState>withStateRebuildingHandlerDefinitions()
+                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                        (c, p) -> null)
+                                .given()
+                                .command(failingFixture, new DummyCommand())
+                                .when(new DummyCommand())
+                                .succeeds())
                         .isInstanceOf(AssertionError.class)
                         .hasCauseInstanceOf(RuntimeException.class)
                         .hasRootCauseMessage("givenCommand failed");
@@ -764,9 +756,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void successfulExecution_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -777,9 +769,9 @@ public class CommandHandlingTestFixtureTest {
             @Test
             public void unsuccessfulExecution_failing() {
                 RuntimeException error = new RuntimeException("command handling error");
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             throw error;
                                         })
                                 .given()
@@ -797,9 +789,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noEventsCaptured_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -810,9 +802,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void eventsCaptured_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"));
                                             return null;
                                         })
@@ -832,9 +824,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void equalResult_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Long>)
-                                        (c, p) -> 42L)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Long>) (c, p) -> 42L)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -845,9 +837,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void bothNull_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, p) -> null)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, p) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -858,9 +850,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nonEqualResult_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Long>)
-                                        (c, p) -> 24L)
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Long>) (c, p) -> 24L)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -872,9 +864,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nullActualNonNullExpected_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Long>)
-                                        (c, p) -> null)
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Long>) (c, p) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -906,9 +898,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void consumerExecutedSuccessfully() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Long>)
-                                        (c, p) -> 42L)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Long>) (c, p) -> 42L)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -920,9 +912,9 @@ public class CommandHandlingTestFixtureTest {
             @Test
             public void consumerError_propagated() {
                 AssertionError error = new AssertionError("custom error");
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Long>)
-                                        (c, p) -> 42L)
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Long>) (c, p) -> 42L)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -941,10 +933,12 @@ public class CommandHandlingTestFixtureTest {
             CommandHandlingTestFixture.Builder<DummyState> stateSubject =
                     CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                             new StateRebuildingHandlerDefinition<>(
-                                    DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                    DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<
+                                                    DummyState, EventA>)
                                             (instance, event) -> new DummyState(false)),
                             new StateRebuildingHandlerDefinition<>(
-                                    DummyState.class, EventB.class, (StateRebuildingHandler.FromObject<DummyState, EventB>)
+                                    DummyState.class, EventB.class, (StateRebuildingHandler.FromObject<
+                                                    DummyState, EventB>)
                                             (instance, event) -> new DummyState(!instance.valid())));
 
             @Test
@@ -984,9 +978,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noStateCaptured_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -1004,10 +998,12 @@ public class CommandHandlingTestFixtureTest {
             CommandHandlingTestFixture.Builder<DummyState> stateSubject =
                     CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                             new StateRebuildingHandlerDefinition<>(
-                                    DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                    DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<
+                                                    DummyState, EventA>)
                                             (instance, event) -> new DummyState(false)),
                             new StateRebuildingHandlerDefinition<>(
-                                    DummyState.class, EventB.class, (StateRebuildingHandler.FromObject<DummyState, EventB>)
+                                    DummyState.class, EventB.class, (StateRebuildingHandler.FromObject<
+                                                    DummyState, EventB>)
                                             (instance, event) -> new DummyState(!instance.valid())));
 
             @Test
@@ -1057,10 +1053,12 @@ public class CommandHandlingTestFixtureTest {
             CommandHandlingTestFixture.Builder<DummyState> stateSubject =
                     CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
                             new StateRebuildingHandlerDefinition<>(
-                                    DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<DummyState, EventA>)
+                                    DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<
+                                                    DummyState, EventA>)
                                             (instance, event) -> new DummyState(false)),
                             new StateRebuildingHandlerDefinition<>(
-                                    DummyState.class, EventB.class, (StateRebuildingHandler.FromObject<DummyState, EventB>)
+                                    DummyState.class, EventB.class, (StateRebuildingHandler.FromObject<
+                                                    DummyState, EventB>)
                                             (instance, event) -> new DummyState(!instance.valid())));
 
             @Test
@@ -1082,9 +1080,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void bothNull_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .state(new DummyState(null))
                                 .when(new DummyCommand())
@@ -1113,9 +1111,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noStateCaptured_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -1132,9 +1130,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void unsuccessfulExecution_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             throw new RuntimeException("command handling error");
                                         })
                                 .given()
@@ -1146,9 +1144,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void successfulExecution_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -1164,9 +1162,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchingExceptionType_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             throw new RuntimeException("test error");
                                         })
                                 .given()
@@ -1179,9 +1177,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void wrongExceptionType_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             throw new RuntimeException("test error");
                                         })
                                 .given()
@@ -1201,9 +1199,9 @@ public class CommandHandlingTestFixtureTest {
             @Test
             public void exceptionPassedToConsumer() {
                 RuntimeException error = new RuntimeException("specific error message");
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             throw error;
                                         })
                                 .given()
@@ -1220,9 +1218,9 @@ public class CommandHandlingTestFixtureTest {
             @Test
             public void consumerError_propagated() {
                 AssertionError consumerError = new AssertionError("consumer assertion failed");
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             throw new RuntimeException("test error");
                                         })
                                 .given()
@@ -1242,9 +1240,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void pristineViolation_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .event(e -> e.payload(new EventA("existing")))
                                 .when(new DummyCommand(Command.SubjectCondition.PRISTINE))
@@ -1255,9 +1253,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void existsViolation_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand(Command.SubjectCondition.EXISTS))
@@ -1273,9 +1271,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void pristineViolation_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .event(e -> e.payload(new EventA("existing")))
                                 .when(new DummyCommand(Command.SubjectCondition.PRISTINE))
@@ -1286,9 +1284,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void existsViolation_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand(Command.SubjectCondition.EXISTS))
@@ -1299,9 +1297,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noneCondition_throwsIllegalArgument() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .event(e -> e.payload(new EventA("existing")))
                                 .when(new DummyCommand(Command.SubjectCondition.PRISTINE))
@@ -1318,9 +1316,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchingCount_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1337,9 +1335,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nonMatchingCount_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1357,9 +1355,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void negativeCount_throwsIllegalArgument() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -1378,9 +1376,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void singleMatch_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1397,9 +1395,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noMatch_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1417,9 +1415,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void multipleMatches_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventA("two"));
                                             return null;
@@ -1442,9 +1440,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchFound_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1461,9 +1459,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void multipleMatches_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventA("two"));
                                             return null;
@@ -1480,9 +1478,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noMatchFound_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1505,9 +1503,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void allMatchInOrder_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1524,9 +1522,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void countMismatch_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1537,16 +1535,19 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.ofType(EventA.class), e -> e.ofType(EventB.class), e -> e.ofType(EventC.class)))
+                                .exactly(
+                                        e -> e.ofType(EventA.class),
+                                        e -> e.ofType(EventB.class),
+                                        e -> e.ofType(EventC.class)))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("exactly", "3", "found", "2");
             }
 
             @Test
             public void wrongOrder_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1568,9 +1569,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void allMatch_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventA("two"));
                                             return null;
@@ -1587,9 +1588,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void someDontMatch_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1606,9 +1607,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noEvents_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -1627,9 +1628,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noMatch_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1646,9 +1647,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchFound_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1671,9 +1672,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void skipWithinBounds_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             publisher.publish(new EventC());
@@ -1691,9 +1692,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void skipBeyondBounds_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1711,9 +1712,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void skipZero_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -1734,9 +1735,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noEventsRemaining_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> null)
+                assertThatCode(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
                                 .given()
                                 .nothing()
                                 .when(new DummyCommand())
@@ -1749,9 +1750,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void eventsRemaining_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -1773,9 +1774,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void singleMatch_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1792,9 +1793,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noMatch_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1812,9 +1813,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void multipleMatches_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventA("two"));
                                             return null;
@@ -1832,9 +1833,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void singleMatchAfterSkip_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             publisher.publish(new EventC());
@@ -1853,9 +1854,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noMatchAfterSkip_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             publisher.publish(new EventC());
@@ -1880,9 +1881,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchFound_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1899,9 +1900,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noMatchFound_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -1919,9 +1920,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void multipleMatches_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventA("two"));
                                             return null;
@@ -1938,9 +1939,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchFoundAfterSkip_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             publisher.publish(new EventC());
@@ -1959,9 +1960,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noMatchAfterSkip_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             publisher.publish(new EventC());
@@ -1986,9 +1987,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void allMatchInOrder_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -2005,9 +2006,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void notEnoughRemaining_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2023,9 +2024,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void wrongOrder_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -2042,9 +2043,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchAfterSkip_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             publisher.publish(new EventC());
@@ -2063,9 +2064,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void cursorNotAdvanced() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -2088,9 +2089,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noMatch_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -2107,9 +2108,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchFound_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -2127,9 +2128,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void noMatchAfterSkip_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             return null;
@@ -2147,9 +2148,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchAfterSkip_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
                                             publisher.publish(new EventC());
@@ -2174,9 +2175,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchingType_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2192,9 +2193,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void wrongType_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2216,9 +2217,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void equalPayload_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2234,9 +2235,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nonEqualPayload_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2252,9 +2253,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void wrongType_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2275,9 +2276,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void assertionPasses_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2287,15 +2288,16 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.satisfying((EventA a) -> assertThat(a.name()).isEqualTo("one"))))
+                                .exactly(e -> e.satisfying(
+                                        (EventA a) -> assertThat(a.name()).isEqualTo("one"))))
                         .doesNotThrowAnyException();
             }
 
             @Test
             public void assertionFails_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2305,7 +2307,8 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.satisfying((EventA a) -> assertThat(a.name()).isEqualTo("other"))))
+                                .exactly(e -> e.satisfying(
+                                        (EventA a) -> assertThat(a.name()).isEqualTo("other"))))
                         .isInstanceOf(AssertionError.class);
             }
         }
@@ -2316,9 +2319,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void assertionPasses_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2334,9 +2337,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void assertionFails_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2357,9 +2360,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void matchingType_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2375,9 +2378,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void wrongType_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2399,9 +2402,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void equalPayload_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2417,9 +2420,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nonEqualPayload_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2441,9 +2444,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void equalExtractedString_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"));
                                             return null;
                                         })
@@ -2459,9 +2462,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void equalExtractedLong_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventB(42L));
                                             return null;
                                         })
@@ -2477,9 +2480,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nonEqualExtractedString_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             return null;
                                         })
@@ -2496,9 +2499,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nonEqualExtractedLong_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventB(42L));
                                             return null;
                                         })
@@ -2515,9 +2518,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void bothNull_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA(null));
                                             return null;
                                         })
@@ -2533,9 +2536,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void extractedNullExpectedNonNull_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA(null));
                                             return null;
                                         })
@@ -2545,16 +2548,17 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadExtracting((EventA ev) -> ev.name(), "something"))))
+                                .exactly(e ->
+                                        e.asserting(a -> a.payloadExtracting((EventA ev) -> ev.name(), "something"))))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("Extracted payload expected to be equal", "differs", "something");
             }
 
             @Test
             public void wrongEventType_throwsClassCastException() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"));
                                             return null;
                                         })
@@ -2575,9 +2579,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void assertionPasses_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"));
                                             return null;
                                         })
@@ -2587,15 +2591,16 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadSatisfying((EventA ev) -> assertThat(ev.name()).isEqualTo("test")))))
+                                .exactly(e -> e.asserting(a -> a.payloadSatisfying(
+                                        (EventA ev) -> assertThat(ev.name()).isEqualTo("test")))))
                         .doesNotThrowAnyException();
             }
 
             @Test
             public void assertionFails_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"));
                                             return null;
                                         })
@@ -2605,7 +2610,8 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadSatisfying((EventA ev) -> assertThat(ev.name()).isEqualTo("wrong")))))
+                                .exactly(e -> e.asserting(a -> a.payloadSatisfying(
+                                        (EventA ev) -> assertThat(ev.name()).isEqualTo("wrong")))))
                         .isInstanceOf(AssertionError.class);
             }
         }
@@ -2616,9 +2622,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void equalMetaData_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"), Map.of("key", "value"));
                                             return null;
                                         })
@@ -2634,9 +2640,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nonEqualMetaData_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"), Map.of("key", "value"));
                                             return null;
                                         })
@@ -2658,9 +2664,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void assertionPasses_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"), Map.of("key", "value"));
                                             return null;
                                         })
@@ -2670,15 +2676,16 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.asserting(a -> a.metaDataSatisfying(meta -> assertThat(meta.get("key")).isEqualTo("value")))))
+                                .exactly(e -> e.asserting(a -> a.metaDataSatisfying(
+                                        meta -> assertThat(meta.get("key")).isEqualTo("value")))))
                         .doesNotThrowAnyException();
             }
 
             @Test
             public void assertionFails_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"), Map.of("key", "value"));
                                             return null;
                                         })
@@ -2688,7 +2695,8 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.asserting(a -> a.metaDataSatisfying(meta -> assertThat(meta.get("key")).isEqualTo("wrong")))))
+                                .exactly(e -> e.asserting(a -> a.metaDataSatisfying(
+                                        meta -> assertThat(meta.get("key")).isEqualTo("wrong")))))
                         .isInstanceOf(AssertionError.class);
             }
         }
@@ -2699,9 +2707,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void emptyMetaData_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"));
                                             return null;
                                         })
@@ -2717,9 +2725,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nonEmptyMetaData_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("test"), Map.of("key", "value"));
                                             return null;
                                         })
@@ -2741,9 +2749,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void equalSubject_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publishRelative("child", new EventA("irrelevant"));
                                             return null;
                                         })
@@ -2759,9 +2767,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void nonEqualSubject_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publishRelative("child", new EventA("irrelevant"));
                                             return null;
                                         })
@@ -2773,7 +2781,8 @@ public class CommandHandlingTestFixtureTest {
                                 .allEvents()
                                 .exactly(e -> e.asserting(a -> a.subject("dummy/other"))))
                         .isInstanceOf(AssertionError.class)
-                        .hasMessageContainingAll("subject expected to be equal", "dummy/child", "differs", "dummy/other");
+                        .hasMessageContainingAll(
+                                "subject expected to be equal", "dummy/child", "differs", "dummy/other");
             }
         }
 
@@ -2783,9 +2792,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void assertionPasses_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publishRelative("child", new EventA("irrelevant"));
                                             return null;
                                         })
@@ -2795,15 +2804,16 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.asserting(a -> a.subjectSatisfying(s -> assertThat(s).endsWith("/child")))))
+                                .exactly(e -> e.asserting(a ->
+                                        a.subjectSatisfying(s -> assertThat(s).endsWith("/child")))))
                         .doesNotThrowAnyException();
             }
 
             @Test
             public void assertionFails_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publishRelative("child", new EventA("irrelevant"));
                                             return null;
                                         })
@@ -2813,7 +2823,8 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .allEvents()
-                                .exactly(e -> e.asserting(a -> a.subjectSatisfying(s -> assertThat(s).endsWith("/other")))))
+                                .exactly(e -> e.asserting(a ->
+                                        a.subjectSatisfying(s -> assertThat(s).endsWith("/other")))))
                         .isInstanceOf(AssertionError.class);
             }
         }
@@ -2824,9 +2835,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void eventSubjectMatchesCommandSubject_notFailing() {
-                assertThatCode(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("irrelevant"));
                                             return null;
                                         })
@@ -2842,9 +2853,9 @@ public class CommandHandlingTestFixtureTest {
 
             @Test
             public void eventSubjectDiffersFromCommandSubject_failing() {
-                assertThatThrownBy(() -> subject
-                                .using(DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
-                                        (c, publisher) -> {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publishRelative("child", new EventA("irrelevant"));
                                             return null;
                                         })

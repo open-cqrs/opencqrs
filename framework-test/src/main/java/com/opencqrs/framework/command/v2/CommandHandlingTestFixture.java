@@ -784,9 +784,8 @@ public class CommandHandlingTestFixture<C extends Command> {
                         new ArrayList<>(capturedEvents.subList(startIndex, capturedEvents.size()));
 
                 if (remainingEvents.size() < expectedCount) {
-                    throw new AssertionError(
-                            "Expected " + expectedCount + " more events, but only " + remainingEvents.size()
-                                    + " remaining");
+                    throw new AssertionError("Expected " + expectedCount + " more events, but only "
+                            + remainingEvents.size() + " remaining");
                 }
 
                 for (int i = 0; i < expectedCount; i++) {
@@ -875,8 +874,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
 
             @Override
-            public ExpectDsl.EventValidator asserting(
-                    Consumer<EventAsserting> asserting) {
+            public ExpectDsl.EventValidator asserting(Consumer<EventAsserting> asserting) {
                 asserting.accept(new EventAsserter(command, event));
                 return this;
             }

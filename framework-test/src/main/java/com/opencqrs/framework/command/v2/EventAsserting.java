@@ -6,14 +6,17 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Interface for comprehensive assertions on captured events, providing access to payload,
- * meta-data, and subject. Instances are obtained via {@link ExpectDsl.EventValidator#asserting(Consumer)}.
+ * Interface for comprehensive assertions on captured events, providing access to payload, meta-data, and subject.
+ * Instances are obtained via {@link ExpectDsl.EventValidator#asserting(Consumer)}.
  *
  * <p>The API follows a consistent pattern for each event aspect:
+ *
  * <ul>
- *   <li>Direct comparison methods ({@link #payload}, {@link #metaData}, {@link #subject})</li>
- *   <li>Consumer-based methods for custom assertions ({@link #payloadSatisfying}, {@link #metaDataSatisfying}, {@link #subjectSatisfying})</li>
- *   <li>Specialized convenience methods ({@link #payloadType}, {@link #payloadExtracting}, {@link #noMetaData}, {@link #commandSubject})</li>
+ *   <li>Direct comparison methods ({@link #payload}, {@link #metaData}, {@link #subject})
+ *   <li>Consumer-based methods for custom assertions ({@link #payloadSatisfying}, {@link #metaDataSatisfying},
+ *       {@link #subjectSatisfying})
+ *   <li>Specialized convenience methods ({@link #payloadType}, {@link #payloadExtracting}, {@link #noMetaData},
+ *       {@link #commandSubject})
  * </ul>
  *
  * <p>All methods return {@code this} to allow method chaining.
@@ -37,11 +40,13 @@ public interface EventAsserting {
      * @throws AssertionError if the payloads are not equal
      * @param <E> the payload type
      */
-    <E> EventAsserting payload(E expected); // payload maybe is not the best name since in OpenCQRS terms "payload" here means the event itself
+    <E> EventAsserting payload(
+            E expected); // payload maybe is not the best name since in OpenCQRS terms "payload" here means the
+    // event itself
 
     /**
-     * Extracts a value from the event payload and asserts it equals the expected value.
-     * Useful for comparing specific fields without matching the entire payload.
+     * Extracts a value from the event payload and asserts it equals the expected value. Useful for comparing specific
+     * fields without matching the entire payload.
      *
      * <p>Example: {@code a.payloadExtracting((MyEvent e) -> e.name(), "expected-name")}
      *
@@ -109,8 +114,8 @@ public interface EventAsserting {
     EventAsserting subjectSatisfying(Consumer<String> assertion);
 
     /**
-     * Asserts that the event subject equals the command's subject.
-     * Convenience method equivalent to {@code subject(command.getSubject())}.
+     * Asserts that the event subject equals the command's subject. Convenience method equivalent to
+     * {@code subject(command.getSubject())}.
      *
      * @return {@code this} for further assertions
      * @throws AssertionError if the subjects do not match

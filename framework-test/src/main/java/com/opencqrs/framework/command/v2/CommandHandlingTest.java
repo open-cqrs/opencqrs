@@ -2,9 +2,8 @@
 package com.opencqrs.framework.command.v2;
 
 import com.opencqrs.framework.command.*;
-import java.lang.annotation.*;
-
 import com.opencqrs.framework.command.CommandHandlingTestExcludeFilter;
+import java.lang.annotation.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.OverrideAutoConfiguration;
