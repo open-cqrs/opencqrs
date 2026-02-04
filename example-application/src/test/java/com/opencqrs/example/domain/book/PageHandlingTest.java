@@ -14,9 +14,13 @@ public class PageHandlingTest {
 
     @Test
     public void pageMarkedAsDamaged(@Autowired CommandHandlingTestFixture<MarkBookPageDamagedCommand> fixture) {
-        fixture.givenNothing()
+        fixture.given()
+                .nothing()
                 .when(new MarkBookPageDamagedCommand("4711", 42L, UUID.randomUUID()))
-                .expectSuccessfulExecution()
-                .expectSingleEvent(event -> event.commandSubject().payloadType(BookPageDamagedEvent.ByReader.class));
+                .succeeds()
+                .then()
+                .allEvents()
+                .single(event ->
+                        event.asserting(a -> a.commandSubject().payloadType(BookPageDamagedEvent.ByReader.class)));
     }
 }
