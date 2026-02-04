@@ -8,7 +8,7 @@ import org.springframework.boot.test.context.filter.annotation.StandardAnnotatio
  * {@link StandardAnnotationCustomizableTypeExcludeFilter} implementation for {@link CommandHandlingTest}, which
  * includes beans defined within {@link CommandHandlerConfiguration}s.
  */
-public final class CommandHandlingTestExcludeFilter
+final class CommandHandlingTestExcludeFilter
         extends StandardAnnotationCustomizableTypeExcludeFilter<CommandHandlingTest> {
 
     CommandHandlingTestExcludeFilter(Class<?> testClass) {

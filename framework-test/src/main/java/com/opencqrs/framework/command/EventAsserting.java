@@ -1,5 +1,5 @@
 /* Copyright (C) 2026 OpenCQRS and contributors */
-package com.opencqrs.framework.command.v2;
+package com.opencqrs.framework.command;
 
 import java.util.Map;
 import java.util.function.Consumer;

@@ -1,9 +1,6 @@
 /* Copyright (C) 2026 OpenCQRS and contributors */
-package com.opencqrs.framework.command.v2;
+package com.opencqrs.framework.command;
 
-import com.opencqrs.framework.command.Command;
-import com.opencqrs.framework.command.StateRebuildingHandler;
-import com.opencqrs.framework.command.StateRebuildingHandlerDefinition;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;

@@ -1,8 +1,6 @@
 /* Copyright (C) 2026 OpenCQRS and contributors */
-package com.opencqrs.framework.command.v2;
+package com.opencqrs.framework.command;
 
-import com.opencqrs.framework.command.Command;
-import com.opencqrs.framework.command.CommandHandler;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
