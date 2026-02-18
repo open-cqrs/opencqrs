@@ -6,6 +6,14 @@ repo_url: https://github.com/open-cqrs/opencqrs
 plugins:
   - social
   - macros
+  - blog:
+      blog_dir: blog
+      post_date_format: long
+      post_url_format: "{slug}"
+      archive: true
+      categories: true
+  - rss:
+      match_path: blog/posts/.*
 
 extra:
   generator: false
@@ -125,3 +133,5 @@ nav:
     - Events: concepts/events/index.md
     - Event Sourcing: concepts/event_sourcing/index.md
     - Event Upcasting: concepts/upcasting/index.md
+  - Blog:
+    - What's New: blog/index.md
