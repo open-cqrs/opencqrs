@@ -60,18 +60,22 @@ public interface ExpectDsl {
         All allEvents();
 
         /**
-         * Returns an interface for asserting against events sequentially using a cursor. Use this when you need to
-         * navigate through events in order, skip events, or verify that no more events exist after a certain point.
+         * Returns an interface for asserting against events sequentially using a cursor. Each call creates a fresh
+         * cursor starting at position 0. Use this when you need to navigate through events in order, skip events, or
+         * verify that no more events exist after a certain point.
          *
-         * <p>The cursor starts at the first event and can be advanced using {@link Next#skip(int)}. Unlike
-         * {@link #allEvents()}, this interface maintains position state between calls.
+         * <p>Navigation methods ({@link Next#skip(int)}, {@link Next#matches(java.util.function.Consumer)}) advance the
+         * cursor and return {@link Next} for further navigation. Terminal methods
+         * ({@link Next#single(java.util.function.Consumer)}, {@link Next#any(java.util.function.Consumer)},
+         * {@link Next#none(java.util.function.Consumer)}, {@link Next#exactly(java.util.function.Consumer,
+         * java.util.function.Consumer[])}) consume remaining events and return {@link Common}.
          *
          * <p>Example:
          *
          * <pre>
          * .then()
          *     .nextEvents()
-         *     .exactly(e -&gt; e.ofType(OrderPlacedEvent.class))
+         *     .matches(e -&gt; e.ofType(OrderPlacedEvent.class))
          *     .skip(1)
          *     .noMore();
          * </pre>
@@ -385,44 +389,20 @@ public interface ExpectDsl {
         All single(Consumer<EventValidator> consumer);
 
         /**
-         * Asserts that for each provided validator, at least one matching event exists in the captured list. Events can
-         * match in any order, and the same event may match multiple validators.
+         * Asserts that at least one event in the captured list matches the validation.
          *
          * <p>Example:
          *
          * <pre>
          * .allEvents()
-         *     .any(
-         *         e -&gt; e.ofType(OrderPlacedEvent.class),
-         *         e -&gt; e.ofType(PaymentReceivedEvent.class));
+         *     .any(e -&gt; e.ofType(OrderPlacedEvent.class));
          * </pre>
          *
-         * @param consumer the first validator
-         * @param consumers additional validators
+         * @param consumer a consumer that validates events via {@link EventValidator}
          * @return {@code this} for method chaining
-         * @throws AssertionError if any validator has no matching event
+         * @throws AssertionError if no event matches
          */
-        All any(Consumer<EventValidator> consumer, Consumer<EventValidator>... consumers);
-
-        /**
-         * Asserts that the captured events match the provided validators exactly, in order. The number of validators
-         * must equal the number of captured events, and each event must match its corresponding validator.
-         *
-         * <p>Example:
-         *
-         * <pre>
-         * .allEvents()
-         *     .exactly(
-         *         e -&gt; e.comparing(new OrderPlacedEvent(...)),
-         *         e -&gt; e.comparing(new InventoryReservedEvent(...)));
-         * </pre>
-         *
-         * @param consumer validator for the first event
-         * @param consumers validators for subsequent events
-         * @return {@code this} for method chaining
-         * @throws AssertionError if the count doesn't match or any event fails validation
-         */
-        All exactly(Consumer<EventValidator> consumer, Consumer<EventValidator>... consumers);
+        All any(Consumer<EventValidator> consumer);
 
         /**
          * Asserts that all captured events match the specified validation.
@@ -441,23 +421,20 @@ public interface ExpectDsl {
         All all(Consumer<EventValidator> consumer);
 
         /**
-         * Asserts that no captured events match any of the provided validators.
+         * Asserts that no captured events match the validation.
          *
          * <p>Example:
          *
          * <pre>
          * .allEvents()
-         *     .none(
-         *         e -&gt; e.ofType(OrderCancelledEvent.class),
-         *         e -&gt; e.ofType(RefundIssuedEvent.class));
+         *     .none(e -&gt; e.ofType(OrderCancelledEvent.class));
          * </pre>
          *
-         * @param consumer the first validator that should not match
-         * @param consumers additional validators that should not match
+         * @param consumer a consumer that validates events via {@link EventValidator}
          * @return {@code this} for method chaining
-         * @throws AssertionError if any event matches any validator
+         * @throws AssertionError if any event matches
          */
-        All none(Consumer<EventValidator> consumer, Consumer<EventValidator>... consumers);
+        All none(Consumer<EventValidator> consumer);
 
         /**
          * Returns to the {@link Common} interface to switch between {@link All} and {@link Next} assertion modes.
@@ -468,21 +445,25 @@ public interface ExpectDsl {
     }
 
     /**
-     * Fluent API for asserting against events sequentially using a cursor. This interface maintains position state,
-     * allowing navigation through events in order.
+     * Fluent API for asserting against events sequentially using a consuming cursor. This interface maintains position
+     * state, allowing navigation through events in order. All methods consume events and advance the cursor.
      *
-     * <p>The cursor starts at position 0 (first event). Methods like {@link #skip(int)} advance the cursor, while
-     * assertion methods operate on events from the current cursor position. After assertions, the cursor position is
-     * reset to allow further independent assertions.
+     * <p>The cursor starts at position 0 (first event). There are two categories of methods:
+     *
+     * <ul>
+     *   <li><strong>Navigating</strong> ({@link #skip(int)}, {@link #matches(Consumer)}) — advance the cursor and
+     *       return {@code Next} for further chaining.
+     *   <li><strong>Terminal</strong> ({@link #single(Consumer)}, {@link #any(Consumer)}, {@link #none(Consumer)},
+     *       {@link #exactly(Consumer, Consumer[])}) — consume all remaining events and return {@link Common}.
+     * </ul>
      *
      * <p>Example:
      *
      * <pre>
      * .nextEvents()
-     *     .exactly(e -&gt; e.ofType(OrderPlacedEvent.class))   // verify first event
-     *     .skip(1)                                           // move past second event
-     *     .single(e -&gt; e.ofType(ShippingLabelEvent.class))  // find one matching in remaining
-     *     .noMore();                                         // verify no more events after cursor
+     *     .matches(e -&gt; e.ofType(OrderPlacedEvent.class))   // validate and consume first event
+     *     .skip(1)                                           // skip second event
+     *     .exactly(e -&gt; e.ofType(ShippingLabelEvent.class)) // validate remaining events exactly
      * </pre>
      *
      * @see All for non-sequential assertions on all events
@@ -516,48 +497,58 @@ public interface ExpectDsl {
         Next noMore();
 
         /**
-         * Asserts that exactly one event from the current cursor position onwards matches the validation. The cursor
-         * position is reset after this assertion.
+         * Consumes all remaining events from the current cursor position and asserts that exactly one matches the
+         * validation. This is a terminal operation that returns {@link Common}.
          *
          * @param consumer a consumer that validates a single event via {@link EventValidator}
-         * @return {@code this} for method chaining
+         * @return a {@link Common} interface for further assertions
          * @throws AssertionError if zero or more than one event matches
          */
-        Next single(Consumer<EventValidator> consumer);
+        Common single(Consumer<EventValidator> consumer);
 
         /**
-         * Asserts that for each provided validator, at least one matching event exists from the current cursor position
-         * onwards. The cursor position is reset after this assertion.
+         * Consumes all remaining events from the current cursor position and asserts that at least one matches the
+         * validation. This is a terminal operation that returns {@link Common}.
          *
-         * @param consumer the first validator
-         * @param consumers additional validators
-         * @return {@code this} for method chaining
-         * @throws AssertionError if any validator has no matching event
+         * @param consumer a consumer that validates events via {@link EventValidator}
+         * @return a {@link Common} interface for further assertions
+         * @throws AssertionError if no remaining event matches
          */
-        Next any(Consumer<EventValidator> consumer, Consumer<EventValidator>... consumers);
+        Common any(Consumer<EventValidator> consumer);
 
         /**
-         * Asserts that events from the current cursor position match the provided validators exactly, in order. The
-         * number of validators must equal the number of remaining events. The cursor position is reset after this
-         * assertion.
+         * Consumes events from the current cursor position and validates each against the corresponding consumer, in
+         * order. The number of remaining events must exactly match the number of consumers — both too few and too many
+         * remaining events cause an error. This is a terminal operation that returns {@link Common}.
          *
          * @param consumer validator for the first event at cursor position
          * @param consumers validators for subsequent events
-         * @return {@code this} for method chaining
-         * @throws AssertionError if the count doesn't match or any event fails validation
+         * @return a {@link Common} interface for further assertions
+         * @throws AssertionError if the remaining event count doesn't match the consumer count or any event fails
+         *     validation
          */
-        Next exactly(Consumer<EventValidator> consumer, Consumer<EventValidator>... consumers);
+        Common exactly(Consumer<EventValidator> consumer, Consumer<EventValidator>... consumers);
 
         /**
-         * Asserts that no events from the current cursor position onwards match any of the provided validators. The
-         * cursor position is reset after this assertion.
+         * Consumes all remaining events from the current cursor position and asserts that none match the validation.
+         * This is a terminal operation that returns {@link Common}.
          *
-         * @param consumer the first validator that should not match
-         * @param consumers additional validators that should not match
-         * @return {@code this} for method chaining
-         * @throws AssertionError if any remaining event matches any validator
+         * @param consumer a consumer that validates events via {@link EventValidator}
+         * @return a {@link Common} interface for further assertions
+         * @throws AssertionError if any remaining event matches
          */
-        Next none(Consumer<EventValidator> consumer, Consumer<EventValidator>... consumers);
+        Common none(Consumer<EventValidator> consumer);
+
+        /**
+         * Consumes exactly one event at the current cursor position and validates it using the provided consumer.
+         * Advances the cursor by one. This is a navigating operation that returns {@link Next} for further chaining.
+         *
+         * @param consumer a consumer that validates the event via {@link EventValidator}
+         * @return {@code this} for further navigation
+         * @throws AssertionError if no more events remain at the current cursor position, or if the event fails
+         *     validation
+         */
+        Next matches(Consumer<EventValidator> consumer);
 
         /**
          * Returns to the {@link Common} interface to switch between {@link All} and {@link Next} assertion modes.

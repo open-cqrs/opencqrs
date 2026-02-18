@@ -41,8 +41,8 @@ public class BookHandlingTest {
                 .when(new BorrowBookCommand("4711", reader))
                 .succeeds()
                 .then()
-                .allEvents()
-                .exactly(e -> e.comparing(new BookLentEvent("4711", reader)));
+                .nextEvents()
+                .matches(e -> e.comparing(new BookLentEvent("4711", reader)));
     }
 
     @Test

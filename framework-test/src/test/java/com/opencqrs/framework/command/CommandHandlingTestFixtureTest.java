@@ -77,8 +77,8 @@ public class CommandHandlingTestFixtureTest {
                     .when(new DummyCommand())
                     .succeeds()
                     .then()
-                    .allEvents()
-                    .exactly(event -> event.ofType(EventA.class));
+                    .nextEvents()
+                    .matches(event -> event.ofType(EventA.class));
         }
 
         @Test
@@ -630,9 +630,8 @@ public class CommandHandlingTestFixtureTest {
                         .when(new DummyCommand())
                         .succeeds()
                         .then()
-                        .allEvents()
-                        .count(1)
-                        .exactly(e -> e.satisfying(
+                        .nextEvents()
+                        .matches(e -> e.satisfying(
                                 (EventA ev) -> assertThat(ev.name()).isEqualTo("fromCommand")));
 
                 assertThat(capturedState.get()).isNotNull();
@@ -1497,72 +1496,6 @@ public class CommandHandlingTestFixtureTest {
         }
 
         @Nested
-        @DisplayName("allEvents().exactly")
-        public class AllEventsExactly {
-
-            @Test
-            public void allMatchInOrder_notFailing() {
-                assertThatCode(() -> subject.using(
-                                        DummyState.class,
-                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
-                                            publisher.publish(new EventA("one"));
-                                            publisher.publish(new EventB(2L));
-                                            return null;
-                                        })
-                                .given()
-                                .nothing()
-                                .when(new DummyCommand())
-                                .succeeds()
-                                .then()
-                                .allEvents()
-                                .exactly(e -> e.ofType(EventA.class), e -> e.ofType(EventB.class)))
-                        .doesNotThrowAnyException();
-            }
-
-            @Test
-            public void countMismatch_failing() {
-                assertThatThrownBy(() -> subject.using(
-                                        DummyState.class,
-                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
-                                            publisher.publish(new EventA("one"));
-                                            publisher.publish(new EventB(2L));
-                                            return null;
-                                        })
-                                .given()
-                                .nothing()
-                                .when(new DummyCommand())
-                                .succeeds()
-                                .then()
-                                .allEvents()
-                                .exactly(
-                                        e -> e.ofType(EventA.class),
-                                        e -> e.ofType(EventB.class),
-                                        e -> e.ofType(EventC.class)))
-                        .isInstanceOf(AssertionError.class)
-                        .hasMessageContainingAll("exactly", "3", "found", "2");
-            }
-
-            @Test
-            public void wrongOrder_failing() {
-                assertThatThrownBy(() -> subject.using(
-                                        DummyState.class,
-                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
-                                            publisher.publish(new EventA("one"));
-                                            publisher.publish(new EventB(2L));
-                                            return null;
-                                        })
-                                .given()
-                                .nothing()
-                                .when(new DummyCommand())
-                                .succeeds()
-                                .then()
-                                .allEvents()
-                                .exactly(e -> e.ofType(EventB.class), e -> e.ofType(EventA.class)))
-                        .isInstanceOf(AssertionError.class);
-            }
-        }
-
-        @Nested
         @DisplayName("allEvents().all")
         public class AllEventsAll {
 
@@ -2062,12 +1995,13 @@ public class CommandHandlingTestFixtureTest {
             }
 
             @Test
-            public void cursorNotAdvanced() {
-                assertThatCode(() -> subject.using(
+            public void tooManyRemaining_failing() {
+                assertThatThrownBy(() -> subject.using(
                                         DummyState.class,
                                         (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
                                             publisher.publish(new EventA("one"));
                                             publisher.publish(new EventB(2L));
+                                            publisher.publish(new EventC());
                                             return null;
                                         })
                                 .given()
@@ -2076,9 +2010,9 @@ public class CommandHandlingTestFixtureTest {
                                 .succeeds()
                                 .then()
                                 .nextEvents()
-                                .exactly(e -> e.ofType(EventA.class), e -> e.ofType(EventB.class))
                                 .exactly(e -> e.ofType(EventA.class), e -> e.ofType(EventB.class)))
-                        .doesNotThrowAnyException();
+                        .isInstanceOf(AssertionError.class)
+                        .hasMessageContainingAll("exactly", "2", "1", "more remaining");
             }
         }
 
@@ -2169,6 +2103,105 @@ public class CommandHandlingTestFixtureTest {
         }
 
         @Nested
+        @DisplayName("nextEvents().matches")
+        public class NextEventsMatches {
+
+            @Test
+            public void matchesFirstEvent_notFailing() {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
+                                            publisher.publish(new EventA("one"));
+                                            publisher.publish(new EventB(2L));
+                                            return null;
+                                        })
+                                .given()
+                                .nothing()
+                                .when(new DummyCommand())
+                                .succeeds()
+                                .then()
+                                .nextEvents()
+                                .matches(e -> e.ofType(EventA.class)))
+                        .doesNotThrowAnyException();
+            }
+
+            @Test
+            public void noMoreEvents_failing() {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class, (CommandHandler.ForCommand<DummyState, DummyCommand, Void>)
+                                                (c, publisher) -> null)
+                                .given()
+                                .nothing()
+                                .when(new DummyCommand())
+                                .succeeds()
+                                .then()
+                                .nextEvents()
+                                .matches(e -> e.ofType(EventA.class)))
+                        .isInstanceOf(AssertionError.class)
+                        .hasMessageContaining("no more events remain");
+            }
+
+            @Test
+            public void matchesAfterSkip_notFailing() {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
+                                            publisher.publish(new EventA("one"));
+                                            publisher.publish(new EventB(2L));
+                                            publisher.publish(new EventC());
+                                            return null;
+                                        })
+                                .given()
+                                .nothing()
+                                .when(new DummyCommand())
+                                .succeeds()
+                                .then()
+                                .nextEvents()
+                                .skip(1)
+                                .matches(e -> e.ofType(EventB.class))
+                                .noMore())
+                        .isInstanceOf(AssertionError.class);
+            }
+
+            @Test
+            public void matchesThenNoMore_notFailing() {
+                assertThatCode(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
+                                            publisher.publish(new EventA("one"));
+                                            return null;
+                                        })
+                                .given()
+                                .nothing()
+                                .when(new DummyCommand())
+                                .succeeds()
+                                .then()
+                                .nextEvents()
+                                .matches(e -> e.ofType(EventA.class))
+                                .noMore())
+                        .doesNotThrowAnyException();
+            }
+
+            @Test
+            public void validationFails_failing() {
+                assertThatThrownBy(() -> subject.using(
+                                        DummyState.class,
+                                        (CommandHandler.ForCommand<DummyState, DummyCommand, Void>) (c, publisher) -> {
+                                            publisher.publish(new EventA("one"));
+                                            return null;
+                                        })
+                                .given()
+                                .nothing()
+                                .when(new DummyCommand())
+                                .succeeds()
+                                .then()
+                                .nextEvents()
+                                .matches(e -> e.ofType(EventB.class)))
+                        .isInstanceOf(AssertionError.class);
+            }
+        }
+
+        @Nested
         @DisplayName("EventValidator.ofType")
         public class EventValidatorOfType {
 
@@ -2185,8 +2218,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.ofType(EventA.class)))
+                                .nextEvents()
+                                .matches(e -> e.ofType(EventA.class)))
                         .doesNotThrowAnyException();
             }
 
@@ -2203,8 +2236,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.ofType(EventB.class)))
+                                .nextEvents()
+                                .matches(e -> e.ofType(EventB.class)))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("Event type not as expected", "EventA", "EventB");
             }
@@ -2227,8 +2260,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.comparing(new EventA("one"))))
+                                .nextEvents()
+                                .matches(e -> e.comparing(new EventA("one"))))
                         .doesNotThrowAnyException();
             }
 
@@ -2245,8 +2278,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.comparing(new EventA("other"))))
+                                .nextEvents()
+                                .matches(e -> e.comparing(new EventA("other"))))
                         .isInstanceOf(AssertionError.class);
             }
 
@@ -2263,8 +2296,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.comparing(new EventB(1L))))
+                                .nextEvents()
+                                .matches(e -> e.comparing(new EventB(1L))))
                         .isInstanceOf(AssertionError.class);
             }
         }
@@ -2286,8 +2319,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.satisfying(
+                                .nextEvents()
+                                .matches(e -> e.satisfying(
                                         (EventA a) -> assertThat(a.name()).isEqualTo("one"))))
                         .doesNotThrowAnyException();
             }
@@ -2305,8 +2338,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.satisfying(
+                                .nextEvents()
+                                .matches(e -> e.satisfying(
                                         (EventA a) -> assertThat(a.name()).isEqualTo("other"))))
                         .isInstanceOf(AssertionError.class);
             }
@@ -2329,8 +2362,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadType(EventA.class))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadType(EventA.class))))
                         .doesNotThrowAnyException();
             }
 
@@ -2347,8 +2380,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadType(EventB.class))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadType(EventB.class))))
                         .isInstanceOf(AssertionError.class);
             }
         }
@@ -2370,8 +2403,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadType(EventA.class))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadType(EventA.class))))
                         .doesNotThrowAnyException();
             }
 
@@ -2388,8 +2421,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadType(EventB.class))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadType(EventB.class))))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("Event type not as expected", "EventA");
             }
@@ -2412,8 +2445,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payload(new EventA("one")))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payload(new EventA("one")))))
                         .doesNotThrowAnyException();
             }
 
@@ -2430,8 +2463,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payload(new EventA("other")))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payload(new EventA("other")))))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("payloads expected to be equal", "differs");
             }
@@ -2454,8 +2487,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadExtracting((EventA ev) -> ev.name(), "test"))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadExtracting((EventA ev) -> ev.name(), "test"))))
                         .doesNotThrowAnyException();
             }
 
@@ -2472,8 +2505,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadExtracting((EventB ev) -> ev.size(), 42L))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadExtracting((EventB ev) -> ev.size(), 42L))))
                         .doesNotThrowAnyException();
             }
 
@@ -2490,8 +2523,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadExtracting((EventA ev) -> ev.name(), "other"))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadExtracting((EventA ev) -> ev.name(), "other"))))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("Extracted payload expected to be equal", "one", "differs", "other");
             }
@@ -2509,8 +2542,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadExtracting((EventB ev) -> ev.size(), 99L))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadExtracting((EventB ev) -> ev.size(), 99L))))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("Extracted payload expected to be equal", "42", "differs", "99");
             }
@@ -2528,8 +2561,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadExtracting((EventA ev) -> ev.name(), null))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadExtracting((EventA ev) -> ev.name(), null))))
                         .doesNotThrowAnyException();
             }
 
@@ -2546,8 +2579,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e ->
+                                .nextEvents()
+                                .matches(e ->
                                         e.asserting(a -> a.payloadExtracting((EventA ev) -> ev.name(), "something"))))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("Extracted payload expected to be equal", "differs", "something");
@@ -2566,8 +2599,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadExtracting((EventB ev) -> ev.size(), 42L))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadExtracting((EventB ev) -> ev.size(), 42L))))
                         .isInstanceOf(ClassCastException.class);
             }
         }
@@ -2589,8 +2622,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadSatisfying(
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadSatisfying(
                                         (EventA ev) -> assertThat(ev.name()).isEqualTo("test")))))
                         .doesNotThrowAnyException();
             }
@@ -2608,8 +2641,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.payloadSatisfying(
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.payloadSatisfying(
                                         (EventA ev) -> assertThat(ev.name()).isEqualTo("wrong")))))
                         .isInstanceOf(AssertionError.class);
             }
@@ -2632,8 +2665,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.metaData(Map.of("key", "value")))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.metaData(Map.of("key", "value")))))
                         .doesNotThrowAnyException();
             }
 
@@ -2650,8 +2683,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.metaData(Map.of("key", "other")))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.metaData(Map.of("key", "other")))))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("meta-data expected to be equal", "differs");
             }
@@ -2674,8 +2707,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.metaDataSatisfying(
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.metaDataSatisfying(
                                         meta -> assertThat(meta.get("key")).isEqualTo("value")))))
                         .doesNotThrowAnyException();
             }
@@ -2693,8 +2726,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.metaDataSatisfying(
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.metaDataSatisfying(
                                         meta -> assertThat(meta.get("key")).isEqualTo("wrong")))))
                         .isInstanceOf(AssertionError.class);
             }
@@ -2717,8 +2750,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.noMetaData())))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.noMetaData())))
                         .doesNotThrowAnyException();
             }
 
@@ -2735,8 +2768,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.noMetaData())))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.noMetaData())))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("Empty event meta-data expected", "key", "value");
             }
@@ -2759,8 +2792,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.subject("dummy/child"))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.subject("dummy/child"))))
                         .doesNotThrowAnyException();
             }
 
@@ -2777,8 +2810,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.subject("dummy/other"))))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.subject("dummy/other"))))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll(
                                 "subject expected to be equal", "dummy/child", "differs", "dummy/other");
@@ -2802,8 +2835,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a ->
+                                .nextEvents()
+                                .matches(e -> e.asserting(a ->
                                         a.subjectSatisfying(s -> assertThat(s).endsWith("/child")))))
                         .doesNotThrowAnyException();
             }
@@ -2821,8 +2854,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a ->
+                                .nextEvents()
+                                .matches(e -> e.asserting(a ->
                                         a.subjectSatisfying(s -> assertThat(s).endsWith("/other")))))
                         .isInstanceOf(AssertionError.class);
             }
@@ -2845,8 +2878,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.commandSubject())))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.commandSubject())))
                         .doesNotThrowAnyException();
             }
 
@@ -2863,8 +2896,8 @@ public class CommandHandlingTestFixtureTest {
                                 .when(new DummyCommand())
                                 .succeeds()
                                 .then()
-                                .allEvents()
-                                .exactly(e -> e.asserting(a -> a.commandSubject())))
+                                .nextEvents()
+                                .matches(e -> e.asserting(a -> a.commandSubject())))
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("subject expected to be equal", "dummy/child", "differs", "dummy");
             }

@@ -21,7 +21,7 @@ public class ReaderHandlingTest {
                 .succeeds()
                 .havingResult(readerId)
                 .then()
-                .allEvents()
-                .exactly(e -> e.comparing(new ReaderRegisteredEvent(readerId, "Hugo Tester")));
+                .nextEvents()
+                .matches(e -> e.comparing(new ReaderRegisteredEvent(readerId, "Hugo Tester")));
     }
 }

@@ -25,6 +25,7 @@ public class CommandHandlingTestFixture<C extends Command> {
         this.commandHandler = commandHandler;
     }
 
+    @SafeVarargs
     public static <I> Builder<I> withStateRebuildingHandlerDefinitions(
             StateRebuildingHandlerDefinition<I, ?>... definitions) {
         return new Builder(Arrays.stream(definitions).toList());
@@ -47,7 +48,7 @@ public class CommandHandlingTestFixture<C extends Command> {
         }
     }
 
-    public class Given<C extends Command> implements com.opencqrs.framework.command.GivenDsl.Given {
+    class Given<C extends Command> implements GivenDsl.Given {
 
         sealed interface Stub {
 
@@ -155,7 +156,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
         }
 
-        public static class GivenEvent implements com.opencqrs.framework.command.GivenDsl.EventSpecifier {
+        public static class GivenEvent implements GivenDsl.EventSpecifier {
             Stub.Event stub;
 
             GivenEvent(Stub.Event stub) {
@@ -163,31 +164,31 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
 
             @Override
-            public com.opencqrs.framework.command.GivenDsl.EventSpecifier payload(Object payload) {
+            public GivenDsl.EventSpecifier payload(Object payload) {
                 stub = stub.withPayload(payload);
                 return this;
             }
 
             @Override
-            public com.opencqrs.framework.command.GivenDsl.EventSpecifier time(Instant time) {
+            public GivenDsl.EventSpecifier time(Instant time) {
                 stub = stub.withTime(time);
                 return this;
             }
 
             @Override
-            public com.opencqrs.framework.command.GivenDsl.EventSpecifier subject(String subject) {
+            public GivenDsl.EventSpecifier subject(String subject) {
                 stub = stub.withSubject(subject);
                 return this;
             }
 
             @Override
-            public com.opencqrs.framework.command.GivenDsl.EventSpecifier id(String id) {
+            public GivenDsl.EventSpecifier id(String id) {
                 stub = stub.withId(id);
                 return this;
             }
 
             @Override
-            public com.opencqrs.framework.command.GivenDsl.EventSpecifier metaData(Map<String, ?> metaData) {
+            public GivenDsl.EventSpecifier metaData(Map<String, ?> metaData) {
                 stub = stub.withMetaData(metaData);
                 return this;
             }
@@ -229,30 +230,30 @@ public class CommandHandlingTestFixture<C extends Command> {
         }
 
         @Override
-        public com.opencqrs.framework.command.GivenDsl.Given nothing() {
+        public GivenDsl.Given nothing() {
             return this;
         }
 
         @Override
-        public com.opencqrs.framework.command.GivenDsl.Given time(Instant time) {
+        public GivenDsl.Given time(Instant time) {
             stubs.add(new Stub.Time(time));
             return this;
         }
 
         @Override
-        public com.opencqrs.framework.command.GivenDsl.Given timeDelta(Duration delta) {
+        public GivenDsl.Given timeDelta(Duration delta) {
             stubs.add(new Stub.TimeDelta(delta));
             return this;
         }
 
         @Override
-        public com.opencqrs.framework.command.GivenDsl.Given state(Object state) {
+        public GivenDsl.Given state(Object state) {
             stubs.add(new Stub.State(state));
             return this;
         }
 
         @Override
-        public com.opencqrs.framework.command.GivenDsl.Given events(Object... events) {
+        public GivenDsl.Given events(Object... events) {
             for (Object event : events) {
                 addToStubs(e -> e.payload(event));
             }
@@ -274,7 +275,7 @@ public class CommandHandlingTestFixture<C extends Command> {
          * @see #events(Object...)
          */
         @Override
-        public GivenDsl.Given event(Consumer<com.opencqrs.framework.command.GivenDsl.EventSpecifier> event) {
+        public GivenDsl.Given event(Consumer<GivenDsl.EventSpecifier> event) {
             addToStubs(event);
             return this;
         }
@@ -318,7 +319,6 @@ public class CommandHandlingTestFixture<C extends Command> {
          * @param <CMD> generic command type to execute
          */
         @Override
-        @SuppressWarnings("unchecked")
         public <CMD extends Command> GivenDsl.Given command(
                 CommandHandlingTestFixture<CMD> fixture, CMD command, Map<String, ?> metaData) {
             CommandHandlingTestFixture<CMD>.Given<CMD> otherGiven = fixture.givenStubs(stubs);
@@ -338,13 +338,13 @@ public class CommandHandlingTestFixture<C extends Command> {
 
         /** Sets the default subject for subsequent events */
         @Override
-        public com.opencqrs.framework.command.GivenDsl.Given usingSubject(String subject) {
+        public GivenDsl.Given usingSubject(String subject) {
             return new Given<>(subject, commandHandler, stubs);
         }
 
         /** Resets to using command subject for subsequent events */
         @Override
-        public com.opencqrs.framework.command.GivenDsl.Given usingCommandSubject() {
+        public GivenDsl.Given usingCommandSubject() {
             return usingSubject(null);
         }
 
@@ -427,11 +427,10 @@ public class CommandHandlingTestFixture<C extends Command> {
         return given;
     }
 
-    public class Expect implements ExpectDsl.Initializing, ExpectDsl.Common {
+    public static class Expect implements ExpectDsl.Initializing, ExpectDsl.Common {
         private final Command command;
         private final Object state;
         final List<CapturedEvent> capturedEvents;
-        private final ListIterator<CapturedEvent> nextEvent;
         private final Object result;
         private final Throwable throwable;
 
@@ -440,7 +439,6 @@ public class CommandHandlingTestFixture<C extends Command> {
             this.command = command;
             this.state = state;
             this.capturedEvents = capturedEvents;
-            this.nextEvent = capturedEvents.listIterator();
             this.result = result;
             this.throwable = throwable;
         }
@@ -573,7 +571,8 @@ public class CommandHandlingTestFixture<C extends Command> {
 
                 if (capturedEvents.size() != count) {
                     throw new AssertionError("Number of expected events differs, expected " + count + " but captured: "
-                            + capturedEvents.size());
+                            + capturedEvents.size() + ":\n"
+                            + capturedEvents.stream().map(CapturedEvent::event));
                 }
 
                 return this;
@@ -607,51 +606,21 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
 
             @Override
-            public ExpectDsl.All any(
-                    Consumer<ExpectDsl.EventValidator> consumer, Consumer<ExpectDsl.EventValidator>... consumers) {
-                List<Consumer<ExpectDsl.EventValidator>> allConsumers = new ArrayList<>();
-                allConsumers.add(consumer);
-                allConsumers.addAll(Arrays.asList(consumers));
+            public ExpectDsl.All any(Consumer<ExpectDsl.EventValidator> consumer) {
+                boolean found = false;
 
-                for (Consumer<ExpectDsl.EventValidator> validatorConsumer : allConsumers) {
-                    boolean found = false;
-
-                    for (CapturedEvent event : capturedEvents) {
-                        try {
-                            EventValidatorImpl validator = new EventValidatorImpl(event);
-                            validatorConsumer.accept(validator);
-                            found = true;
-                            break;
-                        } catch (AssertionError e) {
-                        }
-                    }
-
-                    if (!found) {
-                        throw new AssertionError("Expected at least one event matching validator, but found none");
+                for (CapturedEvent event : capturedEvents) {
+                    try {
+                        EventValidatorImpl validator = new EventValidatorImpl(event);
+                        consumer.accept(validator);
+                        found = true;
+                        break;
+                    } catch (AssertionError e) {
                     }
                 }
 
-                return this;
-            }
-
-            @Override
-            public ExpectDsl.All exactly(
-                    Consumer<ExpectDsl.EventValidator> consumer, Consumer<ExpectDsl.EventValidator>... consumers) {
-                List<Consumer<ExpectDsl.EventValidator>> allConsumers = new ArrayList<>();
-                allConsumers.add(consumer);
-                allConsumers.addAll(Arrays.asList(consumers));
-
-                if (capturedEvents.size() != allConsumers.size()) {
-                    throw new AssertionError(
-                            "Expected exactly " + allConsumers.size() + " events, but found " + capturedEvents.size());
-                }
-
-                for (int i = 0; i < allConsumers.size(); i++) {
-                    CapturedEvent event = capturedEvents.get(i);
-                    Consumer<ExpectDsl.EventValidator> validatorConsumer = allConsumers.get(i);
-
-                    EventValidatorImpl validator = new EventValidatorImpl(event);
-                    validatorConsumer.accept(validator);
+                if (!found) {
+                    throw new AssertionError("Expected at least one event matching validator, but found none");
                 }
 
                 return this;
@@ -672,24 +641,18 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
 
             @Override
-            public ExpectDsl.All none(
-                    Consumer<ExpectDsl.EventValidator> consumer, Consumer<ExpectDsl.EventValidator>... consumers) {
-                List<Consumer<ExpectDsl.EventValidator>> allConsumers = new ArrayList<>();
-                allConsumers.add(consumer);
-                allConsumers.addAll(Arrays.asList(consumers));
-                for (Consumer<ExpectDsl.EventValidator> validatorConsumer : allConsumers) {
-                    int matches = 0;
-                    for (CapturedEvent event : capturedEvents) {
-                        try {
-                            EventValidatorImpl validator = new EventValidatorImpl(event);
-                            validatorConsumer.accept(validator);
-                            matches++;
-                        } catch (AssertionError e) {
-                        }
+            public ExpectDsl.All none(Consumer<ExpectDsl.EventValidator> consumer) {
+                int matches = 0;
+                for (CapturedEvent event : capturedEvents) {
+                    try {
+                        EventValidatorImpl validator = new EventValidatorImpl(event);
+                        consumer.accept(validator);
+                        matches++;
+                    } catch (AssertionError e) {
                     }
-                    if (matches > 0) {
-                        throw new AssertionError("Expected no events matching validator, but found " + matches);
-                    }
+                }
+                if (matches > 0) {
+                    throw new AssertionError("Expected no events matching validator, but found " + matches);
                 }
                 return this;
             }
@@ -700,6 +663,12 @@ public class CommandHandlingTestFixture<C extends Command> {
         }
 
         public class NextEvents implements ExpectDsl.Next {
+            private final ListIterator<CapturedEvent> nextEvent;
+
+            NextEvents() {
+                this.nextEvent = capturedEvents.listIterator();
+            }
+
             @Override
             public ExpectDsl.Next skip(int num) {
                 for (int i = 0; i < num; i++) {
@@ -720,11 +689,10 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
 
             @Override
-            public ExpectDsl.Next single(Consumer<ExpectDsl.EventValidator> consumer) {
-                List<CapturedEvent> remainingEvents =
-                        new ArrayList<>(capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()));
+            public ExpectDsl.Common single(Consumer<ExpectDsl.EventValidator> consumer) {
                 int matches = 0;
-                for (CapturedEvent event : remainingEvents) {
+                while (nextEvent.hasNext()) {
+                    CapturedEvent event = nextEvent.next();
                     try {
                         EventValidatorImpl validator = new EventValidatorImpl(event);
                         consumer.accept(validator);
@@ -739,88 +707,85 @@ public class CommandHandlingTestFixture<C extends Command> {
                     throw new AssertionError(
                             "Expected exactly one event matching validator in remaining events, but found " + matches);
                 }
-                return this;
+                return Expect.this;
             }
 
             @Override
-            public ExpectDsl.Next any(
+            public ExpectDsl.Common any(Consumer<ExpectDsl.EventValidator> consumer) {
+                boolean found = false;
+                while (nextEvent.hasNext()) {
+                    CapturedEvent event = nextEvent.next();
+                    try {
+                        EventValidatorImpl validator = new EventValidatorImpl(event);
+                        consumer.accept(validator);
+                        found = true;
+                    } catch (AssertionError e) {
+                    }
+                }
+                if (!found) {
+                    throw new AssertionError(
+                            "Expected at least one remaining event matching validator, but found none");
+                }
+                return Expect.this;
+            }
+
+            @Override
+            @SafeVarargs
+            public final ExpectDsl.Common exactly(
                     Consumer<ExpectDsl.EventValidator> consumer, Consumer<ExpectDsl.EventValidator>... consumers) {
                 List<Consumer<ExpectDsl.EventValidator>> allConsumers = new ArrayList<>();
                 allConsumers.add(consumer);
                 allConsumers.addAll(Arrays.asList(consumers));
-                List<CapturedEvent> remainingEvents =
-                        new ArrayList<>(capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()));
-                for (Consumer<ExpectDsl.EventValidator> validatorConsumer : allConsumers) {
-                    boolean found = false;
-                    for (CapturedEvent event : remainingEvents) {
-                        try {
-                            EventValidatorImpl validator = new EventValidatorImpl(event);
-                            validatorConsumer.accept(validator);
-                            found = true;
-                            break;
-                        } catch (AssertionError e) {
-                        }
-                    }
-                    if (!found) {
+
+                for (int i = 0; i < allConsumers.size(); i++) {
+                    if (!nextEvent.hasNext()) {
                         throw new AssertionError(
-                                "Expected at least one remaining event matching validator, but found none");
+                                "Expected " + allConsumers.size() + " more events, but only " + i + " remaining");
                     }
-                }
-                return this;
-            }
-
-            @Override
-            public ExpectDsl.Next exactly(
-                    Consumer<ExpectDsl.EventValidator> consumer, Consumer<ExpectDsl.EventValidator>... consumers) {
-                List<Consumer<ExpectDsl.EventValidator>> allConsumers = new ArrayList<>();
-                allConsumers.add(consumer);
-                allConsumers.addAll(Arrays.asList(consumers));
-
-                int startIndex = nextEvent.nextIndex();
-                int expectedCount = allConsumers.size();
-
-                List<CapturedEvent> remainingEvents =
-                        new ArrayList<>(capturedEvents.subList(startIndex, capturedEvents.size()));
-
-                if (remainingEvents.size() < expectedCount) {
-                    throw new AssertionError("Expected " + expectedCount + " more events, but only "
-                            + remainingEvents.size() + " remaining");
-                }
-
-                for (int i = 0; i < expectedCount; i++) {
-                    CapturedEvent event = remainingEvents.get(i);
-                    Consumer<ExpectDsl.EventValidator> validatorConsumer = allConsumers.get(i);
-
+                    CapturedEvent event = nextEvent.next();
                     EventValidatorImpl validator = new EventValidatorImpl(event);
-                    validatorConsumer.accept(validator);
+                    allConsumers.get(i).accept(validator);
                 }
 
-                return this;
+                if (nextEvent.hasNext()) {
+                    int remaining = 0;
+                    while (nextEvent.hasNext()) {
+                        nextEvent.next();
+                        remaining++;
+                    }
+                    throw new AssertionError("Expected exactly " + allConsumers.size() + " events, but " + remaining
+                            + " more remaining");
+                }
+
+                return Expect.this;
             }
 
             @Override
-            public ExpectDsl.Next none(
-                    Consumer<ExpectDsl.EventValidator> consumer, Consumer<ExpectDsl.EventValidator>... consumers) {
-                List<Consumer<ExpectDsl.EventValidator>> allConsumers = new ArrayList<>();
-                allConsumers.add(consumer);
-                allConsumers.addAll(Arrays.asList(consumers));
-                List<CapturedEvent> remainingEvents =
-                        new ArrayList<>(capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()));
-                for (Consumer<ExpectDsl.EventValidator> validatorConsumer : allConsumers) {
-                    int matches = 0;
-                    for (CapturedEvent event : remainingEvents) {
-                        try {
-                            EventValidatorImpl validator = new EventValidatorImpl(event);
-                            validatorConsumer.accept(validator);
-                            matches++;
-                        } catch (AssertionError e) {
-                        }
-                    }
-                    if (matches > 0) {
-                        throw new AssertionError(
-                                "Expected no remaining events matching validator, but found " + matches);
+            public ExpectDsl.Common none(Consumer<ExpectDsl.EventValidator> consumer) {
+                int matches = 0;
+                while (nextEvent.hasNext()) {
+                    CapturedEvent event = nextEvent.next();
+                    try {
+                        EventValidatorImpl validator = new EventValidatorImpl(event);
+                        consumer.accept(validator);
+                        matches++;
+                    } catch (AssertionError e) {
                     }
                 }
+                if (matches > 0) {
+                    throw new AssertionError("Expected no remaining events matching validator, but found " + matches);
+                }
+                return Expect.this;
+            }
+
+            @Override
+            public ExpectDsl.Next matches(Consumer<ExpectDsl.EventValidator> consumer) {
+                if (!nextEvent.hasNext()) {
+                    throw new AssertionError("Expected an event at cursor position, but no more events remain");
+                }
+                CapturedEvent event = nextEvent.next();
+                EventValidatorImpl validator = new EventValidatorImpl(event);
+                consumer.accept(validator);
                 return this;
             }
 
