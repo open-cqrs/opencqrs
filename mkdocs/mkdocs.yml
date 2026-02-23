@@ -112,6 +112,7 @@ nav:
     - howto/README.md
     - Registering explicit Event Types: howto/explicit_type_registration/index.md
     - Upcasting Events: howto/upcasting_events/index.md
+    - Reliable Event Handling in a Distributed Environment: howto/running_in_parallel/index.md
   - Reference:
     - reference/README.md
     - Modules: reference/modules/index.md
