@@ -7,5 +7,6 @@ The following guides are currently available:
 
 - [Registering Explicit Event Types](explicit_type_registration/index.md) – Learn how to declare and register event types so that the system can reliably identify, serialize, and deserialize them.
 - [Upcasting Events](upcasting_events/index.md) – Understand how to evolve existing events to new versions, ensuring compatibility as your domain and event schemas change over time.
+- [Running multiple instances in parallel](running_in_parallel/index.md) - Avoid common mistakes and complications when running multiple instances simultaneously
 
 Additional guides will be added over time to cover more advanced usage patterns and common scenarios.  
