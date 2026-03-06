@@ -101,6 +101,7 @@ nav:
     - howto/README.md
     - Registering explicit Event Types: howto/explicit_type_registration/index.md
     - Upcasting Events: howto/upcasting_events/index.md
+    - Running multiple instances in parallel: howto/running_in_parallel/index.md
   - Reference:
     - reference/README.md
     - Modules: reference/modules/index.md
