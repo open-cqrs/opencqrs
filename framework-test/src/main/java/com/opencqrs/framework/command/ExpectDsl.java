@@ -290,7 +290,7 @@ public interface ExpectDsl {
 
     /**
      * Fluent API interface for validating individual captured events. Instances are provided to consumers passed to
-     * methods like {@link All#single(Consumer)}, {@link All#exactly(Consumer, Consumer[])} and similar.
+     * methods like {@link All#single(Consumer)}, {@link All#any(Consumer)} and similar.
      *
      * <p>All methods return {@code this} to allow chaining multiple validations on the same event.
      */

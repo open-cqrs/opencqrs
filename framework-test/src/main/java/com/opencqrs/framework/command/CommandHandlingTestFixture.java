@@ -10,6 +10,106 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/**
+ * Test support for {@link CommandHandler} or {@link CommandHandlerDefinition}. This class can be used in favor of the
+ * {@link CommandRouter} to test command handling logic without interacting with the event store, solely relying on a
+ * set of {@link StateRebuildingHandlerDefinition}s. No event upcasting, event type resolution, or meta-data
+ * propagation is involved during test execution.
+ *
+ * <p>This class follows the <a href="https://martinfowler.com/bliki/GivenWhenThen.html">Given When Then</a> style of
+ * representing tests with a fluent API supporting:
+ *
+ * <ol>
+ *   <li>{@linkplain Given given} state initialization based on in-memory events and meta-data
+ *   <li>{@link Command} {@linkplain GivenDsl.Given#when(Object) execution} to execute the {@link CommandHandler} under
+ *       test
+ *   <li>{@linkplain Expect assertions} to verify the command executed as expected, including verification of the events
+ *       published by the command handler under test
+ * </ol>
+ *
+ * A typical test case using {@code this} may look as follows. The {@link StateRebuildingHandlerDefinition}s needed to
+ * mimic event sourcing as well as the {@link CommandHandler} definition under test have been omitted for brevity.
+ *
+ * <pre>
+ *     {@literal @Test}
+ *     public void bookAdded() {
+ *          UUID bookId = UUID.randomUUID();
+ *          CommandHandlingTestFixture
+ *              // specify state rebuilding handler definitions to use
+ *              .withStateRebuildingHandlerDefinitions(...)
+ *              // specify command handler (definition) to test
+ *              .using(...)
+ *              .given()
+ *              .nothing()
+ *              .when(new AddBookCommand(bookId, "Tolkien", "LOTR", "DE234723432"))
+ *              .succeeds()
+ *              .then()
+ *              .nextEvents()
+ *              .exactly(
+ *                  e -&gt; e.comparing(new BookAddedEvent(bookId, "Tolkien", "LOTR", "DE234723432"))
+ *              );
+ *     }
+ * </pre>
+ *
+ * In lack of the event store, for {@link StateRebuildingHandler.FromObjectAndRawEvent#on(Object, Object, Event)} and
+ * {@link StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent#on(Object, Object, Map, String, Event)} the
+ * {@linkplain Given given} state initialization uses <strong>stubbed</strong> raw {@link Event}s, instead, based on the
+ * following contents:
+ *
+ * <table>
+ *     <caption>Raw event stubbing</caption>
+ *     <thead>
+ *     <tr>
+ *         <th>{@linkplain Event event} attribute</th>
+ *         <th>value derivation</th>
+ *     </tr>
+ *     </thead>
+ *     <tbody>
+ *     <tr>
+ *         <td>{@link Event#source()}</td>
+ *         <td>is set to a fixed value and cannot be overridden</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@link Event#subject()}</td>
+ *         <td>is set to {@link Command#getSubject()}, but can be overridden using {@link GivenDsl.Given#usingSubject(String)} or per event using {@link GivenDsl.EventSpecifier#subject(String)}</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@link Event#type()}</td>
+ *         <td>is set to a fixed value and cannot be overridden</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@link Event#data()}</td>
+ *         <td>is set to an empty map and cannot be overridden</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@link Event#specVersion()}</td>
+ *         <td>is set to a fixed value and cannot be overridden</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@link Event#id()}</td>
+ *         <td>is set randomly, but can be overridden per event using {@link GivenDsl.EventSpecifier#id(String)}</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@link Event#time()}</td>
+ *         <td>is set to the value from {@link GivenDsl.Given#time(Instant)}, or {@link Instant#now()} by default, but can be overridden per event using {@link GivenDsl.EventSpecifier#time(Instant)}</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@link Event#dataContentType()}</td>
+ *         <td>is set to a fixed value and cannot be overridden</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@link Event#hash()}</td>
+ *         <td>is set to a random value and cannot be overridden</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@link Event#predecessorHash()}</td>
+ *         <td>is set to a random value and cannot be overridden</td>
+ *     </tr>
+ *     </tbody>
+ * </table>
+ *
+ * @param <C> the command type
+ */
 public class CommandHandlingTestFixture<C extends Command> {
 
     private final Class<?> instanceClass;
@@ -25,12 +125,25 @@ public class CommandHandlingTestFixture<C extends Command> {
         this.commandHandler = commandHandler;
     }
 
+    /**
+     * Creates a {@link Builder} instance for the given {@link StateRebuildingHandlerDefinition}s.
+     *
+     * @param definitions the {@link StateRebuildingHandlerDefinition}s to be used to mimic event sourcing for the
+     *     {@link CommandHandler} under test
+     * @return a {@link Builder} instance
+     * @param <I> the generic type of the instance to be event sourced before handling the command
+     */
     @SafeVarargs
     public static <I> Builder<I> withStateRebuildingHandlerDefinitions(
             StateRebuildingHandlerDefinition<I, ?>... definitions) {
         return new Builder(Arrays.stream(definitions).toList());
     }
 
+    /**
+     * Builder for {@link CommandHandlingTestFixture}.
+     *
+     * @param <I> the generic type of the instance to be event sourced before handling the command
+     */
     public static class Builder<I> {
         final List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions;
 
@@ -38,16 +151,37 @@ public class CommandHandlingTestFixture<C extends Command> {
             this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
         }
 
+        /**
+         * Initializes the {@link CommandHandlingTestFixture} using the given {@link CommandHandlerDefinition}.
+         *
+         * @param definition the {@link CommandHandlerDefinition} under test
+         * @return a fully initialized test fixture
+         * @param <C> the command type
+         */
         public <C extends Command> CommandHandlingTestFixture<C> using(CommandHandlerDefinition<I, C, ?> definition) {
             return using(definition.instanceClass(), definition.handler());
         }
 
+        /**
+         * Initializes the {@link CommandHandlingTestFixture} using the given {@link CommandHandler}.
+         *
+         * @param instanceClass the state instance class
+         * @param handler the {@link CommandHandler} under test
+         * @return a fully initialized test fixture
+         * @param <C> the command type
+         */
         public <C extends Command> CommandHandlingTestFixture<C> using(
                 Class<I> instanceClass, CommandHandler<I, C, ?> handler) {
             return new CommandHandlingTestFixture<C>(instanceClass, stateRebuildingHandlerDefinitions, handler);
         }
     }
 
+    /**
+     * Fluent API helper class encapsulating the current state stubbing prior to {@linkplain #when(Object) executing}
+     * the {@link CommandHandler} under test.
+     *
+     * @param <C> the command type
+     */
     class Given<C extends Command> implements GivenDsl.Given {
 
         sealed interface Stub {
@@ -260,71 +394,22 @@ public class CommandHandlingTestFixture<C extends Command> {
             return this;
         }
 
-        /**
-         * Applies a single event using the {@link GivenDsl.EventSpecifier} consumer for fine-grained event
-         * specification. At minimum, {@link GivenDsl.EventSpecifier#payload(Object)} must be called.
-         *
-         * <p>Use this method when you need to specify event properties beyond just the payload, such as
-         * {@link GivenDsl.EventSpecifier#time(Instant)}, {@link GivenDsl.EventSpecifier#subject(String)},
-         * {@link GivenDsl.EventSpecifier#id(String)}, or {@link GivenDsl.EventSpecifier#metaData(Map)}. For simple
-         * payload-only events, consider using {@link #events(Object...)} instead.
-         *
-         * @param event event specification consumer
-         * @return {@code this} for further fluent API calls
-         * @throws IllegalArgumentException if {@link GivenDsl.EventSpecifier#payload(Object)} was not called
-         * @see #events(Object...)
-         */
         @Override
         public GivenDsl.Given event(Consumer<GivenDsl.EventSpecifier> event) {
             addToStubs(event);
             return this;
         }
 
-        /**
-         * Executes the given {@link Command} without meta-data using the {@link CommandHandler} encapsulated within the
-         * given fixture to capture any new events published, which in turn will be applied to {@code this}. This is
-         * useful for {@link CommandHandler}s publishing complex events, in favor of stubbing the events directly.
-         *
-         * <p><strong>Be aware that stubbed events can be specified more precisely than captured ones, since the
-         * encapsulated {@link CommandHandler} is responsible for event publication using the
-         * {@link CommandEventPublisher}. Hence, {@link GivenDsl.EventSpecifier#time(Instant)} and
-         * {@link GivenDsl.EventSpecifier#id(String)} cannot be specified using this approach.</strong>
-         *
-         * @param fixture the fixture holding the command handler to execute
-         * @param command the command to execute for event capturing
-         * @return {@code this} for further fluent API calls
-         * @throws AssertionError in case the given command did not execute successfully
-         * @param <CMD> generic command type to execute
-         */
         @Override
         public <CMD extends Command> GivenDsl.Given command(CommandHandlingTestFixture<CMD> fixture, CMD command) {
             return command(fixture, command, Map.of());
         }
 
-        /**
-         * Executes the given {@link Command} with meta-data using the {@link CommandHandler} encapsulated within the
-         * given fixture to capture any new events published, which in turn will be applied to {@code this}. This is
-         * useful for {@link CommandHandler}s publishing complex events, in favor of stubbing the events directly.
-         *
-         * <p><strong>Be aware that stubbed events can be specified more precisely than captured ones, since the
-         * encapsulated {@link CommandHandler} is responsible for event publication using the
-         * {@link CommandEventPublisher}. Hence, {@link GivenDsl.EventSpecifier#time(Instant)} and
-         * {@link GivenDsl.EventSpecifier#id(String)} cannot be specified using this approach.</strong>
-         *
-         * @param fixture the fixture holding the command handler to execute
-         * @param command the command to execute for event capturing
-         * @param metaData the command meta-data
-         * @return {@code this} for further fluent API calls
-         * @throws AssertionError in case the given command did not execute successfully
-         * @param <CMD> generic command type to execute
-         */
         @Override
         public <CMD extends Command> GivenDsl.Given command(
                 CommandHandlingTestFixture<CMD> fixture, CMD command, Map<String, ?> metaData) {
-            CommandHandlingTestFixture<CMD>.Given<CMD> otherGiven = fixture.givenStubs(stubs);
-            ExpectDsl.Initializing otherExpectInitializing = otherGiven.when(command, metaData);
-
-            Expect otherExpect = (Expect) otherExpectInitializing;
+            Expect otherExpect =
+                    (Expect) fixture.givenStubs(stubs).when(command, metaData);
 
             otherExpect.succeeds();
 
@@ -336,13 +421,11 @@ public class CommandHandlingTestFixture<C extends Command> {
             return this;
         }
 
-        /** Sets the default subject for subsequent events */
         @Override
         public GivenDsl.Given usingSubject(String subject) {
             return new Given<>(subject, commandHandler, stubs);
         }
 
-        /** Resets to using command subject for subsequent events */
         @Override
         public GivenDsl.Given usingCommandSubject() {
             return usingSubject(null);
@@ -417,6 +500,12 @@ public class CommandHandlingTestFixture<C extends Command> {
         }
     }
 
+    /**
+     * Initializes the {@link CommandHandlingTestFixture} and returns a {@link GivenDsl.Given} instance for fluent
+     * state stubbing prior to {@linkplain GivenDsl.Given#when(Object) command execution}.
+     *
+     * @return a {@link GivenDsl.Given} instance for further fluent API calls
+     */
     public GivenDsl.Given given() {
         return new Given<>(commandHandler);
     }
@@ -427,6 +516,18 @@ public class CommandHandlingTestFixture<C extends Command> {
         return given;
     }
 
+    /**
+     * Fluent API helper class encapsulating the results of a {@link CommandHandler}
+     * {@linkplain GivenDsl.Given#when(Object) execution} for assertion.
+     *
+     * <p>Assertions are organized into inner classes implementing the {@link ExpectDsl} sub-interfaces:
+     * <ul>
+     *   <li>{@link Succeeding} for assertions after successful command execution
+     *   <li>{@link Failing} for assertions after failed command execution
+     *   <li>{@link AllEvents} for non-sequential assertions on all captured events
+     *   <li>{@link NextEvents} for cursor-based sequential assertions on captured events
+     * </ul>
+     */
     public static class Expect implements ExpectDsl.Initializing, ExpectDsl.Common {
         private final Command command;
         private final Object state;
@@ -820,6 +921,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             return new NextEvents();
         }
 
+        /** Implementation of {@link ExpectDsl.EventValidator} for validating individual captured events. */
         public class EventValidatorImpl implements ExpectDsl.EventValidator {
             private final CapturedEvent event;
 
@@ -854,6 +956,11 @@ public class CommandHandlingTestFixture<C extends Command> {
         }
     }
 
+    /**
+     * Fluent API helper class for asserting captured events.
+     *
+     * @see ExpectDsl.EventValidator#asserting(Consumer)
+     */
     public static class EventAsserter implements EventAsserting {
 
         private final Command command;
