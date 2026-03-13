@@ -17,6 +17,8 @@
             pkgs.python3Packages.cairosvg
             pkgs.python3Packages.pillow
             pkgs.python3Packages.mkdocs-macros
+            pkgs.python3Packages.mkdocs-rss-plugin
+            pkgs.python3Packages.filelock
 #            pkgs.python3Packages.mkdocs-autorefs
 #            pkgs.python3Packages.mkdocs-redirects
 #            pkgs.python3Packages.mkdocs-awesome-pages-plugin
