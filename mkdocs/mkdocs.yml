@@ -15,8 +15,6 @@ plugins:
       post_url_format: "{slug}"
       archive: true
       categories: true
-  - rss:
-      match_path: blog/posts/.*
 
 extra:
   generator: false
