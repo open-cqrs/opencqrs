@@ -4,6 +4,9 @@ site_url: https://docs.opencqrs.com
 repo_url: https://github.com/open-cqrs/opencqrs
 
 plugins:
+  - search:
+      lang: en
+      separator: '[\s\-\.]+|(?<=[a-z])(?=[A-Z])' # Split CamelCase/PascalCase tokens so "Handler" finds "EventHandler"
   - social
   - macros
 
@@ -51,6 +54,8 @@ theme:
     - navigation.indexes
     - content.code.copy
     - content.code.annotate
+    - search.suggest
+    - search.highlight
 
 markdown_extensions:
   - abbr
