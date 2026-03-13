@@ -9,6 +9,12 @@ plugins:
       separator: '[\s\-\.]+|(?<=[a-z])(?=[A-Z])' # Split CamelCase/PascalCase tokens so "Handler" finds "EventHandler"
   - social
   - macros
+  - blog:
+      blog_dir: blog
+      post_date_format: long
+      post_url_format: "{slug}"
+      archive: true
+      categories: true
 
 extra:
   generator: false
@@ -130,3 +136,5 @@ nav:
     - Events: concepts/events/index.md
     - Event Sourcing: concepts/event_sourcing/index.md
     - Event Upcasting: concepts/upcasting/index.md
+  - Blog:
+    - What's New: blog/index.md
