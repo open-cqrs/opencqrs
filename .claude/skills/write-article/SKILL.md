@@ -77,6 +77,8 @@ slug: <url-slug>
 - Write in **first person singular** ("I") when sharing opinions, experiences, or recommendations.
 - When referring to **products or services by digital frontiers**, use first person **plural** ("we", "our") and always refer to the company as "digital frontiers" (lowercase "digital").
 - Never mix languages. If the article is in English, every term must be in English — no German, no untranslated domain terms, no foreign-language phrases unless they are established technical jargon.
+- Do not use 2-em dashes (—), use normales dashes instead (-)
+- Please use consistent definitions across all articles and documentations
 
 ## Structure
 
