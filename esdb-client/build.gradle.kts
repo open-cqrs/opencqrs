@@ -1,7 +1,8 @@
 description = "Client SDK for the EventSourcingDB"
 
 dependencies {
-    compileOnly("jakarta.validation:jakarta.validation-api")
+    compileOnly("org.jspecify:jspecify")
+    compileOnly(libs.nullawayAnnotations)
     implementation("org.springframework.boot:spring-boot-starter-jackson")
     testImplementation(project(":esdb-client-spring-boot-starter"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")

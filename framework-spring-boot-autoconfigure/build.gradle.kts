@@ -2,7 +2,8 @@ description = "Spring Boot auto configurations for OpenCQRS framework"
 
 dependencies {
     api(project(":framework"))
-    compileOnly("jakarta.validation:jakarta.validation-api")
+    compileOnly("org.jspecify:jspecify")
+    compileOnly(libs.nullawayAnnotations)
     implementation("org.springframework.boot:spring-boot-starter-jackson")
     compileOnly("org.springframework:spring-jdbc")
     compileOnly("org.springframework:spring-tx")

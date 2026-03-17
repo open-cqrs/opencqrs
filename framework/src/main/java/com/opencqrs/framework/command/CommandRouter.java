@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@link Command} router implementation providing CQRS-style command execution.
@@ -128,7 +129,7 @@ public final class CommandRouter {
      * @return the result from the {@link CommandHandler}, may be {@code null}
      * @param <R> the result type
      */
-    public <R> R send(Command command) {
+    public <R> @Nullable R send(Command command) {
         return send(command, Map.of());
     }
 
@@ -163,7 +164,7 @@ public final class CommandRouter {
      * @return the result from the {@link CommandHandler}, may be {@code null}
      * @param <R> the result type
      */
-    public <R> R send(Command command, Map<String, ?> metaData) {
+    public <R> @Nullable R send(Command command, Map<String, ?> metaData) {
         CommandHandlerDefinition<Object, Command, R> commandHandlerDefinition =
                 commandHandlerDefinitions.get(command.getClass());
         if (commandHandlerDefinition == null) {
@@ -197,7 +198,8 @@ public final class CommandRouter {
                                     };
                             };
 
-                    AtomicReference<String> latestSourcedId = new AtomicReference<>(cached.eventId());
+                    AtomicReference<@Nullable String> latestSourcedId =
+                            new AtomicReference<@Nullable String>(cached.eventId());
                     Map<String, String> sourcedSubjectIds = new HashMap<>(cached.sourcedSubjectIds());
                     List<SourcedEvent> sourcedEvents = new ArrayList<>();
 
@@ -232,7 +234,8 @@ public final class CommandRouter {
                         }
                     }
 
-                    final AtomicReference<Object> instance = new AtomicReference<>(cached.instance());
+                    final AtomicReference<@Nullable Object> instance =
+                            new AtomicReference<@Nullable Object>(cached.instance());
                     sourcedEvents.forEach(sourced -> relevantSRHDs.ifPresent(srhds -> Util.applyUsingHandlers(
                             srhds, instance, sourced.raw.subject(), sourced.event, sourced.metaData, sourced.raw)));
 

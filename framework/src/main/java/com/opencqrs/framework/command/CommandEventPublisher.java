@@ -5,6 +5,7 @@ import com.opencqrs.esdb.client.Precondition;
 import com.opencqrs.framework.persistence.EventPublisher;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Extension to {@link EventPublisher} providing additional operations for publishing events relative to the
@@ -23,10 +24,10 @@ public interface CommandEventPublisher<I> extends EventPublisher {
      * participating in the command execution. No meta-data, i.e. an empty map, is published with the event.
      *
      * @param event the event to be published
-     * @return an updated or new instance with all events applied
+     * @return an updated or new instance with all events applied, may be {@code null}
      * @param <E> the event type
      */
-    default <E> I publish(E event) {
+    default <E> @Nullable I publish(E event) {
         return publish(event, Map.of());
     }
 
@@ -37,10 +38,10 @@ public interface CommandEventPublisher<I> extends EventPublisher {
      *
      * @param event the event to be published
      * @param metaData the event meta-data to be published
-     * @return an updated or new instance with all events applied
+     * @return an updated or new instance with all events applied, may be {@code null}
      * @param <E> the event type
      */
-    default <E> I publish(E event, Map<String, ?> metaData) {
+    default <E> @Nullable I publish(E event, Map<String, ?> metaData) {
         return publish(event, metaData, List.of());
     }
 
@@ -53,10 +54,10 @@ public interface CommandEventPublisher<I> extends EventPublisher {
      * @param event the event to be published
      * @param metaData the event meta-data to be published
      * @param preconditions the preconditions that must not be violated
-     * @return an updated or new instance with all events applied
+     * @return an updated or new instance with all events applied, may be {@code null}
      * @param <E> the event type
      */
-    <E> I publish(E event, Map<String, ?> metaData, List<Precondition> preconditions);
+    <E> @Nullable I publish(E event, Map<String, ?> metaData, List<Precondition> preconditions);
 
     /**
      * Publishes an event to the subject specified by {@link Command#getSubject()} appended with the specified suffix
@@ -67,10 +68,10 @@ public interface CommandEventPublisher<I> extends EventPublisher {
      * @param subjectSuffix the suffix to be appended to the {@link Command#getSubject()} currently executed, must not
      *     start with {@code /}
      * @param event the event to be published
-     * @return an updated or new instance with all events applied
+     * @return an updated or new instance with all events applied, may be {@code null}
      * @param <E> the event type
      */
-    default <E> I publishRelative(String subjectSuffix, E event) {
+    default <E> @Nullable I publishRelative(String subjectSuffix, E event) {
         return publishRelative(subjectSuffix, event, Map.of());
     }
 
@@ -83,10 +84,10 @@ public interface CommandEventPublisher<I> extends EventPublisher {
      *     start with {@code /}
      * @param event the event to be published
      * @param metaData the event meta-data to be published
-     * @return an updated or new instance with all events applied
+     * @return an updated or new instance with all events applied, may be {@code null}
      * @param <E> the event type
      */
-    default <E> I publishRelative(String subjectSuffix, E event, Map<String, ?> metaData) {
+    default <E> @Nullable I publishRelative(String subjectSuffix, E event, Map<String, ?> metaData) {
         return publishRelative(subjectSuffix, event, metaData, List.of());
     }
 
@@ -102,8 +103,9 @@ public interface CommandEventPublisher<I> extends EventPublisher {
      * @param event the event to be published
      * @param metaData the event meta-data to be published
      * @param preconditions the preconditions that must not be violated
-     * @return an updated or new instance with all events applied
+     * @return an updated or new instance with all events applied, may be {@code null}
      * @param <E> the event type
      */
-    <E> I publishRelative(String subjectSuffix, E event, Map<String, ?> metaData, List<Precondition> preconditions);
+    <E> @Nullable I publishRelative(
+            String subjectSuffix, E event, Map<String, ?> metaData, List<Precondition> preconditions);
 }

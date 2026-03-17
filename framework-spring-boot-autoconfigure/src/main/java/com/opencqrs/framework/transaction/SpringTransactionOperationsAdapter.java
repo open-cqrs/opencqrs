@@ -22,8 +22,12 @@ public class SpringTransactionOperationsAdapter implements TransactionOperations
             TransactionAttributeSource transactionAttributeSource,
             Method method,
             Class<?> clazz) {
-        this.delegate = new TransactionTemplate(
-                platformTransactionManager, transactionAttributeSource.getTransactionAttribute(method, clazz));
+        var txDef = transactionAttributeSource.getTransactionAttribute(method, clazz);
+        if (txDef == null) {
+            this.delegate = new TransactionTemplate(platformTransactionManager);
+        } else {
+            this.delegate = new TransactionTemplate(platformTransactionManager, txDef);
+        }
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.eventhandler.EventHandler;
 import com.opencqrs.framework.eventhandler.EventHandling;
 import com.opencqrs.framework.eventhandler.EventHandlingProcessor;
+import com.uber.nullaway.annotations.Initializer;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -158,6 +159,7 @@ public class JdbcProgressTracker implements ProgressTracker, InitializingBean, S
     }
 
     @Override
+    @Initializer
     public void afterPropertiesSet() {
         this.jdbcOperations = new JdbcTemplate(dataSource);
         this.defaultTransactionOperations = new TransactionTemplate(

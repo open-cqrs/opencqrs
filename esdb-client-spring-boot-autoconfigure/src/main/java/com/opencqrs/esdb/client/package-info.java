@@ -1,4 +1,3 @@
-/** Base package for the ESDB client. */
 @NullMarked
 package com.opencqrs.esdb.client;
 

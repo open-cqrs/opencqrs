@@ -670,11 +670,11 @@ public class EsdbClientIntegrationTest {
                                 eventCandidate.type(),
                                 eventCandidate.data(),
                                 "1.0",
-                                null,
-                                null,
+                                "irrelevant",
+                                Instant.MIN,
                                 "application/json",
-                                null,
-                                null));
+                                "irrelevant",
+                                "irrelevant"));
                 assertThat(event.id()).isNotBlank();
                 assertThat(event.time()).isBeforeOrEqualTo(Instant.now());
                 assertThat(event.hash()).isNotBlank();

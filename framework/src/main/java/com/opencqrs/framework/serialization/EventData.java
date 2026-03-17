@@ -3,7 +3,6 @@ package com.opencqrs.framework.serialization;
 
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.esdb.client.EventCandidate;
-import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 
 /**
@@ -22,4 +21,4 @@ import java.util.Map;
  * @param <E> the generic object type
  * @see EventDataMarshaller
  */
-public record EventData<E>(@NotNull Map<String, ?> metaData, @NotNull E payload) {}
+public record EventData<E>(Map<String, ?> metaData, E payload) {}

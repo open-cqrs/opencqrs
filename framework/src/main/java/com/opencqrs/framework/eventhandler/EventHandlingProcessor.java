@@ -27,6 +27,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@linkplain Runnable#run() Asynchronous} event processor
@@ -44,7 +45,7 @@ public class EventHandlingProcessor implements Runnable {
     private static final Logger log = Logger.getLogger(EventHandlingProcessor.class.getName());
 
     private final AtomicInteger threadNum = new AtomicInteger();
-    private final AtomicReference<ExecutorService> running = new AtomicReference<>();
+    private final AtomicReference<@Nullable ExecutorService> running = new AtomicReference<>();
     private final String groupId;
     private final long partition;
     final String subject;
@@ -312,7 +313,8 @@ public class EventHandlingProcessor implements Runnable {
                                     if (e.getCause() instanceof WrappedEventHandlingException) {
                                         throw (WrappedEventHandlingException) e.getCause();
                                     } else {
-                                        throw new WrappedEventHandlingException(raw, e.getCause());
+                                        throw new WrappedEventHandlingException(
+                                                raw, Objects.requireNonNull(e.getCause()));
                                     }
                                 }
                             });
@@ -338,11 +340,13 @@ public class EventHandlingProcessor implements Runnable {
                         case UndeclaredThrowableException ex -> {
                             switch (ex.getCause()) {
                                 case CqrsFrameworkException.NonTransientException undeclared -> throw undeclared;
-                                default -> skipEvent.set(retryHandler.handle(e.event, ex.getCause()));
+                                case null, default ->
+                                    skipEvent.set(retryHandler.handle(e.event, Objects.requireNonNull(ex.getCause())));
                             }
                         }
                         case CqrsFrameworkException.NonTransientException ignored -> throw cause;
-                        default -> skipEvent.set(retryHandler.handle(e.event, cause));
+                        case null, default ->
+                            skipEvent.set(retryHandler.handle(e.event, Objects.requireNonNull(cause)));
                     }
                 } catch (ClientInterruptedException e) {
                     log.log(
@@ -409,14 +413,14 @@ public class EventHandlingProcessor implements Runnable {
     }
 
     private class RetryHandler {
-        private BackOff.Execution execution;
+        private BackOff.@Nullable Execution execution;
 
         boolean isRetryExecution() {
             return execution != null;
         }
 
-        boolean handle(Event event, Throwable t) throws InterruptedException {
-            if (!isRetryExecution()) {
+        boolean handle(@Nullable Event event, Throwable t) throws InterruptedException {
+            if (execution == null) {
                 execution = backoff.start();
             }
 
@@ -438,7 +442,7 @@ public class EventHandlingProcessor implements Runnable {
             }
         }
 
-        private String eventIdForLog(Event e) {
+        private String eventIdForLog(@Nullable Event e) {
             if (e != null) {
                 return " for event id: " + e.id();
             } else {
