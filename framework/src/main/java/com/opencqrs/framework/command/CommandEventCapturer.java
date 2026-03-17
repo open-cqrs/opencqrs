@@ -7,6 +7,7 @@ import com.opencqrs.framework.persistence.EventCapturer;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Default implementation of {@link CommandEventPublisher} used by {@link CommandRouter} to apply events to the
@@ -19,19 +20,19 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
     private final List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions;
     private final String subject;
 
-    final AtomicReference<I> previousInstance;
+    final AtomicReference<@Nullable I> previousInstance;
 
     public CommandEventCapturer(
-            I initialInstance,
+            @Nullable I initialInstance,
             String subject,
             List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions) {
         this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
-        this.previousInstance = new AtomicReference<>(initialInstance);
+        this.previousInstance = new AtomicReference<@Nullable I>(initialInstance);
         this.subject = subject;
     }
 
     @Override
-    public <E> I publish(E event, Map<String, ?> metaData, List<Precondition> preconditions) {
+    public <E> @Nullable I publish(E event, Map<String, ?> metaData, List<Precondition> preconditions) {
         getEvents().add(new CapturedEvent(subject, event, metaData, preconditions));
 
         Util.applyUsingHandlers(stateRebuildingHandlerDefinitions, previousInstance, subject, event, metaData, null);
@@ -40,7 +41,7 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
     }
 
     @Override
-    public <E> I publishRelative(
+    public <E> @Nullable I publishRelative(
             String subjectSuffix, E event, Map<String, ?> metaData, List<Precondition> preconditions) {
         String s = subject + "/" + subjectSuffix;
         getEvents().add(new CapturedEvent(s, event, metaData, preconditions));

@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -39,7 +40,7 @@ public class AbstractEventDataMarshallingEventUpcasterTest {
 
                 @Override
                 protected Stream<MetaDataAndPayloadResult> doUpcast(
-                        Event event, Map<String, ?> metaData, Map<String, ?> payload) {
+                        @NonNull Event event, @NonNull Map<String, ?> metaData, @NonNull Map<String, ?> payload) {
                     Map metaData1 = new HashMap(metaData);
                     metaData1.put("key1", "upcasted1");
                     Map payload1 = new HashMap(payload);

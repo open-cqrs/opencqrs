@@ -3,8 +3,10 @@ package com.opencqrs.example.projection.book.verifier;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import org.jspecify.annotations.NullUnmarked;
 
 @Entity
+@NullUnmarked
 public class BookEntity {
 
     @Id

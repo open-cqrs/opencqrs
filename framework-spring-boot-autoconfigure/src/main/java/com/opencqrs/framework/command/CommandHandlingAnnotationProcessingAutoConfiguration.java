@@ -6,6 +6,7 @@ import com.opencqrs.framework.reflection.AutowiredParameterResolver;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Predicate;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.ParameterResolutionDelegate;
@@ -64,7 +65,7 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
                             } else {
                                 try {
                                     Class<?> beanClass = ClassUtils.forName(
-                                            bd.getBeanClassName(),
+                                            abd.getBeanClassName(),
                                             registry.getClass().getClassLoader());
                                     standardMetadata =
                                             (StandardAnnotationMetadata) AnnotationMetadata.introspect(beanClass);
@@ -78,8 +79,9 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
                                     standardMetadata.getAnnotatedMethods(CommandHandling.class.getName())) {
                                 StandardMethodMetadata smmd = (StandardMethodMetadata) mmd;
                                 Method introspectedMethod = smmd.getIntrospectedMethod();
-                                CommandHandling annotation =
-                                        AnnotationUtils.findAnnotation(introspectedMethod, CommandHandling.class);
+                                CommandHandling annotation = Objects.requireNonNull(
+                                        AnnotationUtils.findAnnotation(introspectedMethod, CommandHandling.class),
+                                        () -> "MethodMetadata expected to be annotated with @CommandHandling: " + mmd);
 
                                 Map<Class<?>, Integer> requiredParamPositions = new HashMap<>();
                                 Set<AutowiredParameter> autowiredParameters = new HashSet<>();
@@ -158,7 +160,7 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
                                         2,
                                         new ReflectiveMethodInvocationCommandHandler.ParameterPositions(
                                                 requiredParamPositions.getOrDefault(instanceType, -1),
-                                                requiredParamPositions.get(commandType),
+                                                Objects.requireNonNull(requiredParamPositions.get(commandType)),
                                                 requiredParamPositions.getOrDefault(Map.class, -1),
                                                 requiredParamPositions.getOrDefault(CommandEventPublisher.class, -1)));
                                 chArgs.addIndexedArgumentValue(3, autowiredParameters);
@@ -194,8 +196,8 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
         }
 
         @Override
-        public Object handle(
-                Object instance,
+        public @Nullable Object handle(
+                @Nullable Object instance,
                 Command command,
                 Map<String, ?> metaData,
                 CommandEventPublisher<Object> commandEventPublisher) {
@@ -205,14 +207,14 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
         }
 
         record ParameterPositions(int instance, int command, int metaData, int commandEventPublisher) {
-            public Map<Integer, Object> mapArguments(
-                    Object instance,
+            public Map<Integer, @Nullable Object> mapArguments(
+                    @Nullable Object instance,
                     Command command,
                     Map<String, ?> metaData,
                     CommandEventPublisher<Object> commandEventPublisher) {
                 Predicate<Integer> present = integer -> integer != -1;
 
-                Map<Integer, Object> result = new HashMap<>();
+                Map<Integer, @Nullable Object> result = new HashMap<>();
                 if (present.test(instance())) result.put(instance(), instance);
                 if (present.test(command())) result.put(command(), command);
                 if (present.test(metaData())) result.put(metaData(), metaData);

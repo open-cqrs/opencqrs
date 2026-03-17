@@ -3,6 +3,7 @@ package com.opencqrs.framework.command;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 
 /**
  * DSL interfaces for the "Expect" (or "Then") phase of command handling tests. This phase specifies and verifies the
@@ -87,7 +88,7 @@ public interface ExpectDsl {
          * @return {@code this} for method chaining
          * @throws AssertionError if the results are not equal
          */
-        Succeeding havingResult(Object expected);
+        Succeeding havingResult(@Nullable Object expected);
 
         /**
          * Asserts that the command result satisfies custom assertions.
@@ -103,7 +104,7 @@ public interface ExpectDsl {
          * @return {@code this} for method chaining
          * @throws AssertionError if thrown by the consumer
          */
-        Succeeding resultSatisfying(Consumer<Object> assertion);
+        Succeeding resultSatisfying(Consumer<@Nullable Object> assertion);
 
         /**
          * Asserts that the final instance state equals the expected state using {@link Object#equals(Object)}. The
@@ -114,7 +115,7 @@ public interface ExpectDsl {
          * @return {@code this} for method chaining
          * @throws AssertionError if the states are not equal or no state was captured
          */
-        Succeeding havingState(Object state);
+        Succeeding havingState(@Nullable Object state);
 
         /**
          * Asserts that the final instance state satisfies custom assertions.
@@ -133,7 +134,7 @@ public interface ExpectDsl {
          * @return {@code this} for method chaining
          * @throws AssertionError if thrown by the consumer
          */
-        Succeeding stateSatisfying(Consumer<Object> assertion);
+        Succeeding stateSatisfying(Consumer<@Nullable Object> assertion);
 
         /**
          * Extracts a value from the final instance state and asserts it equals the expected value. Useful for verifying
@@ -152,7 +153,7 @@ public interface ExpectDsl {
          * @return {@code this} for method chaining
          * @throws AssertionError if the extracted values are not equal or no state was captured
          */
-        <T> Succeeding stateExtracting(Function<Object, T> extractor, T expected);
+        <T> Succeeding stateExtracting(Function<@Nullable Object, T> extractor, T expected);
 
         /**
          * Returns an interface for asserting against all captured events as a whole. Use this when you need to verify

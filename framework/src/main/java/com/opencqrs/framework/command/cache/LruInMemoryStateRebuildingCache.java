@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.logging.Logger;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@link StateRebuildingCache} implementation backed by a {@code synchronized} {@link LinkedHashMap} with configurable
@@ -51,7 +52,14 @@ public class LruInMemoryStateRebuildingCache implements StateRebuildingCache {
         };
     }
 
-    private boolean isHigherEventId(String a, String b) {
+    private boolean isHigherEventId(@Nullable String a, @Nullable String b) {
+        if (a == null) {
+            return false;
+        }
+        if (b == null) {
+            return true;
+        }
+
         return IdUtil.fromEventId(a) > IdUtil.fromEventId(b);
     }
 }
