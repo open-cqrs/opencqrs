@@ -14,6 +14,8 @@ import com.opencqrs.framework.metadata.PropagationUtil;
 import com.opencqrs.framework.persistence.CapturedEvent;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.persistence.ImmediateEventPublisher;
+import org.jspecify.annotations.Nullable;
+
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
@@ -197,7 +199,7 @@ public final class CommandRouter {
                                     };
                             };
 
-                    AtomicReference<String> latestSourcedId = new AtomicReference<>(cached.eventId());
+                    AtomicReference<@Nullable String> latestSourcedId = new AtomicReference<@Nullable String>(cached.eventId());
                     Map<String, String> sourcedSubjectIds = new HashMap<>(cached.sourcedSubjectIds());
                     List<SourcedEvent> sourcedEvents = new ArrayList<>();
 
@@ -232,7 +234,7 @@ public final class CommandRouter {
                         }
                     }
 
-                    final AtomicReference<Object> instance = new AtomicReference<>(cached.instance());
+                    final AtomicReference<@Nullable Object> instance = new AtomicReference<@Nullable Object>(cached.instance());
                     sourcedEvents.forEach(sourced -> relevantSRHDs.ifPresent(srhds -> Util.applyUsingHandlers(
                             srhds, instance, sourced.raw.subject(), sourced.event, sourced.metaData, sourced.raw)));
 

@@ -4,9 +4,9 @@ package com.opencqrs.framework.command;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
 import com.opencqrs.framework.upcaster.EventUpcasters;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Sealed base interface for inherited {@link FunctionalInterface} variants encapsulating the event-sourcing logic
@@ -48,7 +48,7 @@ public sealed interface StateRebuildingHandler<I, E> {
          * @param event the event to apply
          * @return an instance with the event applied, ideally an immutable copy of the original instance
          */
-        I on(I instance, E event);
+        I on(@Nullable I instance, E event);
     }
 
     /**
@@ -70,7 +70,7 @@ public sealed interface StateRebuildingHandler<I, E> {
          *     published}
          * @return an instance with the event and raw event applied, ideally an immutable copy of the original instance
          */
-        I on(I instance, E event, @Nullable Event rawEvent);
+        I on(@Nullable I instance, E event, @Nullable Event rawEvent);
     }
 
     /**
@@ -91,7 +91,7 @@ public sealed interface StateRebuildingHandler<I, E> {
          * @param metaData the event meta-data, may be empty
          * @return an instance with the event and meta-data applied, ideally an immutable copy of the original instance
          */
-        I on(I instance, E event, Map<String, ?> metaData);
+        I on(@Nullable I instance, E event, Map<String, ?> metaData);
     }
 
     /**
@@ -114,7 +114,7 @@ public sealed interface StateRebuildingHandler<I, E> {
          * @return an instance with the event, meta-data, and subject applied, ideally an immutable copy of the original
          *     instance
          */
-        I on(I instance, E event, Map<String, ?> metaData, String subject);
+        I on(@Nullable I instance, E event, Map<String, ?> metaData, String subject);
     }
 
     /**
@@ -139,6 +139,6 @@ public sealed interface StateRebuildingHandler<I, E> {
          * @return an instance with the event, meta-data, subject, and raw event applied, ideally an immutable copy of
          *     the original instance
          */
-        I on(I instance, E event, Map<String, ?> metaData, String subject, @Nullable Event rawEvent);
+        I on(@Nullable I instance, E event, Map<String, ?> metaData, String subject, @Nullable Event rawEvent);
     }
 }

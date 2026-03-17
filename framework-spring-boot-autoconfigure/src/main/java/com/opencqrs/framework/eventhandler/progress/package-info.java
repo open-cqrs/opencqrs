@@ -1,4 +1,3 @@
-/** Contains progress tracking components for event handling. */
 @NullMarked
 package com.opencqrs.framework.eventhandler.progress;
 

@@ -4,8 +4,12 @@ package com.opencqrs.framework.command;
 import com.opencqrs.esdb.client.Precondition;
 import com.opencqrs.framework.persistence.CapturedEvent;
 import com.opencqrs.framework.persistence.EventCapturer;
+import jakarta.validation.constraints.Null;
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -19,14 +23,14 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
     private final List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions;
     private final String subject;
 
-    final AtomicReference<I> previousInstance;
+    final AtomicReference<@Nullable I> previousInstance;
 
     public CommandEventCapturer(
-            I initialInstance,
+            @Nullable I initialInstance,
             String subject,
             List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions) {
         this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
-        this.previousInstance = new AtomicReference<>(initialInstance);
+        this.previousInstance = new AtomicReference<@Nullable I>(initialInstance);
         this.subject = subject;
     }
 
@@ -36,7 +40,7 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
 
         Util.applyUsingHandlers(stateRebuildingHandlerDefinitions, previousInstance, subject, event, metaData, null);
 
-        return previousInstance.get();
+        return Objects.requireNonNull(previousInstance.get());
     }
 
     @Override
@@ -47,6 +51,6 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
 
         Util.applyUsingHandlers(stateRebuildingHandlerDefinitions, previousInstance, s, event, metaData, null);
 
-        return previousInstance.get();
+        return Objects.requireNonNull(previousInstance.get());
     }
 }

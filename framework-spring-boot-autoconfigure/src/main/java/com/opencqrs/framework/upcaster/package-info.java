@@ -1,4 +1,3 @@
-/** Contains event upcasting components. */
 @NullMarked
 package com.opencqrs.framework.upcaster;
 

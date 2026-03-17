@@ -2,7 +2,7 @@ description = "Spring Boot auto configurations for OpenCQRS framework"
 
 dependencies {
     api(project(":framework"))
-    compileOnly("jakarta.validation:jakarta.validation-api")
+    compileOnly("org.jspecify:jspecify")
     implementation("org.springframework.boot:spring-boot-starter-jackson")
     compileOnly("org.springframework:spring-jdbc")
     compileOnly("org.springframework:spring-tx")
@@ -19,4 +19,6 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+    annotationProcessor(libs.errorprone)
+    annotationProcessor(libs.nullaway)
 }

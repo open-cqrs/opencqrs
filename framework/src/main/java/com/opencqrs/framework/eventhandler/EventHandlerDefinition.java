@@ -1,8 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.eventhandler;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import org.jspecify.annotations.NonNull;
 
 /**
  * {@link EventHandler} definition suitable for being processed by an event processor.
@@ -12,5 +11,4 @@ import jakarta.validation.constraints.NotNull;
  * @param handler the actual event handler
  * @param <E> the generic Java event type
  */
-public record EventHandlerDefinition<E>(
-        @NotBlank String group, @NotNull Class<E> eventClass, @NotNull EventHandler<E> handler) {}
+public record EventHandlerDefinition<E>(String group, Class<E> eventClass, EventHandler<E> handler) {}

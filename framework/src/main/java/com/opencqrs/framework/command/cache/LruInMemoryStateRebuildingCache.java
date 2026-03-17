@@ -2,6 +2,9 @@
 package com.opencqrs.framework.command.cache;
 
 import com.opencqrs.esdb.client.IdUtil;
+import jakarta.validation.constraints.Null;
+import org.jspecify.annotations.Nullable;
+
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -51,7 +54,14 @@ public class LruInMemoryStateRebuildingCache implements StateRebuildingCache {
         };
     }
 
-    private boolean isHigherEventId(String a, String b) {
+    private boolean isHigherEventId(@Nullable String a, @Nullable String b) {
+        if (a == null) {
+            return false;
+        }
+        if (b == null) {
+            return true;
+        }
+
         return IdUtil.fromEventId(a) > IdUtil.fromEventId(b);
     }
 }

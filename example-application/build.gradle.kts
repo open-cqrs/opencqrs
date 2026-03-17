@@ -7,9 +7,9 @@ plugins {
 }
 
 dependencies {
+    compileOnly("org.jspecify:jspecify")
     implementation(project(":framework-spring-boot-starter"))
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-integration")
     implementation("org.springframework.integration:spring-integration-jdbc")
@@ -22,6 +22,9 @@ dependencies {
     testImplementation("org.slf4j:jul-to-slf4j")
     // https://github.com/gradle/gradle/issues/33950
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    annotationProcessor(libs.errorprone)
+    annotationProcessor(libs.nullaway)
 }
 
 jib {

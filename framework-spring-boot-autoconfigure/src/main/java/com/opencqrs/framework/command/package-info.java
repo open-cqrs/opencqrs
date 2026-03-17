@@ -1,4 +1,3 @@
-/** Components for command handling. */
 @NullMarked
 package com.opencqrs.framework.command;
 

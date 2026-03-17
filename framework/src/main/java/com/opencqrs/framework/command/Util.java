@@ -3,6 +3,8 @@ package com.opencqrs.framework.command;
 
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.CqrsFrameworkException;
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -12,16 +14,16 @@ class Util {
 
     static <I, E> boolean applyUsingHandlers(
             List<StateRebuildingHandlerDefinition<I, E>> stateRebuildingHandlerDefinitions,
-            AtomicReference<I> state,
+            AtomicReference<@Nullable I> state,
             String subject,
             E event,
             Map<String, ?> metaData,
-            Event rawEvent) {
+            @Nullable Event rawEvent) {
         var wasApplied = new AtomicReference<>(false);
         stateRebuildingHandlerDefinitions.stream()
                 .filter(srhd -> srhd.eventClass().isAssignableFrom(event.getClass()))
                 .forEach(srhd -> {
-                    state.updateAndGet(i -> Optional.ofNullable(
+                    state.updateAndGet(i -> Optional.of(
                                     switch (srhd.handler()) {
                                         case StateRebuildingHandler.FromObject<I, E> handler -> handler.on(i, event);
                                         case StateRebuildingHandler.FromObjectAndRawEvent<I, E> handler ->

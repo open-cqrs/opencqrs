@@ -4,10 +4,9 @@ package com.opencqrs.framework.upcaster;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.serialization.EventData;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Interface to be implemented when {@link Event}s need to be migrated to a new representation, so-called upcasting.
@@ -54,5 +53,5 @@ public interface EventUpcaster {
      * @param type the potentially modified {@link Event#type()}
      * @param data the potentially modified {@link Event#data()}
      */
-    record Result(@NotBlank String type, @NotNull Map<String, ?> data) {}
+    record Result(String type, Map<String, ?> data) {}
 }

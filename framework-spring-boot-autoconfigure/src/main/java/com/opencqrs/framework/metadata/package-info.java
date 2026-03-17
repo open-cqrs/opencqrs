@@ -1,4 +1,3 @@
-/** Contains meta-data related classes. */
 @NullMarked
 package com.opencqrs.framework.metadata;
 

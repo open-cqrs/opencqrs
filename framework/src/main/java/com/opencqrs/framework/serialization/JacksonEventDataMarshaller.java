@@ -2,10 +2,10 @@
 package com.opencqrs.framework.serialization;
 
 import com.opencqrs.framework.CqrsFrameworkException;
-import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import org.jspecify.annotations.NonNull;
 
 /** {@link EventDataMarshaller} implementation that uses a configurable {@link ObjectMapper} for marshalling. */
 public class JacksonEventDataMarshaller implements EventDataMarshaller {
@@ -38,5 +38,5 @@ public class JacksonEventDataMarshaller implements EventDataMarshaller {
         }
     }
 
-    record JacksonData<E>(@NotNull Map<String, ?> metadata, @NotNull E payload) {}
+    record JacksonData<E>(Map<String, ?> metadata, E payload) {}
 }

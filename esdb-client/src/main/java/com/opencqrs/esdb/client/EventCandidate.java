@@ -1,10 +1,9 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Candidate event for {@link EsdbClient#write(List, List) publication} to a <a
@@ -18,5 +17,4 @@ import java.util.Map;
  * @see Event
  * @see EsdbClient#write(List, List)
  */
-public record EventCandidate(
-        @NotBlank String source, @NotBlank String subject, @NotBlank String type, @NotNull Map<String, ?> data) {}
+public record EventCandidate(String source, String subject, String type, Map<String, ?> data) {}

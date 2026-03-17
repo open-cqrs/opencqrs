@@ -1,9 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.eventhandler;
 
-import com.opencqrs.esdb.client.ClientException;
-import com.opencqrs.esdb.client.Event;
-import com.opencqrs.esdb.client.Option;
+import com.opencqrs.esdb.client.*;
 import com.opencqrs.framework.CqrsFrameworkException;
 import com.opencqrs.framework.client.ClientInterruptedException;
 import com.opencqrs.framework.eventhandler.partitioning.EventSequenceResolver;
@@ -14,8 +12,12 @@ import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
 import com.opencqrs.framework.types.EventTypeResolver;
 import com.opencqrs.framework.upcaster.EventUpcasters;
+import org.jspecify.annotations.Nullable;
+
 import java.lang.reflect.UndeclaredThrowableException;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,9 +30,11 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.opencqrs.framework.eventhandler.BackOff.*;
+
 /**
  * {@linkplain Runnable#run() Asynchronous} event processor
- * {@linkplain com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer) observing an event stream} to be
+ * {@linkplain EsdbClient#observe(String, Set, Consumer) observing an event stream} to be
  * handled by matching {@link EventHandlerDefinition}s all belonging to the same
  * {@linkplain EventHandlerDefinition#group() processing group and partition} with configurable
  * {@linkplain ProgressTracker progress tracking} and {@linkplain BackOff retry} in case of errors.
@@ -44,7 +48,7 @@ public class EventHandlingProcessor implements Runnable {
     private static final Logger log = Logger.getLogger(EventHandlingProcessor.class.getName());
 
     private final AtomicInteger threadNum = new AtomicInteger();
-    private final AtomicReference<ExecutorService> running = new AtomicReference<>();
+    private final AtomicReference<@Nullable ExecutorService> running = new AtomicReference<>();
     private final String groupId;
     private final long partition;
     final String subject;
@@ -98,7 +102,7 @@ public class EventHandlingProcessor implements Runnable {
      * Creates a pre-configured instance of {@code this}.
      *
      * @param partition the partition number handled by {@code this} with respect to the processing group
-     * @param subject the subject to {@linkplain com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)
+     * @param subject the subject to {@linkplain EsdbClient#observe(String, Set, Consumer)
      *     observe}
      * @param recursive whether the subject should be observed recursively, that is including child subjects
      * @param eventReader the event source
@@ -150,7 +154,7 @@ public class EventHandlingProcessor implements Runnable {
      * <ol>
      *   <li>fetching the {@linkplain ProgressTracker#current(String, long)} current progress} for the configured
      *       processing group and partition
-     *   <li>{@linkplain com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer) observing} the event stream
+     *   <li>{@linkplain EsdbClient#observe(String, Set, Consumer) observing} the event stream
      *       for the configured subject starting from the current progress
      *   <li>checking if the {@linkplain EventSequenceResolver raw event's sequence id} is
      *       {@linkplain PartitionKeyResolver#resolve(String) relevant for this partition}, otherwise skip it
@@ -181,13 +185,13 @@ public class EventHandlingProcessor implements Runnable {
      * Retry of failed {@link EventHandler}s or framework components will cause the event processor to {@link BackOff
      * back off} from the event processing loop, {@link Thread#sleep(long) waiting} before retrying the failed event
      * according to the aforementioned <i>event processing loop</i>. Once the {@link BackOff back off} is
-     * {@linkplain BackOff.Execution#next() exhausted} the erroneous event will be skipped, continuing with the next
+     * {@linkplain Execution#next() exhausted} the erroneous event will be skipped, continuing with the next
      * observable event, once available.
      *
      * <p><strong>This method is assumed to be started within a thread pool with one additional spare thread, which is
      * used to dispatch any raw {@link Event} received via {@link EventReader#consumeRaw(EventReader.ClientRequestor,
      * BiConsumer)}. This effectively offloads event upcasting, type resolution, deserialization, and the actual event
-     * handling from the underlying {@link java.net.http.HttpClient} {@link java.net.http.HttpResponse.BodySubscriber}
+     * handling from the underlying {@link HttpClient} {@link HttpResponse.BodySubscriber}
      * thread, in order to be able to {@link #stop()} {@code this} properly.</strong>
      */
     @Override
@@ -312,7 +316,7 @@ public class EventHandlingProcessor implements Runnable {
                                     if (e.getCause() instanceof WrappedEventHandlingException) {
                                         throw (WrappedEventHandlingException) e.getCause();
                                     } else {
-                                        throw new WrappedEventHandlingException(raw, e.getCause());
+                                        throw new WrappedEventHandlingException(raw, e.getCause() != null ? e.getCause() : e);
                                     }
                                 }
                             });
@@ -338,10 +342,12 @@ public class EventHandlingProcessor implements Runnable {
                         case UndeclaredThrowableException ex -> {
                             switch (ex.getCause()) {
                                 case CqrsFrameworkException.NonTransientException undeclared -> throw undeclared;
+                                case null -> skipEvent.set(retryHandler.handle(e.event, ex)); // TODO Frank
                                 default -> skipEvent.set(retryHandler.handle(e.event, ex.getCause()));
                             }
                         }
                         case CqrsFrameworkException.NonTransientException ignored -> throw cause;
+                        case null -> skipEvent.set(retryHandler.handle(e.event, e));
                         default -> skipEvent.set(retryHandler.handle(e.event, cause));
                     }
                 } catch (ClientInterruptedException e) {
@@ -409,14 +415,14 @@ public class EventHandlingProcessor implements Runnable {
     }
 
     private class RetryHandler {
-        private BackOff.Execution execution;
+        private @Nullable Execution execution;
 
         boolean isRetryExecution() {
             return execution != null;
         }
 
-        boolean handle(Event event, Throwable t) throws InterruptedException {
-            if (!isRetryExecution()) {
+        boolean handle(@Nullable Event event, Throwable t) throws InterruptedException {
+            if (execution == null) {
                 execution = backoff.start();
             }
 
@@ -438,7 +444,7 @@ public class EventHandlingProcessor implements Runnable {
             }
         }
 
-        private String eventIdForLog(Event e) {
+        private String eventIdForLog(@Nullable Event e) {
             if (e != null) {
                 return " for event id: " + e.id();
             } else {
@@ -456,10 +462,10 @@ public class EventHandlingProcessor implements Runnable {
 
     /**
      * Internal {@linkplain ClientException exception} used to capture exceptions from the
-     * {@link com.opencqrs.esdb.client.EsdbClient}s event consumer callback.
+     * {@link EsdbClient}s event consumer callback.
      *
-     * @see com.opencqrs.esdb.client.HttpRequestErrorHandler#handle(HttpRequest, Function)
-     * @see com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)
+     * @see HttpRequestErrorHandler#handle(HttpRequest, Function)
+     * @see EsdbClient#observe(String, Set, Consumer)
      */
     private static class WrappedEventHandlingException extends ClientException {
 

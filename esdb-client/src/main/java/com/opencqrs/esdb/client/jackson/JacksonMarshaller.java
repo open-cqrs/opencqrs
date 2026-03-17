@@ -7,16 +7,16 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.opencqrs.esdb.client.*;
 import com.opencqrs.esdb.client.eventql.EventQueryProcessingError;
 import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import org.jspecify.annotations.Nullable;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
 /** {@link ObjectMapper} based {@link Marshaller} implementation. */
 public class JacksonMarshaller implements Marshaller {
@@ -218,14 +218,14 @@ public class JacksonMarshaller implements Marshaller {
                 .map(o -> mapper.apply((O) o));
     }
 
-    private <T, O extends Option> T mapOptionIfPresentOrNull(
+    private <T, O extends Option> @Nullable T mapOptionIfPresentOrNull(
             Set<Option> options, Class<O> optionClass, Function<O, T> mapper) {
         return mapOptionIfPresent(options, optionClass, mapper).orElse(null);
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     record JacksonOptions(
-            Boolean recursive, String order, Bound lowerBound, Bound upperBound, FromLatestEvent fromLatestEvent) {
+            Boolean recursive, @Nullable String order, @Nullable Bound lowerBound, @Nullable Bound upperBound, @Nullable FromLatestEvent fromLatestEvent) {
         record Bound(String id, Type type) {
             enum Type {
                 inclusive,
@@ -249,22 +249,22 @@ public class JacksonMarshaller implements Marshaller {
     sealed interface JacksonResponseElement {
         record Heartbeat() implements JacksonResponseElement {}
 
-        record Event(@NotNull Payload payload) implements JacksonResponseElement {
+        record Event(Payload payload) implements JacksonResponseElement {
             record Payload(
-                    @NotBlank String source,
-                    @NotBlank String subject,
-                    @NotBlank String type,
-                    @NotNull Map<String, ?> data,
-                    @NotBlank String specversion,
-                    @NotBlank String id,
-                    @NotNull Instant time,
-                    @NotBlank String datacontenttype,
-                    @NotBlank String hash,
-                    @NotBlank String predecessorhash) {}
+                    String source,
+                    String subject,
+                    String type,
+                    Map<String, ?> data,
+                    String specversion,
+                    String id,
+                    Instant time,
+                    String datacontenttype,
+                    String hash,
+                    String predecessorhash) {}
         }
 
-        record Subject(@NotNull Payload payload) implements JacksonResponseElement {
-            record Payload(@NotBlank String subject) {}
+        record Subject(Payload payload) implements JacksonResponseElement {
+            record Payload(String subject) {}
         }
     }
 

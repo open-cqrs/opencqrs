@@ -1,10 +1,9 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.util.Set;
 import java.util.function.Consumer;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Sealed interface for options used by {@link EsdbClient} to read or observe events from the underlying event store.
@@ -28,7 +27,7 @@ public sealed interface Option {
      * @see EsdbClient#read(String, Set)
      * @see EsdbClient#read(String, Set, Consumer)
      */
-    record Order(@NotNull Type type) implements Option {
+    record Order(Type type) implements Option {
 
         /** Specifies the event order. */
         public enum Type {
@@ -47,7 +46,7 @@ public sealed interface Option {
      * @see EsdbClient#read(String, Set, Consumer)
      * @see EsdbClient#observe(String, Set, Consumer)
      */
-    record LowerBoundInclusive(@NotBlank String id) implements Option {}
+    record LowerBoundInclusive(String id) implements Option {}
 
     /**
      * Specifies the lowest exclusive event id to fetch from.
@@ -57,7 +56,7 @@ public sealed interface Option {
      * @see EsdbClient#read(String, Set, Consumer)
      * @see EsdbClient#observe(String, Set, Consumer)
      */
-    record LowerBoundExclusive(@NotBlank String id) implements Option {}
+    record LowerBoundExclusive(String id) implements Option {}
 
     /**
      * Specifies the highest inclusive event id to fetch to.
@@ -66,7 +65,7 @@ public sealed interface Option {
      * @see EsdbClient#read(String, Set)
      * @see EsdbClient#read(String, Set, Consumer)
      */
-    record UpperBoundInclusive(@NotBlank String id) implements Option {}
+    record UpperBoundInclusive(String id) implements Option {}
 
     /**
      * Specifies the highest exclusive event id to fetch to.
@@ -75,7 +74,7 @@ public sealed interface Option {
      * @see EsdbClient#read(String, Set)
      * @see EsdbClient#read(String, Set, Consumer)
      */
-    record UpperBoundExclusive(@NotBlank String id) implements Option {}
+    record UpperBoundExclusive(String id) implements Option {}
 
     /**
      * Specifies that the list of events is optimized by <i>omitting</i> any event prior to the latest event available
@@ -88,8 +87,7 @@ public sealed interface Option {
      * @param type the {@link Event#type()} that the latest event must match
      * @param ifEventIsMissing specifies the fall-back fetch strategy, in case there is no such event
      */
-    record FromLatestEvent(@NotBlank String subject, @NotBlank String type, @NotNull IfEventIsMissing ifEventIsMissing)
-            implements Option {
+    record FromLatestEvent(String subject, String type, IfEventIsMissing ifEventIsMissing) implements Option {
 
         /** Specifies the fall-back fetch strategy. */
         public enum IfEventIsMissing {

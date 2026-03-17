@@ -1,5 +1,7 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import groovy.json.JsonSlurper
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
 import org.cyclonedx.gradle.CyclonedxDirectTask
 import org.cyclonedx.model.AttachmentText
 import org.cyclonedx.model.ExternalReference
@@ -8,10 +10,11 @@ import org.cyclonedx.model.LicenseChoice
 import org.cyclonedx.model.OrganizationalContact
 import org.cyclonedx.model.OrganizationalEntity
 import org.cyclonedx.model.organization.PostalAddress
-import java.util.Base64
+import java.util.*
 
 val javaVersion = JavaVersion.VERSION_21
 val frameworkVersions: Map<String, String> by extra
+val libraryVersions: Map<String, String> by extra
 val memorySettings: Map<String, String> by extra
 
 plugins {
@@ -21,6 +24,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
     id("com.github.ben-manes.versions") version "0.53.0"
     id("com.diffplug.spotless") version "8.1.0" apply false
+    id("net.ltgt.errorprone") version "4.4.0" apply false
 }
 
 allprojects {
@@ -118,6 +122,7 @@ subprojects {
     apply(plugin = "io.spring.dependency-management")
     apply(plugin = "org.cyclonedx.bom")
     apply(plugin = "com.diffplug.spotless")
+    apply(plugin = "net.ltgt.errorprone")
 
     group = "com.opencqrs"
     version = if (version != "unspecified") version else "undefined"
@@ -128,6 +133,22 @@ subprojects {
             // support for spotless:off and spotless:on comments
             toggleOffOn()
             licenseHeader("/* Copyright (C) \$YEAR OpenCQRS and contributors */")
+        }
+    }
+
+    tasks.withType<JavaCompile>().configureEach {
+        options.errorprone {
+            disableWarningsInGeneratedCode.set(true)
+
+
+            //TODO remove once problems have been solved
+            disableAllChecks.set(true)
+            allDisabledChecksAsWarnings.set(true)
+            // TODO turn back into severity "ERROR"
+            check("NullAway", CheckSeverity.ERROR)
+
+            option("NullAway:AnnotatedPackages", "com.opencqrs")
+            option("NullAway:JSpecifyMode", "true")
         }
     }
 

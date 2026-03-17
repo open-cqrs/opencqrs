@@ -9,11 +9,10 @@ import com.opencqrs.framework.command.CommandHandlerDefinition;
 import com.opencqrs.framework.command.SourcingMode;
 import com.opencqrs.framework.command.StateRebuildingHandlerDefinition;
 import com.opencqrs.framework.persistence.EventReader;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Interface specifying operations to cache {@linkplain StateRebuildingHandlerDefinition#instanceClass() event-sourced
@@ -52,7 +51,7 @@ public interface StateRebuildingCache {
      * @param sourcingMode the corresponding {@link CommandHandlerDefinition#sourcingMode()}
      * @param <I> the generic instance type being cached
      */
-    record CacheKey<I>(@Nonnull String subject, @Nonnull Class<I> instanceClass, @Nonnull SourcingMode sourcingMode) {}
+    record CacheKey<I>(String subject, Class<I> instanceClass, SourcingMode sourcingMode) {}
 
     /**
      * Represents the cache value.
@@ -65,5 +64,5 @@ public interface StateRebuildingCache {
      * @param <I> the generic instance type being cached
      */
     record CacheValue<I>(
-            @Nullable String eventId, @Nullable I instance, @Nonnull Map<String, String> sourcedSubjectIds) {}
+            @Nullable String eventId, @Nullable I instance, Map<String, String> sourcedSubjectIds) {}
 }

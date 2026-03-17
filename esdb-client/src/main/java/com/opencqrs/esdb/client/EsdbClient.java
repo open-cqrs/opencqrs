@@ -4,6 +4,8 @@ package com.opencqrs.esdb.client;
 import com.opencqrs.esdb.client.eventql.EventQuery;
 import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
 import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
+import org.jspecify.annotations.Nullable;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;

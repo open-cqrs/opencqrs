@@ -1,6 +1,8 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
+import org.jspecify.annotations.Nullable;
+
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
@@ -76,6 +78,7 @@ final class HttpRequestErrorHandler {
         } catch (IOException e) {
             switch (e.getCause()) {
                 case ClientException clientException -> throw clientException;
+                case null -> throw new ClientException.TransportException("failed to send request with unknown cause", e);
                 default -> throw new ClientException.TransportException("failed to send request", e.getCause());
             }
         } catch (InterruptedException e) {

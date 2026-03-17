@@ -4,10 +4,9 @@ package com.opencqrs.framework.upcaster;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.serialization.EventData;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Template implementation of {@link EventUpcaster} that uses a delegate {@link EventDataMarshaller} to allow subclasses
@@ -59,5 +58,5 @@ public abstract class AbstractEventDataMarshallingEventUpcaster implements Event
      * @param payload the upcasted payload
      */
     public record MetaDataAndPayloadResult(
-            @NotBlank String type, @NotNull Map<String, ?> metaData, @NotNull Map<String, ?> payload) {}
+            String type, Map<String, ?> metaData, Map<String, ?> payload) {}
 }

@@ -1,4 +1,3 @@
-/** Contains event type resolution components. */
 @NullMarked
 package com.opencqrs.framework.types;
 

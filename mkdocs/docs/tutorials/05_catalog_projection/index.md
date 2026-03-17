@@ -24,7 +24,7 @@ the required information:
 package com.example.cqrs;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+
 
 import java.util.*;
 
@@ -114,7 +114,7 @@ _event handlers_ need to be defined, mapping the different domain events to `Boo
 package com.example.cqrs;
 
 import com.opencqrs.framework.eventhandler.EventHandling;
-import jakarta.transaction.Transactional;
+
 import org.springframework.stereotype.Service;
 
 @Service

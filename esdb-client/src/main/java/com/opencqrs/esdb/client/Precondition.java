@@ -2,9 +2,8 @@
 package com.opencqrs.esdb.client;
 
 import com.opencqrs.esdb.client.eventql.EventQuery;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Sealed interface for preconditions used for {@link EsdbClient#write(List, List) event publication} to ensure
@@ -22,7 +21,7 @@ public sealed interface Precondition
      *
      * @param subject the path to the subject that needs to be pristine
      */
-    record SubjectIsPristine(@NotBlank String subject) implements Precondition {}
+    record SubjectIsPristine(String subject) implements Precondition {}
 
     /**
      * A precondition stating the given subject must have been updated by the given event id. The precondition is
@@ -32,7 +31,7 @@ public sealed interface Precondition
      * @param subject the path to the subject
      * @param eventId the expected event id
      */
-    record SubjectIsOnEventId(@NotBlank String subject, @NotBlank String eventId) implements Precondition {}
+    record SubjectIsOnEventId(String subject, String eventId) implements Precondition {}
 
     /**
      * A precondition stating the given subject must already exist within the event store, that is at least one event
@@ -41,7 +40,7 @@ public sealed interface Precondition
      *
      * @param subject the path to the subject that needs to be populated
      */
-    record SubjectIsPopulated(@NotBlank String subject) implements Precondition {}
+    record SubjectIsPopulated(String subject) implements Precondition {}
 
     /**
      * A precondition stating the given {@link com.opencqrs.esdb.client.eventql.EventQuery} must evaluate to
@@ -49,5 +48,5 @@ public sealed interface Precondition
      *
      * @param query the EventQL query that must evaluate to {@code true}
      */
-    record EventQlQueryIsTrue(@NotNull EventQuery query) implements Precondition {}
+    record EventQlQueryIsTrue(EventQuery query) implements Precondition {}
 }

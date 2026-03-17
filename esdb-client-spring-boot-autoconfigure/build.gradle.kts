@@ -3,8 +3,8 @@ description = "Spring Boot auto configurations for the ESDB client SDK"
 dependencies {
     api(project(":esdb-client"))
     compileOnly("org.springframework.boot:spring-boot-starter-jackson")
-    compileOnly("org.springframework.boot:spring-boot-starter-validation")
     compileOnly("org.springframework.boot:spring-boot-starter-actuator")
+    compileOnly("org.jspecify:jspecify")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -13,4 +13,6 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+    annotationProcessor(libs.errorprone)
+    annotationProcessor(libs.nullaway)
 }

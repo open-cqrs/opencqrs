@@ -1,0 +1,7 @@
+[versions]
+"nullaway" = "0.12.14"
+"errorprone" = "2.45.0"
+
+[libraries]
+errorprone = { group = "com.google.errorprone", name = "error_prone_core", version.ref = "errorprone" }
+nullaway = { group = "com.uber.nullaway", name = "nullaway", version.ref = "nullaway" }
