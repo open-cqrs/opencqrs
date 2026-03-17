@@ -1,6 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.types;
 
+import com.uber.nullaway.annotations.Initializer;
 import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -15,6 +16,7 @@ public class ClassNameEventTypeResolverAutoConfiguration implements BeanClassLoa
 
     private ClassLoader beanClassLoader;
 
+    @Initializer
     @Override
     public void setBeanClassLoader(ClassLoader classLoader) {
         this.beanClassLoader = classLoader;

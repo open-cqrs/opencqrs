@@ -27,6 +27,8 @@ import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -189,7 +191,7 @@ public class CommandAndEventHandlingIntegrationTest {
 
                 @Override
                 protected Stream<MetaDataAndPayloadResult> doUpcast(
-                        Event event, Map<String, ?> metaData, Map<String, ?> payload) {
+                        @NonNull Event event, @NonNull Map<String, ?> metaData, @NonNull Map<String, ?> payload) {
                     return Stream.of(new MetaDataAndPayloadResult(
                             eventTypeResolver.getEventType(BookPageDamagedEvent.class),
                             Map.of("upcasted", !((Boolean) metaData.get("upcasted"))),
@@ -198,8 +200,8 @@ public class CommandAndEventHandlingIntegrationTest {
             };
         }
 
-        AtomicReference<BookPageDamagedEvent> upcastedEvent = new AtomicReference<>();
-        AtomicReference<Map<String, ?>> upcastedMetaData = new AtomicReference<>();
+        AtomicReference<@Nullable BookPageDamagedEvent> upcastedEvent = new AtomicReference<>();
+        AtomicReference<@Nullable Map<String, ?>> upcastedMetaData = new AtomicReference<>();
 
         @EventHandling("group-3")
         public void handleUpcastedEvent(Map<String, ?> metaData, BookPageDamagedEvent event) {
@@ -234,7 +236,7 @@ public class CommandAndEventHandlingIntegrationTest {
     public static class InterruptableEventHandlerConfiguration {
 
         final CyclicBarrier barrier = new CyclicBarrier(2);
-        private final AtomicReference<Exception> exceptionRef = new AtomicReference<>();
+        private final AtomicReference<@Nullable Exception> exceptionRef = new AtomicReference<>();
 
         @EventHandling("group-4")
         public void handle(BookAddedEvent event) throws BrokenBarrierException, InterruptedException, TimeoutException {

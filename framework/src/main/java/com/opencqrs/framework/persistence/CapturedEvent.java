@@ -2,8 +2,6 @@
 package com.opencqrs.framework.persistence;
 
 import com.opencqrs.esdb.client.Precondition;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 
@@ -15,11 +13,7 @@ import java.util.Map;
  * @param metaData the event meta-data to be published
  * @param preconditions the preconditions that must not be violated when publishing
  */
-public record CapturedEvent(
-        @NotBlank String subject,
-        @NotNull Object event,
-        @NotNull Map<String, ?> metaData,
-        @NotNull List<Precondition> preconditions) {
+public record CapturedEvent(String subject, Object event, Map<String, ?> metaData, List<Precondition> preconditions) {
     /**
      * Convenience constructor, if no meta-data or preconditions are needed.
      *

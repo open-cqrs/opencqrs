@@ -2,9 +2,11 @@
 package com.opencqrs.framework.reflection;
 
 import com.opencqrs.framework.CqrsFrameworkException;
+import com.uber.nullaway.annotations.Initializer;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.ParameterResolutionDelegate;
 import org.springframework.context.ApplicationContext;
@@ -25,6 +27,7 @@ public abstract class AutowiredParameterResolver implements ApplicationContextAw
         ReflectionUtils.makeAccessible(method);
     }
 
+    @Initializer
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
@@ -37,7 +40,7 @@ public abstract class AutowiredParameterResolver implements ApplicationContextAw
      * @param params any non-autowired positional parameter values to be included
      * @return an ordered array of the input and autowired params
      */
-    protected final Object[] resolveIncludingAutowiredParameters(Map<Integer, Object> params) {
+    protected final Object[] resolveIncludingAutowiredParameters(Map<Integer, @Nullable Object> params) {
         autowiredParameters.forEach(p -> {
             try {
                 if (params.put(

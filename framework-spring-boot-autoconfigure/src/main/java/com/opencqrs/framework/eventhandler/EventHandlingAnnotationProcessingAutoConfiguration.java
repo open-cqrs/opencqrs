@@ -8,11 +8,9 @@ import com.opencqrs.framework.transaction.NoTransactionOperationsAdapter;
 import com.opencqrs.framework.transaction.SpringTransactionOperationsAdapter;
 import com.opencqrs.framework.transaction.TransactionOperationsAdapter;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.ParameterResolutionDelegate;
@@ -73,7 +71,7 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
                             } else {
                                 try {
                                     Class<?> beanClass = ClassUtils.forName(
-                                            bd.getBeanClassName(),
+                                            abd.getBeanClassName(),
                                             registry.getClass().getClassLoader());
                                     standardMetadata =
                                             (StandardAnnotationMetadata) AnnotationMetadata.introspect(beanClass);
@@ -87,8 +85,10 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
                                     standardMetadata.getAnnotatedMethods(EventHandling.class.getName())) {
                                 StandardMethodMetadata smmd = (StandardMethodMetadata) mmd;
                                 Method introspectedMethod = smmd.getIntrospectedMethod();
-                                var groupId = (String) smmd.getAnnotationAttributes(EventHandling.class.getName())
-                                        .get("group");
+                                var annotationAttributes = Objects.requireNonNull(
+                                        smmd.getAnnotationAttributes(EventHandling.class.getName()),
+                                        () -> "MethodMetadata expected to be annotated with @EventHandling: " + mmd);
+                                var groupId = (String) annotationAttributes.get("group");
                                 if (!StringUtils.hasText(groupId)) {
                                     throw new BeanCreationException(
                                             "event handler must be defined using a valid non-empty group id: " + smmd);
@@ -146,9 +146,7 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
                                 eventHandlerDefinition.setTargetType(ResolvableType.forClassWithGenerics(
                                         EventHandlerDefinition.class, objectParamType));
                                 ConstructorArgumentValues values = new ConstructorArgumentValues();
-                                values.addGenericArgumentValue(
-                                        smmd.getAnnotationAttributes(EventHandling.class.getName())
-                                                .get("group"));
+                                values.addGenericArgumentValue(groupId);
                                 values.addGenericArgumentValue(objectParamType);
 
                                 GenericBeanDefinition eventHandler = new GenericBeanDefinition();
@@ -229,10 +227,10 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
         }
 
         record ParameterPositions(int object, int metaData, int raw) {
-            public Map<Integer, Object> mapArguments(Object event, Map<String, ?> metaData, Event rawEvent) {
+            public Map<Integer, @Nullable Object> mapArguments(Object event, Map<String, ?> metaData, Event rawEvent) {
                 Predicate<Integer> present = integer -> integer != -1;
 
-                Map<Integer, Object> result = new HashMap<>();
+                Map<Integer, @Nullable Object> result = new HashMap<>();
                 if (present.test(object())) result.put(object(), event);
                 if (present.test(metaData())) result.put(metaData(), metaData);
                 if (present.test(raw())) result.put(raw(), rawEvent);

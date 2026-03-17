@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Fluent API for configuring test preconditions before command execution. Methods in this interface allow specifying
@@ -136,7 +137,7 @@ public interface GivenDsl<C extends Command> {
      * @param state the state object to inject
      * @return {@code this} for method chaining
      */
-    GivenDsl<C> state(Object state);
+    GivenDsl<C> state(@Nullable Object state);
 
     /**
      * Adds multiple event payloads to be processed by {@link StateRebuildingHandlerDefinition}s. Each event payload is

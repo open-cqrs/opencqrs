@@ -76,6 +76,8 @@ final class HttpRequestErrorHandler {
         } catch (IOException e) {
             switch (e.getCause()) {
                 case ClientException clientException -> throw clientException;
+                case null ->
+                    throw new ClientException.TransportException("failed to send request with unknown cause", e);
                 default -> throw new ClientException.TransportException("failed to send request", e.getCause());
             }
         } catch (InterruptedException e) {

@@ -1,8 +1,6 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
@@ -28,14 +26,14 @@ import java.util.function.Consumer;
  * @see EsdbClient#observe(String, Set, Consumer)
  */
 public record Event(
-        @NotBlank String source,
-        @NotBlank String subject,
-        @NotBlank String type,
-        @NotNull Map<String, ?> data,
-        @NotBlank String specVersion,
-        @NotBlank String id,
-        @NotNull Instant time,
-        @NotBlank String dataContentType,
+        String source,
+        String subject,
+        String type,
+        Map<String, ?> data,
+        String specVersion,
+        String id,
+        Instant time,
+        String dataContentType,
         String hash,
-        @NotBlank String predecessorHash)
+        String predecessorHash)
         implements Marshaller.ResponseElement {}

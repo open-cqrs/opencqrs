@@ -9,6 +9,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Test support for {@link CommandHandler} or {@link CommandHandlerDefinition}. This class can be used in favor of the
@@ -182,12 +184,13 @@ public class CommandHandlingTestFixture<C extends Command> {
 
         sealed interface Stub {
 
-            record State(Object state) implements Stub {}
+            record State(@Nullable Object state) implements Stub {}
 
             record Time(Instant time) implements Stub {}
 
             record TimeDelta(Duration duration) implements Stub {}
 
+            @NullUnmarked
             record Event(String id, Instant time, String subject, Object payload, Map<String, ?> metaData)
                     implements Stub {
                 public Event() {
@@ -218,13 +221,13 @@ public class CommandHandlingTestFixture<C extends Command> {
 
         record StubResult(
                 Class<?> instanceClass,
-                Object state,
+                @Nullable Object state,
                 Instant time,
                 Command command,
                 List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions,
                 Set<String> subjects) {
 
-            public StubResult withState(Object newState) {
+            public StubResult withState(@Nullable Object newState) {
                 return new StubResult(
                         instanceClass(), newState, time(), command(), stateRebuildingHandlerDefinitions(), subjects());
             }
@@ -266,7 +269,7 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 UUID.randomUUID().toString(),
                                 UUID.randomUUID().toString());
 
-                        AtomicReference<Object> reference = new AtomicReference<>(state());
+                        AtomicReference reference = new AtomicReference<@Nullable Object>(state());
                         if (!Util.applyUsingHandlers(
                                 stateRebuildingHandlerDefinitions.stream()
                                         .filter(srhd -> srhd.instanceClass().equals(instanceClass()))
@@ -326,6 +329,8 @@ public class CommandHandlingTestFixture<C extends Command> {
 
         private final CommandHandler<?, C, ?> commandHandler;
         private final List<Stub> stubs = new ArrayList<>();
+
+        @Nullable
         private final String subject;
 
         private Given(CommandHandler<?, C, ?> commandHandler, Instant time) {
@@ -338,7 +343,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             this(commandHandler, Instant.now());
         }
 
-        private Given(String subject, CommandHandler<?, C, ?> commandHandler, List<Stub> stubs) {
+        private Given(@Nullable String subject, CommandHandler<?, C, ?> commandHandler, List<Stub> stubs) {
             this.subject = subject;
             this.commandHandler = commandHandler;
             this.stubs.addAll(stubs);
@@ -377,7 +382,7 @@ public class CommandHandlingTestFixture<C extends Command> {
         }
 
         @Override
-        public GivenDsl<C> state(Object state) {
+        public GivenDsl<C> state(@Nullable Object state) {
             stubs.add(new Stub.State(state));
             return this;
         }
@@ -423,7 +428,7 @@ public class CommandHandlingTestFixture<C extends Command> {
 
         @Override
         public GivenDsl<C> usingCommandSubject() {
-            return usingSubject(null);
+            return new Given(null, commandHandler, stubs);
         }
 
         @Override
@@ -527,13 +532,24 @@ public class CommandHandlingTestFixture<C extends Command> {
      */
     public static class Expect implements ExpectDsl.Outcome {
         private final Command command;
+
+        @Nullable
         private final Object state;
+
         final List<CapturedEvent> capturedEvents;
+
+        @Nullable
         private final Object result;
+
+        @Nullable
         private final Throwable throwable;
 
         private Expect(
-                Command command, Object state, List<CapturedEvent> capturedEvents, Object result, Throwable throwable) {
+                Command command,
+                @Nullable Object state,
+                List<CapturedEvent> capturedEvents,
+                @Nullable Object result,
+                @Nullable Throwable throwable) {
             this.command = command;
             this.state = state;
             this.capturedEvents = capturedEvents;
@@ -552,9 +568,9 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
 
             @Override
-            public ExpectDsl.Succeeding havingResult(Object expected) {
+            public ExpectDsl.Succeeding havingResult(@Nullable Object expected) {
                 if (expected == null && result == null) return this;
-                if (expected == null || (result == null) || !expected.equals(result)) {
+                if (expected == null || !expected.equals(result)) {
                     StringBuilder builder = new StringBuilder();
                     builder.append("Command handler result expected to be equal, but captured result:\n");
                     builder.append(result);
@@ -567,13 +583,13 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
 
             @Override
-            public ExpectDsl.Succeeding resultSatisfying(Consumer<Object> assertion) {
+            public ExpectDsl.Succeeding resultSatisfying(Consumer<@Nullable Object> assertion) {
                 assertion.accept(result);
                 return this;
             }
 
             @Override
-            public ExpectDsl.Succeeding havingState(Object expectedState) {
+            public ExpectDsl.Succeeding havingState(@Nullable Object expectedState) {
                 if (state == null) throw new AssertionError("No state captured");
                 if (!state.equals(expectedState)) {
                     StringBuilder builder = new StringBuilder();
@@ -588,13 +604,13 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
 
             @Override
-            public ExpectDsl.Succeeding stateSatisfying(Consumer<Object> assertion) {
+            public ExpectDsl.Succeeding stateSatisfying(Consumer<@Nullable Object> assertion) {
                 assertion.accept(state);
                 return this;
             }
 
             @Override
-            public <T> ExpectDsl.Succeeding stateExtracting(Function<Object, T> extractor, T expected) {
+            public <T> ExpectDsl.Succeeding stateExtracting(Function<@Nullable Object, T> extractor, T expected) {
                 if (state == null) throw new AssertionError("No state captured");
                 T extracted = extractor.apply(state);
                 if (expected == null && extracted == null) return this;
