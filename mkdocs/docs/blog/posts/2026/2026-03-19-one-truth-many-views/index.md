@@ -1,6 +1,6 @@
 ---
 title: "One Truth, Many Views"
-draft: true
+draft: false
 date: 2026-03-19
 authors:
   - kersten
