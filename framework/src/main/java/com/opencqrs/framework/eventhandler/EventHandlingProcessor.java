@@ -10,9 +10,9 @@ import com.opencqrs.framework.eventhandler.progress.Progress;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
-import com.opencqrs.framework.tracing.EventHandlingSpanInformationSource;
 import com.opencqrs.framework.tracing.EventTracingContextExtractor;
-import com.opencqrs.framework.tracing.EventTracingContextSpanBuilder;
+import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
+import com.opencqrs.framework.tracing.TracingSpanInformationSource;
 import com.opencqrs.framework.types.EventTypeResolver;
 import com.opencqrs.framework.upcaster.EventUpcasters;
 import java.lang.reflect.UndeclaredThrowableException;
@@ -55,7 +55,7 @@ public class EventHandlingProcessor implements Runnable {
     final ProgressTracker progressTracker;
     final EventSequenceResolver eventSequenceResolver;
     final EventTracingContextExtractor contextExtractor;
-    final EventTracingContextSpanBuilder spanBuilder;
+    final TracingContextSpanBuilder spanBuilder;
     private final PartitionKeyResolver partitionKeyResolver;
     private final List<EventHandlerDefinition> eventHandlerDefinitions;
     final BackOff backoff;
@@ -70,7 +70,7 @@ public class EventHandlingProcessor implements Runnable {
             EventSequenceResolver eventSequenceResolver,
             PartitionKeyResolver partitionKeyResolver,
             EventTracingContextExtractor contextExtractor,
-            EventTracingContextSpanBuilder spanBuilder,
+            TracingContextSpanBuilder spanBuilder,
             List<EventHandlerDefinition> eventHandlerDefinitions,
             BackOff backoff,
             Delayer delayer) {
@@ -124,7 +124,7 @@ public class EventHandlingProcessor implements Runnable {
             EventSequenceResolver eventSequenceResolver,
             PartitionKeyResolver partitionKeyResolver,
             EventTracingContextExtractor contextExtractor,
-            EventTracingContextSpanBuilder spanBuilder,
+            TracingContextSpanBuilder spanBuilder,
             List<EventHandlerDefinition> eventHandlerDefinitions,
             BackOff backoff) {
         this(
@@ -280,7 +280,7 @@ public class EventHandlingProcessor implements Runnable {
                                                                                                                     ehd -> {
                                                                                                                         var
                                                                                                                                 spanInformation =
-                                                                                                                                        createSpanInformation(
+                                                                                                                                        createEventHandlingSpanInformation(
                                                                                                                                                 raw,
                                                                                                                                                 ehd);
                                                                                                                         spanBuilder
@@ -445,27 +445,26 @@ public class EventHandlingProcessor implements Runnable {
         }
     }
 
-    // TODO: Implement
-    public Map<String, String> createSpanInformation(Event event, EventHandlerDefinition<?> ehd) {
+    public Map<String, String> createEventHandlingSpanInformation(Event event, EventHandlerDefinition<?> ehd) {
         var result = Map.ofEntries(
-                Map.entry("span.name", ehd.group()),
+                Map.entry("span.name", "event " + (ehd.group() + "-" + this.partition)),
                 Map.entry("event.id", event.id()),
                 Map.entry("event.type", event.type()),
-                Map.entry("event.subject", event.subject()));
+                Map.entry("event.subject", event.subject()),
+                Map.entry("event.source", event.source()),
+                Map.entry("event.timestamp", event.time().toString()),
+                Map.entry("event.class", ehd.eventClass().getName()),
+                Map.entry("handler.group", ehd.group()),
+                Map.entry("handler.partition", String.valueOf(this.partition)));
 
         switch (ehd.handler()) {
-            case EventHandlingSpanInformationSource ehSpanInfo:
+            case TracingSpanInformationSource ehSpanInfoSource:
                 result = new HashMap<>(result);
                 result.replace(
                         "span.name",
-                        result.get("span.name") + "."
-                                + ehSpanInfo
-                                        .getEventHandlingClass()
-                                        .substring(ehSpanInfo
-                                                        .getEventHandlingClass()
-                                                        .lastIndexOf('.')
-                                                + 1));
-                result.putAll(ehSpanInfo.getEventHandlingSpanInformation());
+                        result.get("span.name") + " " + ehSpanInfoSource.getHandlingClassSimpleName() + "."
+                                + ehSpanInfoSource.getHandlingMethodSignature());
+                result.putAll(ehSpanInfoSource.getEventHandlingSpanInformation());
             default:
                 return result;
         }

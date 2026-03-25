@@ -4,12 +4,11 @@ package com.opencqrs.framework.command;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.reflection.AutowiredParameter;
 import com.opencqrs.framework.reflection.AutowiredParameterResolver;
+import com.opencqrs.framework.tracing.TracingSpanInformationSource;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.ParameterResolutionDelegate;
@@ -170,7 +169,8 @@ public class StateRebuildingAnnotationProcessingAutoConfiguration {
     }
 
     static class ReflectiveMethodInvocationStateRebuildingHandler extends AutowiredParameterResolver
-            implements StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<Object, Object> {
+            implements StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<Object, Object>,
+                    TracingSpanInformationSource {
 
         private final Object target;
         private final ParameterPositions parameterPositions;
@@ -190,6 +190,29 @@ public class StateRebuildingAnnotationProcessingAutoConfiguration {
             var requiredParams = parameterPositions.mapArguments(instance, event, metaData, subject, rawEvent);
 
             return ReflectionUtils.invokeMethod(method, target, resolveIncludingAutowiredParameters(requiredParams));
+        }
+
+        @Override
+        public String getHandlingClassSimpleName() {
+            return ClassUtils.getUserClass(target.getClass()).getSimpleName();
+        }
+
+        @Override
+        public String getHandlingClassFullName() {
+            // TODO: Code Duplicate (see: CommandHandlingAnnotationProcessingAutoConfiguration.java)
+            return ClassUtils.getUserClass(target.getClass()).getName();
+        }
+
+        @Override
+        public String getHandlingMethodSignature() {
+            // TODO: Code Duplicate (see: CommandHandlingAnnotationProcessingAutoConfiguration.java)
+            String methodName = method.getName();
+
+            String params = Arrays.stream(method.getParameters())
+                    .map(p -> p.getType().getSimpleName() + " " + p.getName())
+                    .collect(Collectors.joining(", "));
+
+            return methodName + "(" + params + ")";
         }
 
         record ParameterPositions(int instance, int event, int metaData, int subject, int raw) {

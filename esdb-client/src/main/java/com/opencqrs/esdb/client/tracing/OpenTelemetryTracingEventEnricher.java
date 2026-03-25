@@ -3,6 +3,7 @@ package com.opencqrs.esdb.client.tracing;
 
 import com.opencqrs.esdb.client.EventCandidate;
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import java.util.HashMap;
@@ -48,7 +49,7 @@ public class OpenTelemetryTracingEventEnricher implements TracingEventEnricher {
 
     protected Map<String, String> getHeaders() {
         Map<String, String> headers = new HashMap<>();
-        Context context = Context.current();
+        Context context = Context.current().with(Span.current());
         propagator.inject(context, headers, Map::put);
         return headers;
     }

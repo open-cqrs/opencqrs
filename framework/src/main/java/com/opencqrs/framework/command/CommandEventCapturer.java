@@ -4,6 +4,7 @@ package com.opencqrs.framework.command;
 import com.opencqrs.esdb.client.Precondition;
 import com.opencqrs.framework.persistence.CapturedEvent;
 import com.opencqrs.framework.persistence.EventCapturer;
+import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -18,23 +19,27 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
 
     private final List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions;
     private final String subject;
+    private final TracingContextSpanBuilder spanBuilder;
 
     final AtomicReference<I> previousInstance;
 
     public CommandEventCapturer(
             I initialInstance,
             String subject,
-            List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions) {
+            List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions,
+            TracingContextSpanBuilder spanBuilder) {
         this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
         this.previousInstance = new AtomicReference<>(initialInstance);
         this.subject = subject;
+        this.spanBuilder = spanBuilder;
     }
 
     @Override
     public <E> I publish(E event, Map<String, ?> metaData, List<Precondition> preconditions) {
         getEvents().add(new CapturedEvent(subject, event, metaData, preconditions));
 
-        Util.applyUsingHandlers(stateRebuildingHandlerDefinitions, previousInstance, subject, event, metaData, null);
+        Util.applyUsingHandlers(
+                stateRebuildingHandlerDefinitions, previousInstance, subject, event, metaData, null, spanBuilder);
 
         return previousInstance.get();
     }
@@ -45,7 +50,8 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
         String s = subject + "/" + subjectSuffix;
         getEvents().add(new CapturedEvent(s, event, metaData, preconditions));
 
-        Util.applyUsingHandlers(stateRebuildingHandlerDefinitions, previousInstance, s, event, metaData, null);
+        Util.applyUsingHandlers(
+                stateRebuildingHandlerDefinitions, previousInstance, s, event, metaData, null, spanBuilder);
 
         return previousInstance.get();
     }

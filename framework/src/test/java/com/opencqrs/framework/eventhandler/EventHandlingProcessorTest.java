@@ -20,7 +20,7 @@ import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.serialization.EventData;
 import com.opencqrs.framework.tracing.EventTracingContextExtractor;
-import com.opencqrs.framework.tracing.EventTracingContextSpanBuilder;
+import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.time.Instant;
 import java.util.*;
@@ -68,7 +68,7 @@ public class EventHandlingProcessorTest {
     private EventTracingContextExtractor contextExtractor;
 
     @Mock
-    private EventTracingContextSpanBuilder spanBuilder;
+    private TracingContextSpanBuilder spanBuilder;
 
     @Mock
     private PartitionKeyResolver partitionKeyResolver;

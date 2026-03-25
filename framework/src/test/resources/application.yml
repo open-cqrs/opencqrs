@@ -7,10 +7,6 @@ cqrs.event-handling:
       initial-interval: 5
 
 management:
-  opentelemetry:
-    tracing:
-      export:
-        enabled: false
   otlp:
     metrics:
       export:

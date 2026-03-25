@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 OpenCQRS and contributors */
 package com.opencqrs.framework.tracing;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -10,16 +11,17 @@ import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class OpenTelemetryEventTracingContextSpanBuilderTest {
+class OpenTelemetryTracingContextSpanBuilderTest {
 
     @Mock
     private OpenTelemetry openTelemetry;
@@ -39,18 +41,20 @@ class OpenTelemetryEventTracingContextSpanBuilderTest {
     @Mock
     private Runnable runnable;
 
-    private OpenTelemetryEvenTracingContextSpanBuilder contextSpanBuilder;
+    @Mock
+    private Supplier<String> supplier;
+
+    private OpenTelemetryTracingContextSpanBuilder contextSpanBuilder;
 
     @BeforeEach
     void setUp() {
         when(openTelemetry.getTracer(anyString())).thenReturn(tracer);
-        contextSpanBuilder = new OpenTelemetryEvenTracingContextSpanBuilder(openTelemetry);
+        contextSpanBuilder = new OpenTelemetryTracingContextSpanBuilder(openTelemetry);
     }
 
     @Test
     void executeRunnableInNewSpan() {
-        // TODO: Use non-empty info (?)
-        Map<String, String> spanInfo = Collections.emptyMap();
+        Map<String, String> spanInfo = Map.ofEntries(Map.entry("test.info", "test-data"));
 
         when(tracer.spanBuilder(anyString())).thenReturn(spanBuilder);
         when(spanBuilder.startSpan()).thenReturn(span);
@@ -63,6 +67,9 @@ class OpenTelemetryEventTracingContextSpanBuilderTest {
         verify(runnable).run();
 
         verify(scope).close();
+
+        verify(span).setAttribute("test.info", "test-data");
+        verify(span).setAttribute("handler.success", true);
         verify(span).end();
     }
 
@@ -81,23 +88,62 @@ class OpenTelemetryEventTracingContextSpanBuilderTest {
         } catch (RuntimeException e) {
         }
 
+        verify(span).setAttribute("handler.success", false);
         verify(span).end();
         verify(scope).close();
     }
 
     @Test
-    void verifyExecutionOrder() {
+    void executeSupplierInNewSpan() {
+        Map<String, String> spanInfo = Map.ofEntries(Map.entry("test.info", "test-data"));
+
         when(tracer.spanBuilder(anyString())).thenReturn(spanBuilder);
         when(spanBuilder.startSpan()).thenReturn(span);
         when(span.makeCurrent()).thenReturn(scope);
+        when(supplier.get()).thenReturn("got");
 
-        contextSpanBuilder.executeRunnableWithNewSpan(Collections.emptyMap(), runnable);
+        var result = contextSpanBuilder.executeSupplierWithNewSpan(spanInfo, supplier);
 
-        InOrder inOrder = inOrder(span, scope, runnable);
+        verify(spanBuilder).startSpan();
+        verify(span).makeCurrent();
+        verify(supplier).get();
 
-        inOrder.verify(span).makeCurrent();
-        inOrder.verify(runnable).run();
-        inOrder.verify(scope).close(); // AutoCloseable im try-with-resources
-        inOrder.verify(span).end(); // Im finally Block
+        verify(scope).close();
+
+        verify(span).setAttribute("test.info", "test-data");
+        verify(span).setAttribute("handler.success", true);
+        verify(span).end();
+
+        assertEquals("got", result);
+    }
+
+    @Test
+    void executeSupplierInNewSpanAndPostProcessSpanInfo() {
+        Map<String, String> spanInfo = Map.ofEntries(Map.entry("test.info", "test-data"));
+
+        when(tracer.spanBuilder(anyString())).thenReturn(spanBuilder);
+        when(spanBuilder.startSpan()).thenReturn(span);
+        when(span.makeCurrent()).thenReturn(scope);
+        when(supplier.get()).thenReturn("got");
+
+        var result = contextSpanBuilder.executeSupplierWithNewSpan(spanInfo, supplier, (r, si) -> {
+            var newMap = new HashMap<>(si);
+            newMap.put("test.result", r);
+
+            return newMap;
+        });
+
+        verify(spanBuilder).startSpan();
+        verify(span).makeCurrent();
+        verify(supplier).get();
+
+        verify(scope).close();
+
+        verify(span).setAttribute("test.info", "test-data");
+        verify(span).setAttribute("handler.success", true);
+        verify(span).setAttribute("test.result", result);
+        verify(span).end();
+
+        assertEquals("got", result);
     }
 }
