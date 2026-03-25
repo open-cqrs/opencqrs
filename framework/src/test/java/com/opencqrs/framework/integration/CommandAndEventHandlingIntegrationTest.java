@@ -4,6 +4,7 @@ package com.opencqrs.framework.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.mockserver.model.HttpRequest.request;
 
 import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.Event;
@@ -33,6 +34,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockserver.client.MockServerClient;
+import org.mockserver.verify.VerificationTimes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -50,6 +53,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.mockserver.MockServerContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
 @Testcontainers
@@ -260,6 +265,8 @@ public class CommandAndEventHandlingIntegrationTest {
     @Autowired
     private ApplicationContext applicationContext;
 
+    private final MockServerClient mockClient = new MockServerClient(mockServer.getHost(), mockServer.getServerPort());
+
     private ConfigurableApplicationContext getEventHandlerContext() {
         return applicationContext.getBean(
                 "openCqrsEventHandlingProcessorContext", ConfigurableApplicationContext.class);
@@ -274,6 +281,8 @@ public class CommandAndEventHandlingIntegrationTest {
 
         commandRouter.send(new BorrowBookCommand(id));
         await().untilAsserted(() -> assertThat(configuration.booksLent).isGreaterThanOrEqualTo(1));
+
+        await().untilAsserted(() -> mockClient.verify(request().withPath("/v1/traces"), VerificationTimes.atLeast(1)));
     }
 
     @ParameterizedTest
@@ -309,6 +318,8 @@ public class CommandAndEventHandlingIntegrationTest {
                 assertThat(f1.exceptionNow()).isInstanceOf(ConcurrencyException.class);
             }
         }
+
+        await().untilAsserted(() -> mockClient.verify(request().withPath("/v1/traces"), VerificationTimes.atLeast(1)));
     }
 
     @Test
@@ -330,6 +341,8 @@ public class CommandAndEventHandlingIntegrationTest {
             assertThat(f.state()).isEqualTo(Future.State.FAILED);
             assertThat(f.exceptionNow()).isInstanceOf(ConcurrencyException.class);
         }
+
+        await().untilAsserted(() -> mockClient.verify(request().withPath("/v1/traces"), VerificationTimes.atLeast(1)));
     }
 
     @ParameterizedTest
@@ -364,6 +377,8 @@ public class CommandAndEventHandlingIntegrationTest {
                 assertThat(f1.exceptionNow()).isInstanceOf(ConcurrencyException.class);
             }
         }
+
+        await().untilAsserted(() -> mockClient.verify(request().withPath("/v1/traces"), VerificationTimes.atLeast(1)));
     }
 
     @ParameterizedTest
@@ -382,6 +397,8 @@ public class CommandAndEventHandlingIntegrationTest {
                 new CommandConsistencyHandling.NoSourcingCommand(subject, subjectCondition);
 
         assertThatThrownBy(() -> commandRouter.send(command)).isInstanceOf(ConcurrencyException.class);
+
+        await().untilAsserted(() -> mockClient.verify(request().withPath("/v1/traces"), VerificationTimes.atLeast(1)));
     }
 
     @Test
@@ -403,6 +420,8 @@ public class CommandAndEventHandlingIntegrationTest {
                             new EventHandlingRetries.Execution("fail-2", false),
                             new EventHandlingRetries.Execution("succeed-3", false));
         });
+
+        await().untilAsserted(() -> mockClient.verify(request().withPath("/v1/traces"), VerificationTimes.atLeast(1)));
     }
 
     @Test
@@ -422,6 +441,8 @@ public class CommandAndEventHandlingIntegrationTest {
             assertThat(configuration.upcastedMetaData.get())
                     .hasEntrySatisfying("upcasted", o -> assertThat(o).isEqualTo(true));
         });
+
+        await().untilAsserted(() -> mockClient.verify(request().withPath("/v1/traces"), VerificationTimes.atLeast(1)));
     }
 
     @Test
@@ -429,6 +450,8 @@ public class CommandAndEventHandlingIntegrationTest {
         commandRouter.send(new AddBookCommand(UUID.randomUUID().toString()));
         await().untilAsserted(() ->
                 assertThat(configuration.getActiveTransactionCount()).isGreaterThanOrEqualTo(1));
+
+        await().untilAsserted(() -> mockClient.verify(request().withPath("/v1/traces"), VerificationTimes.atLeast(1)));
     }
 
     @Test
@@ -450,6 +473,8 @@ public class CommandAndEventHandlingIntegrationTest {
             assertThat(processorLifecycleControllers.values())
                     .allSatisfy(it -> assertThat(it.isRunning()).isFalse());
         });
+
+        await().untilAsserted(() -> mockClient.verify(request().withPath("/v1/traces"), VerificationTimes.atLeast(1)));
     }
 
     @Container
@@ -468,5 +493,17 @@ public class CommandAndEventHandlingIntegrationTest {
     static void esdbProperties(DynamicPropertyRegistry registry) {
         registry.add("esdb.server.uri", () -> "http://" + esdb.getHost() + ":" + esdb.getFirstMappedPort());
         registry.add("esdb.server.api-token", () -> "secret");
+    }
+
+    @Container
+    static MockServerContainer mockServer =
+            new MockServerContainer(DockerImageName.parse("mockserver/mockserver:latest"));
+
+    @DynamicPropertySource
+    static void otelProperties(DynamicPropertyRegistry registry) {
+        String endpoint = "http://" + mockServer.getHost() + ":" + mockServer.getServerPort() + "/v1/traces";
+        registry.add("management.opentelemetry.tracing.export.otlp.endpoint", () -> endpoint);
+        registry.add("management.tracing.sampling.probability", () -> "1.0");
+        registry.add("management.otlp.metrics.export.enabled", () -> "false");
     }
 }
