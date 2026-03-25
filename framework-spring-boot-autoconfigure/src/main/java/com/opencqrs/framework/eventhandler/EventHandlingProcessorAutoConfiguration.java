@@ -322,8 +322,8 @@ public class EventHandlingProcessorAutoConfiguration {
                     EventTracingContextExtractor eventTracingContextExtractor =
                             parentContext.getBean(EventTracingContextExtractor.class);
 
-                    EventTracingContextSpanBuilder eventTracingContextSpanBuilder =
-                            parentContext.getBean(EventTracingContextSpanBuilder.class);
+                    TracingContextSpanBuilder tracingContextSpanBuilder =
+                            parentContext.getBean(TracingContextSpanBuilder.class);
 
                     for (int partition = 0;
                             partition < processorSettings.lifeCycle().partitions();
@@ -343,7 +343,7 @@ public class EventHandlingProcessorAutoConfiguration {
                                         sequenceResolver,
                                         partitionKeyResolver,
                                         eventTracingContextExtractor,
-                                        eventTracingContextSpanBuilder,
+                                        tracingContextSpanBuilder,
                                         ehds,
                                         createBackOff(processorSettings.retry()))));
 
@@ -491,14 +491,13 @@ public class EventHandlingProcessorAutoConfiguration {
 
     @Bean
     @ConditionalOnBean(OpenTelemetry.class)
-    public EventTracingContextSpanBuilder openCqrsOpenTelemetryEventTracingContextSpanBuilder(
-            OpenTelemetry openTelemetry) {
-        return new OpenTelemetryEvenTracingContextSpanBuilder(openTelemetry);
+    public TracingContextSpanBuilder openCqrsOpenTelemetryEventTracingContextSpanBuilder(OpenTelemetry openTelemetry) {
+        return new OpenTelemetryTracingContextSpanBuilder(openTelemetry);
     }
 
     @Bean
     @ConditionalOnMissingBean(OpenTelemetry.class)
-    public EventTracingContextSpanBuilder openCqrsDefaultEventTracingContextSpanBuilder() {
-        return new DefaultEventTracingContextSpanBuilder();
+    public TracingContextSpanBuilder openCqrsDefaultEventTracingContextSpanBuilder() {
+        return new DefaultTracingContextSpanBuilder();
     }
 }

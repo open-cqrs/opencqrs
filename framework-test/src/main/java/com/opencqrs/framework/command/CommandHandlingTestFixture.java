@@ -6,6 +6,8 @@ import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.metadata.PropagationMode;
 import com.opencqrs.framework.metadata.PropagationUtil;
 import com.opencqrs.framework.persistence.CapturedEvent;
+import com.opencqrs.framework.tracing.DefaultTracingContextSpanBuilder;
+import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
 import com.opencqrs.framework.types.EventTypeResolver;
 import com.opencqrs.framework.upcaster.EventUpcaster;
 import java.lang.annotation.*;
@@ -131,6 +133,7 @@ public class CommandHandlingTestFixture<C extends Command> {
 
     private final Class<?> instanceClass;
     private final List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions;
+    private final TracingContextSpanBuilder spanBuilder;
     final CommandHandler<?, C, ?> commandHandler;
 
     private CommandHandlingTestFixture(
@@ -139,6 +142,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             CommandHandler<?, C, ?> commandHandler) {
         this.instanceClass = instanceClass;
         this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
+        this.spanBuilder = new DefaultTracingContextSpanBuilder();
         this.commandHandler = commandHandler;
     }
 
@@ -424,7 +428,8 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 rawEvent.subject(),
                                 event.payload(),
                                 event.metaData() != null ? event.metaData() : Map.of(),
-                                rawEvent)) {
+                                rawEvent,
+                                new DefaultTracingContextSpanBuilder())) { // TODO: Find better solution (?)
                             throw new IllegalArgumentException(
                                     "No suitable state rebuilding handler definition found for event type: "
                                             + event.payload().getClass().getSimpleName());
@@ -739,7 +744,8 @@ public class CommandHandlingTestFixture<C extends Command> {
                     command.getSubject(),
                     stateRebuildingHandlerDefinitions.stream()
                             .filter(it -> it.instanceClass().equals(instanceClass))
-                            .toList());
+                            .toList(),
+                    spanBuilder);
 
             var stateStubbed = stubs.stream().anyMatch(s -> s.getClass().equals(Stub.State.class));
             if (!stateStubbed) {

@@ -25,7 +25,7 @@ public class OpenTelemetryEventTracingContextExtractorTest {
     private TextMapPropagator propagator;
     private TextMapGetter<Event> textMapGetter;
 
-    private EventTracingContextSpanBuilder spanBuilder;
+    private TracingContextSpanBuilder spanBuilder;
 
     private OpenTelemetryEventTracingContextExtractor subject;
 

@@ -3,9 +3,11 @@ package com.opencqrs.framework.command;
 
 import com.opencqrs.framework.reflection.AutowiredParameter;
 import com.opencqrs.framework.reflection.AutowiredParameterResolver;
+import com.opencqrs.framework.tracing.TracingSpanInformationSource;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.ParameterResolutionDelegate;
@@ -178,7 +180,8 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
     }
 
     static class ReflectiveMethodInvocationCommandHandler extends AutowiredParameterResolver
-            implements CommandHandler.ForInstanceAndCommandAndMetaData<Object, Command, Object> {
+            implements CommandHandler.ForInstanceAndCommandAndMetaData<Object, Command, Object>,
+                    TracingSpanInformationSource {
 
         private final Object target;
         private final ParameterPositions parameterPositions;
@@ -202,6 +205,29 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
             var requiredParams = parameterPositions.mapArguments(instance, command, metaData, commandEventPublisher);
 
             return ReflectionUtils.invokeMethod(method, target, resolveIncludingAutowiredParameters(requiredParams));
+        }
+
+        @Override
+        public String getHandlingClassSimpleName() {
+            return ClassUtils.getUserClass(target.getClass()).getSimpleName();
+        }
+
+        @Override
+        public String getHandlingClassFullName() {
+            // TODO: Code Duplicate (see: EventHandlingAnnotationProcessingAutoConfiguration.java)
+            return ClassUtils.getUserClass(target.getClass()).getName();
+        }
+
+        @Override
+        public String getHandlingMethodSignature() {
+            // TODO: Code Duplicate (see: EventHandlingAnnotationProcessingAutoConfiguration.java)
+            String methodName = method.getName();
+
+            String params = Arrays.stream(method.getParameters())
+                    .map(p -> p.getType().getSimpleName())
+                    .collect(Collectors.joining(", "));
+
+            return methodName + "(" + params + ")";
         }
 
         record ParameterPositions(int instance, int command, int metaData, int commandEventPublisher) {
