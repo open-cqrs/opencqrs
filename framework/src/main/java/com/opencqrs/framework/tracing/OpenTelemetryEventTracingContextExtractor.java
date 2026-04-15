@@ -8,6 +8,9 @@ import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 
+/**
+ * OpenTelemetry-based implementation of {@link EventTracingContextExtractor}
+ */
 public class OpenTelemetryEventTracingContextExtractor implements EventTracingContextExtractor {
 
     private final TextMapPropagator propagator;
@@ -23,6 +26,12 @@ public class OpenTelemetryEventTracingContextExtractor implements EventTracingCo
         this.textMapGetter = textMapGetter;
     }
 
+    /**
+     * Extracts and restores a trace from the event trail and runs a piece of logic within it
+     *
+     * @param event the {@link Event} from which to extract the tracing data
+     * @param runnable a closure containing logic to be executed within the resurrected trace
+     */
     @Override
     public void extractAndRestoreContextFromEvent(Event event, Runnable runnable) {
         try (Scope ignored1 =

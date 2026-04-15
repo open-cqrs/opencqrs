@@ -11,6 +11,9 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+/**
+ * OpenTelemetry-based implementation of 
+ */
 public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpanBuilder {
 
     private final Tracer tracer;
@@ -23,11 +26,26 @@ public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpa
         this.tracer = tracer;
     }
 
+    /**
+     * 
+     * see: {@link TracingContextSpanBuilder#executeRunnableWithNewSpan(Map, Runnable)}
+     * 
+     * @param spanInfo
+     * @param runnable
+     */
     @Override
     public void executeRunnableWithNewSpan(Map<String, String> spanInfo, Runnable runnable) {
         executeRunnableWithNewSpan(spanInfo, runnable, (si) -> si);
     }
 
+    /**
+     * 
+     * see: {@link TracingContextSpanBuilder#executeRunnableWithNewSpan(Map, Runnable)}
+     * 
+     * @param spanInfo contains metadata to enrich the span with
+     * @param runnable closure containing the logic to be executed within the new span
+     * @param spanInfoPostProcessor function returning new or updated span information after the runnable has been executed
+     */
     @Override
     public void executeRunnableWithNewSpan(
             Map<String, String> spanInfo, Runnable runnable, UnaryOperator<Map<String, String>> spanInfoPostProcessor) {
@@ -43,11 +61,30 @@ public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpa
         }
     }
 
+    /**
+     * 
+     * see: {@link TracingContextSpanBuilder#executeSupplierWithNewSpan(Map, Supplier)}
+     * 
+     * @param spanInfo
+     * @param supplier
+     * @return
+     * @param <R>
+     */
     @Override
     public <R> R executeSupplierWithNewSpan(Map<String, String> spanInfo, Supplier<R> supplier) {
         return executeSupplierWithNewSpan(spanInfo, supplier, (r, si) -> si);
     }
 
+    /**
+     *
+     * see: {@link TracingContextSpanBuilder#executeSupplierWithNewSpan(Map, Supplier, BiFunction)}
+     *
+     * @param spanInfo contains metadata to enrich the span with
+     * @param supplier closure containing the logic to be executed within the new span
+     * @param spanInfoPostProcessor  function returning new or updated span information after the runnable has been executed
+     * @return
+     * @param <R>
+     */
     @Override
     public <R> R executeSupplierWithNewSpan(
             Map<String, String> spanInfo,
