@@ -28,7 +28,8 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  *     public void bookAdded({@literal @Autowired CommandHandlingTestFixture<BookAggregate, AddBookCommand, UUID> fixture}) {
  *          UUID bookId = UUID.randomUUID();
  *          fixture
- *              .givenNothing()
+ *              .given()
+ *              .nothing()
  *              .when(
  *                  new AddBookCommand(
  *                      bookId,
@@ -37,8 +38,9 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  *                      "DE234723432"
  *                  )
  *              )
- *              .expectSuccessfulExecution()
- *              .expectSingleEvent(
+ *              .succeeds()
+ *              .allEvents()
+ *              .exactly(
  *                  new BookAddedEvent(
  *                      bookId,
  *                      "Tolkien",

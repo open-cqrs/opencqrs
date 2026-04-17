@@ -33,21 +33,23 @@ The following [JUnit](https://www.junit.org) test exemplarily shows how to expre
 public void bookCanBePurchased() {
     CommandHandlingTestFixture<PurchaseBookCommand> fixture = /* (1)! */
 
-    fixture.givenNothing() /* (2)! */
+    fixture.given() /* (2)! */
+            .nothing()
             .when(  /* (3)! */
                     new PurchaseBookCommand(
-                            "4711", 
-                            "JRR Tolkien", 
-                            "LOTR", 
+                            "4711",
+                            "JRR Tolkien",
+                            "LOTR",
                             435
                     )
             )
-            .expectSuccessfulExecution() /* (4)! */
-            .expectSingleEvent(  /* (5)! */
+            .succeeds() /* (4)! */
+            .allEvents()
+            .exactly(  /* (5)! */
                     new BookPurchasedEvent(
-                            "4711", 
-                            "JRR Tolkien", 
-                            "LOTR", 
+                            "4711",
+                            "JRR Tolkien",
+                            "LOTR",
                             435
                     )
             );
@@ -100,7 +102,8 @@ public class BookHandlingTest {
 
     @Test
     public void bookCanBePurchased(@Autowired CommandHandlingTestFixture<PurchaseBookCommand>/* (1)! */ fixture) {
-        fixture.givenNothing()
+        fixture.given()
+                .nothing()
                 .when(
                         new PurchaseBookCommand(
                                 "4711",
@@ -109,8 +112,9 @@ public class BookHandlingTest {
                                 435
                         )
                 )
-                .expectSuccessfulExecution()
-                .expectSingleEvent(
+                .succeeds()
+                .allEvents()
+                .exactly(
                         new BookPurchasedEvent(
                                 "4711",
                                 "JRR Tolkien",
