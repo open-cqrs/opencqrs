@@ -33,21 +33,23 @@ The following [JUnit](https://www.junit.org) test exemplarily shows how to expre
 public void bookCanBePurchased() {
     CommandHandlingTestFixture<PurchaseBookCommand> fixture = /* (1)! */
 
-    fixture.givenNothing() /* (2)! */
+    fixture.given() /* (2)! */
+            .nothing()
             .when(  /* (3)! */
                     new PurchaseBookCommand(
-                            "4711", 
-                            "JRR Tolkien", 
-                            "LOTR", 
+                            "4711",
+                            "JRR Tolkien",
+                            "LOTR",
                             435
                     )
             )
-            .expectSuccessfulExecution() /* (4)! */
-            .expectSingleEvent(  /* (5)! */
+            .succeeds() /* (4)! */
+            .allEvents()
+            .exactly(  /* (5)! */
                     new BookPurchasedEvent(
-                            "4711", 
-                            "JRR Tolkien", 
-                            "LOTR", 
+                            "4711",
+                            "JRR Tolkien",
+                            "LOTR",
                             435
                     )
             );
@@ -64,6 +66,35 @@ public void bookCanBePurchased() {
     {{ javadoc_class_ref("com.opencqrs.framework.command.CommandHandlingTestFixture") }} requires a generic {{ javadoc_class_ref("com.opencqrs.framework.command.Command") }}
     subtype identifying the _command under test_. Based on that, it provides a fluent API which can easily be inspected using IDE auto-completion in combination
     with the associated JavaDoc method descriptions.
+
+## Asserting Published Events
+
+The fluent API offers two complementary entry points for event assertions on the success path:
+
+* `.allEvents()` operates on the complete captured event list without cursor state. Use it for global assertions.
+* `.nextEvents()` operates sequentially using a consuming cursor. Use it to navigate and assert in order.
+
+Both interfaces share the same set of matcher methods with consistent semantics:
+
+| Matcher                   | Asserts that...                                                                                                  |
+|---------------------------|------------------------------------------------------------------------------------------------------------------|
+| `single(consumer)`        | __exactly one__ event was captured/remains, __and__ it matches the validation                                    |
+| `once(consumer)`          | the stream may have any length, but __exactly one__ event matches the validation                                 |
+| `any(consumer)`           | __at least one__ event matches the validation (stream must not be empty)                                         |
+| `every(consumer)`         | __every__ event matches the validation (stream must not be empty)                                                |
+| `none(consumer)`          | __no__ event matches the validation                                                                              |
+| `exactly(payload, ...)`   | the events match the given payloads in order, by `Object.equals`                                                 |
+
+!!! tip "`single` vs. `once`"
+    `single(...)` is the right choice when the command handler is expected to publish exactly one event. It
+    fail-fasts if the stream length is not `1`, so a missing or duplicated event is reported immediately.
+    `once(...)` is for streams where only one event is expected to match a particular predicate while other,
+    unrelated events may be present.
+
+!!! info "`exactly(payload, ...)` compares payloads only"
+    The `exactly(...)` shortcut compares each captured event's payload against the provided payload using
+    `Object.equals`. Meta-data and subject are __ignored__. Use `.matches(e -> e.asserting(...))` or
+    `single(e -> e.asserting(...))` to assert meta-data or subject in addition to the payload.
 
 ## Manual Initialization
 
@@ -100,7 +131,8 @@ public class BookHandlingTest {
 
     @Test
     public void bookCanBePurchased(@Autowired CommandHandlingTestFixture<PurchaseBookCommand>/* (1)! */ fixture) {
-        fixture.givenNothing()
+        fixture.given()
+                .nothing()
                 .when(
                         new PurchaseBookCommand(
                                 "4711",
@@ -109,8 +141,9 @@ public class BookHandlingTest {
                                 435
                         )
                 )
-                .expectSuccessfulExecution()
-                .expectSingleEvent(
+                .succeeds()
+                .allEvents()
+                .exactly(
                         new BookPurchasedEvent(
                                 "4711",
                                 "JRR Tolkien",
