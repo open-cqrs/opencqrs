@@ -119,10 +119,12 @@ public class BookHandlingTest {
 
     @Test
     public void canBePurchased(@Autowired CommandHandlingTestFixture<PurchaseBookCommand> fixture) {
-        fixture.givenNothing()
+        fixture.given()
+                .nothing()
                 .when(new PurchaseBookCommand("4711", "JRR Tolkien", "LOTR", 435))
-                .expectSuccessfulExecution()
-                .expectSingleEvent(new BookPurchasedEvent("4711", "JRR Tolkien", "LOTR", 435));
+                .succeeds()
+                .allEvents()
+                .exactly(new BookPurchasedEvent("4711", "JRR Tolkien", "LOTR", 435));
     }
 }
 ```

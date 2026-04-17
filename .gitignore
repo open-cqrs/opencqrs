@@ -10,3 +10,4 @@ out
 mkdocs/site
 mkdocs/.cache
 mkdocs/__pycache__/
+.DS_Store
