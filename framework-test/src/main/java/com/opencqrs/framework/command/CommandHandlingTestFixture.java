@@ -1,36 +1,27 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.command;
 
-import com.opencqrs.esdb.client.EsdbClient;
 import com.opencqrs.esdb.client.Event;
-import com.opencqrs.framework.metadata.PropagationMode;
-import com.opencqrs.framework.metadata.PropagationUtil;
 import com.opencqrs.framework.persistence.CapturedEvent;
-import com.opencqrs.framework.types.EventTypeResolver;
-import com.opencqrs.framework.upcaster.EventUpcaster;
-import java.lang.annotation.*;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Test support for {@link CommandHandler} or {@link CommandHandlerDefinition}. This class can be used in favor of the
- * {@link CommandRouter} to test command handling logic without interacting with the {@linkplain EsdbClient event
- * store}, solely relying on a set of {@link StateRebuildingHandlerDefinition}s. No {@linkplain EventUpcaster event
- * upcasting}, {@linkplain EventTypeResolver event type resolution}, or
- * {@linkplain PropagationUtil#propagateMetaData(Map, Map, PropagationMode) meta-data propagation} is involved during
- * test execution.
+ * {@link CommandRouter} to test command handling logic without interacting with the event store, solely relying on a
+ * set of {@link StateRebuildingHandlerDefinition}s. No event upcasting, event type resolution, or meta-data propagation
+ * is involved during test execution.
  *
  * <p>This class follows the <a href="https://martinfowler.com/bliki/GivenWhenThen.html">Given When Then</a> style of
  * representing tests with a fluent API supporting:
  *
  * <ol>
  *   <li>{@linkplain Given given} state initialization based on in-memory events and meta-data
- *   <li>{@link Command} {@linkplain Given#when(Command) execution} to execute the {@link CommandHandler} under test
+ *   <li>{@link Command} {@linkplain GivenDsl#when(Command) execution} to execute the {@link CommandHandler} under test
  *   <li>{@linkplain Expect assertions} to verify the command executed as expected, including verification of the events
  *       published by the command handler under test
  * </ol>
@@ -47,24 +38,12 @@ import java.util.function.Supplier;
  *              .withStateRebuildingHandlerDefinitions(...)
  *              // specify command handler (definition) to test
  *              .using(...)
- *              .givenNothing()
- *              .when(
- *                  new AddBookCommand(
- *                      bookId,
- *                      "Tolkien",
- *                      "LOTR",
- *                      "DE234723432"
- *                  )
- *              )
- *              .expectSuccessfulExecution()
- *              .expectSingleEvent(
- *                  new BookAddedEvent(
- *                      bookId,
- *                      "Tolkien",
- *                      "LOTR",
- *                      "DE234723432"
- *                  )
- *              );
+ *              .given()
+ *              .nothing()
+ *              .when(new AddBookCommand(bookId, "Tolkien", "LOTR", "DE234723432"))
+ *              .succeeds()
+ *              .allEvents()
+ *              .exactly(new BookAddedEvent(bookId, "Tolkien", "LOTR", "DE234723432"));
  *     }
  * </pre>
  *
@@ -88,7 +67,7 @@ import java.util.function.Supplier;
  *     </tr>
  *     <tr>
  *         <td>{@link Event#subject()}</td>
- *         <td>is set to {@link Command#getSubject()}, but can be overridden using {@link #usingSubject(String)} or per event using {@link Given.GivenEvent#subject(String)}</td>
+ *         <td>is set to {@link Command#getSubject()}, but can be overridden using {@link GivenDsl#usingSubject(String)} or per event using {@link EventSpecifierDsl#subject(String)}</td>
  *     </tr>
  *     <tr>
  *         <td>{@link Event#type()}</td>
@@ -104,11 +83,11 @@ import java.util.function.Supplier;
  *     </tr>
  *     <tr>
  *         <td>{@link Event#id()}</td>
- *         <td>is set randomly, but can be overridden per event using {@link Given.GivenEvent#id(String)}</td>
+ *         <td>is set randomly, but can be overridden per event using {@link EventSpecifierDsl#id(String)}</td>
  *     </tr>
  *     <tr>
  *         <td>{@link Event#time()}</td>
- *         <td>is set to the value from {@link CommandHandlingTestFixture#givenTime(Instant)}, or {@link Given#andGivenTime(Instant)}, or {@link Instant#now()} by default, but can be overridden per event using {@link Given.GivenEvent#time(Instant)}</td>
+ *         <td>is set to the value from {@link GivenDsl#time(Instant)}, or {@link Instant#now()} by default, but can be overridden per event using {@link EventSpecifierDsl#time(Instant)}</td>
  *     </tr>
  *     <tr>
  *         <td>{@link Event#dataContentType()}</td>
@@ -150,9 +129,12 @@ public class CommandHandlingTestFixture<C extends Command> {
      * @return a {@link Builder} instance
      * @param <I> the generic type of the instance to be event sourced before handling the command
      */
+    @SafeVarargs
+    @SuppressWarnings("unchecked")
     public static <I> Builder<I> withStateRebuildingHandlerDefinitions(
             StateRebuildingHandlerDefinition<I, ?>... definitions) {
-        return new Builder(Arrays.stream(definitions).toList());
+        return new Builder<>((List<StateRebuildingHandlerDefinition<Object, Object>>)
+                (List<?>) Arrays.stream(definitions).toList());
     }
 
     /**
@@ -193,139 +175,10 @@ public class CommandHandlingTestFixture<C extends Command> {
     }
 
     /**
-     * Initializes the {@link CommandHandlingTestFixture} with no prior state. This should be used for testing
-     * {@link CommandHandler}s using a pristine subject.
-     *
-     * @return a {@link Given} instance for further fluent API calls
-     */
-    public Given<C> givenNothing() {
-        return new Given<>(null, commandHandler);
-    }
-
-    /**
-     * Initializes the {@link CommandHandlingTestFixture} with no prior state, but a specific time-stamp. This should be
-     * used, if {@linkplain Given#andGiven(Object...) further events} shall be applied with that {@link Event#time()}.
-     *
-     * @param time the initialization time-stamp
-     * @return a {@link Given} instance for further fluent API calls
-     */
-    public Given<C> givenTime(Instant time) {
-        return new Given<>(null, commandHandler, time);
-    }
-
-    /**
-     * Initializes the {@link CommandHandlingTestFixture} with the given instance state. This can be used in favor of
-     * the preferred {@linkplain #given(Object...) event based initialization}, if the latter one is too complex, for
-     * instance requiring too many events.
-     *
-     * @param state the initialization state
-     * @return a {@link Given} instance for further fluent API calls
-     * @param <I> the generic state type
-     */
-    public <I> Given<C> givenState(I state) {
-        return new Given<>(null, commandHandler, () -> state);
-    }
-
-    /**
-     * Specifies the {@link Event#subject()} to be used for subsequent calls to {@link Given#andGiven(Object...)}.
-     *
-     * <p>This is a convenience method to be used in favor of specifying event subjects using
-     * {@link Given.GivenEvent#subject(String)}, which, if used, however, takes precedence over the subject defined
-     * using this method. <strong>Notice, that the event subject specified by this method does not affect calls to
-     * {@link Given#andGivenCommand(CommandHandlingTestFixture, Command)}.</strong>
-     *
-     * @param subject the event subject to be applied to any subsequent given events
-     * @return a {@link Given} instance for further fluent API calls
-     * @see Given#usingSubject(String)
-     * @see Given#usingCommandSubject()
-     */
-    public Given<C> usingSubject(String subject) {
-        return new Given<>(subject, commandHandler);
-    }
-
-    /**
-     * Initializes the {@link CommandHandlingTestFixture} with the given event payloads applied in order to the
-     * {@linkplain CommandHandlingTestFixture#withStateRebuildingHandlerDefinitions(StateRebuildingHandlerDefinition[])
-     * configured} {@link StateRebuildingHandlerDefinition}s to reconstruct the instance state.
-     *
-     * @param events the events to be applied
-     * @return a {@link Given} instance for further fluent API calls
-     */
-    public Given<C> given(Object... events) {
-        return new Given<>(null, commandHandler, events);
-    }
-
-    /**
-     * Initializes the {@link CommandHandlingTestFixture} using the {@link Given.GivenEvent} consumer for more
-     * fine-grained event specification of the events and their meta-data, which will be applied in order to the
-     * {@linkplain CommandHandlingTestFixture#withStateRebuildingHandlerDefinitions(StateRebuildingHandlerDefinition[])
-     * configured} {@link StateRebuildingHandlerDefinition}s to reconstruct the instance state.
-     *
-     * @param event event specification consumer, at least {@link Given.GivenEvent#payload(Object)} must be called
-     * @return a {@link Given} instance for further fluent API calls
-     */
-    public Given<C> given(Consumer<Given.GivenEvent> event) {
-        return new Given<>(null, commandHandler, event);
-    }
-
-    /**
-     * Execute the given {@link Command} without meta-data using the {@link CommandHandlerDefinition} encapsulated
-     * within the given fixture to capture any new events published, which in turn will be applied to {@code this}. This
-     * is mostly used for {@link CommandHandler}s publishing a lot or more complex events, in favor of stubbing the
-     * events directly.
-     *
-     * <p><strong>Be aware that stubbed events can be specified more precisely than captured ones, since the
-     * encapsulated {@link CommandHandler} is responsible for event publication using the {@link CommandEventPublisher}.
-     * Hence, {@link Given.GivenEvent#time(Instant)} and {@link Given.GivenEvent#id(String)} cannot be specified using
-     * this approach.</strong>
-     *
-     * @param fixture the fixture holding the command to execute
-     * @param command the command to execute for event capturing
-     * @return a {@code this} for further fluent API calls
-     * @throws AssertionError in case the given command did not {@linkplain Expect#expectSuccessfulExecution() execute
-     *     successfully}
-     * @param <AnotherCommand> generic command type to execute
-     */
-    public <AnotherCommand extends Command> Given<C> givenCommand(
-            CommandHandlingTestFixture<AnotherCommand> fixture, AnotherCommand command) {
-        return givenNothing().andGivenCommand(fixture, command);
-    }
-
-    /**
-     * Execute the given {@link Command} with meta-data using the {@link CommandHandlerDefinition} encapsulated within
-     * the given fixture to capture any new events published, which in turn will be applied to {@code this}. This is
-     * mostly used for {@link CommandHandler}s publishing a lot or more complex events, in favor of stubbing the events
-     * directly.
-     *
-     * <p><strong>Be aware that stubbed events can be specified more precisely than captured ones, since the
-     * encapsulated {@link CommandHandler} is responsible for event publication using the {@link CommandEventPublisher}.
-     * Hence, {@link Given.GivenEvent#time(Instant)} and {@link Given.GivenEvent#id(String)} cannot be specified using
-     * this approach.</strong>
-     *
-     * @param fixture the fixture holding the command to execute
-     * @param command the command to execute for event capturing
-     * @param metaData the command meta-data
-     * @return a {@code this} for further fluent API calls
-     * @throws AssertionError in case the given command did not {@linkplain Expect#expectSuccessfulExecution() execute
-     *     successfully}
-     * @param <AnotherCommand> generic command type to execute
-     */
-    public <AnotherCommand extends Command> Given<C> givenCommand(
-            CommandHandlingTestFixture<AnotherCommand> fixture, AnotherCommand command, Map<String, ?> metaData) {
-        return givenNothing().andGivenCommand(fixture, command, metaData);
-    }
-
-    private Given<C> givenStubs(List<Given.Stub> stubs) {
-        return new Given<>(null, commandHandler, stubs);
-    }
-
-    /**
      * Fluent API helper class encapsulating the current state stubbing prior to {@linkplain #when(Command) executing}
      * the {@link CommandHandler} under test.
-     *
-     * @param <C> the command type
      */
-    public class Given<C extends Command> {
+    class Given implements GivenDsl.Initial<C>, GivenDsl.Terminated<C> {
 
         sealed interface Stub {
 
@@ -337,7 +190,6 @@ public class CommandHandlingTestFixture<C extends Command> {
 
             record Event(String id, Instant time, String subject, Object payload, Map<String, ?> metaData)
                     implements Stub {
-
                 public Event() {
                     this(null, null, null, null, null);
                 }
@@ -364,7 +216,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
         }
 
-        record Result(
+        record StubResult(
                 Class<?> instanceClass,
                 Object state,
                 Instant time,
@@ -372,24 +224,24 @@ public class CommandHandlingTestFixture<C extends Command> {
                 List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions,
                 Set<String> subjects) {
 
-            public Result withState(Object newState) {
-                return new Result(
+            public StubResult withState(Object newState) {
+                return new StubResult(
                         instanceClass(), newState, time(), command(), stateRebuildingHandlerDefinitions(), subjects());
             }
 
-            public Result withTime(Instant newTime) {
-                return new Result(
+            public StubResult withTime(Instant newTime) {
+                return new StubResult(
                         instanceClass(), state(), newTime, command(), stateRebuildingHandlerDefinitions(), subjects());
             }
 
-            public Result withSubject(String newSubject) {
+            public StubResult withSubject(String newSubject) {
                 var newSubjects = new HashSet<>(subjects());
                 newSubjects.add(newSubject);
-                return new Result(
+                return new StubResult(
                         instanceClass(), state(), time(), command(), stateRebuildingHandlerDefinitions(), newSubjects);
             }
 
-            public Result merge(Stub stub) {
+            public StubResult merge(Stub stub) {
                 return switch (stub) {
                     case Stub.State state -> {
                         if (state() != null) throw new IllegalArgumentException("givenState() must only be used once");
@@ -413,6 +265,7 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 "application/test",
                                 UUID.randomUUID().toString(),
                                 UUID.randomUUID().toString());
+
                         AtomicReference<Object> reference = new AtomicReference<>(state());
                         if (!Util.applyUsingHandlers(
                                 stateRebuildingHandlerDefinitions.stream()
@@ -433,77 +286,65 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
         }
 
-        /** Fluent API helper class for fine granular specification of a single <strong>given</strong> event. */
-        public static class GivenEvent {
-
+        public static class GivenEvent implements EventSpecifierDsl {
             Stub.Event stub;
 
             GivenEvent(Stub.Event stub) {
                 this.stub = stub;
             }
 
-            /**
-             * Specifies the {@link Event#id()} to be used.
-             *
-             * @param id the event id
-             * @return {@code this} for further specification calls
-             */
-            public GivenEvent id(String id) {
-                stub = stub.withId(id);
-                return this;
-            }
-
-            /**
-             * Specifies the {@link Event#time()} to be used.
-             *
-             * @param time the event time-stamp
-             * @return {@code this} for further specification calls
-             */
-            public GivenEvent time(Instant time) {
-                stub = stub.withTime(time);
-                return this;
-            }
-
-            /**
-             * Specifies the {@link Event#subject()} to be used.
-             *
-             * @param subject the event subject
-             * @return {@code this} for further specification calls
-             */
-            public GivenEvent subject(String subject) {
-                stub = stub.withSubject(subject);
-                return this;
-            }
-
-            /**
-             * Specifies the event payload passed any of the {@link StateRebuildingHandler} variants.
-             *
-             * @param payload the event payload
-             * @return {@code this} for further specification calls
-             * @param <E> the generic payload type
-             */
-            public <E> GivenEvent payload(E payload) {
+            @Override
+            public EventSpecifierDsl payload(Object payload) {
                 stub = stub.withPayload(payload);
                 return this;
             }
 
-            /**
-             * Specifies the event meta-data passed to appropriate {@link StateRebuildingHandler} variants.
-             *
-             * @param metaData the event meta-data
-             * @return {@code this} for further specification calls
-             */
-            public GivenEvent metaData(Map<String, ?> metaData) {
+            @Override
+            public EventSpecifierDsl time(Instant time) {
+                stub = stub.withTime(time);
+                return this;
+            }
+
+            @Override
+            public EventSpecifierDsl subject(String subject) {
+                stub = stub.withSubject(subject);
+                return this;
+            }
+
+            @Override
+            public EventSpecifierDsl id(String id) {
+                stub = stub.withId(id);
+                return this;
+            }
+
+            @Override
+            public EventSpecifierDsl metaData(Map<String, ?> metaData) {
                 stub = stub.withMetaData(metaData);
                 return this;
             }
         }
 
-        private final String subject;
-        private final List<Stub> stubs = new ArrayList<>();
         private final CommandHandler<?, C, ?> commandHandler;
+        private final List<Stub> stubs = new ArrayList<>();
+        private final String subject;
 
-        private void addToStubs(Consumer<GivenEvent> givenEvent) {
+        private Given(CommandHandler<?, C, ?> commandHandler, Instant time) {
+            this.subject = null;
+            this.commandHandler = commandHandler;
+            stubs.add(new Stub.Time(time));
+        }
+
+        private Given(CommandHandler<?, C, ?> commandHandler) {
+            this(commandHandler, Instant.now());
+        }
+
+        private Given(String subject, CommandHandler<?, C, ?> commandHandler, List<Stub> stubs) {
+            this.subject = subject;
+            this.commandHandler = commandHandler;
+            this.stubs.addAll(stubs);
+        }
+
+        private void addToStubs(Consumer<? super GivenEvent> givenEvent) {
             GivenEvent capture = new GivenEvent(new Stub.Event());
             givenEvent.accept(capture);
 
@@ -518,228 +359,96 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
         }
 
-        private Given(String subject, CommandHandler<?, C, ?> commandHandler, Instant time) {
-            this.subject = subject;
-            this.commandHandler = commandHandler;
+        @Override
+        public GivenDsl.Terminated<C> nothing() {
+            return this;
+        }
+
+        @Override
+        public GivenDsl<C> time(Instant time) {
             stubs.add(new Stub.Time(time));
+            return this;
         }
 
-        private Given(String subject, CommandHandler<?, C, ?> commandHandler) {
-            this(subject, commandHandler, Instant.now());
+        @Override
+        public GivenDsl<C> timeDelta(Duration delta) {
+            stubs.add(new Stub.TimeDelta(delta));
+            return this;
         }
 
-        // Supplier used to avoid ambiguous constructor declarations
-        private Given(String subject, CommandHandler<?, C, ?> commandHandler, Supplier<?> state) {
-            this(subject, commandHandler);
-            stubs.add(new Stub.State(state.get()));
+        @Override
+        public GivenDsl<C> state(Object state) {
+            stubs.add(new Stub.State(state));
+            return this;
         }
 
-        private Given(String subject, CommandHandler<?, C, ?> commandHandler, Consumer<GivenEvent> givenEvent) {
-            this(subject, commandHandler);
-
-            addToStubs(givenEvent);
-        }
-
-        private Given(String subject, CommandHandler<?, C, ?> commandHandler, Object... events) {
-            this(subject, commandHandler);
-
-            for (Object e : events) {
-                addToStubs(given -> given.subject(subject).payload(e));
+        @Override
+        public GivenDsl<C> events(Object... events) {
+            for (Object event : events) {
+                addToStubs(e -> e.payload(event));
             }
+            return this;
         }
 
-        private Given(String subject, CommandHandler<?, C, ?> commandHandler, List<Stub> stubs) {
-            this(subject, commandHandler);
-            this.stubs.addAll(stubs);
+        @Override
+        public GivenDsl<C> event(Consumer<EventSpecifierDsl> event) {
+            addToStubs(event);
+            return this;
         }
 
-        /**
-         * Uses any previously configured {@linkplain Given stubbings} to execute the given {@link Command} without
-         * meta-data using the {@link CommandHandlerDefinition} encapsulated within the given fixture to capture any new
-         * events published, which in turn will be applied to {@code this}. This is mostly used for
-         * {@link CommandHandler}s publishing a lot or more complex events, in favor of stubbing the events directly.
-         *
-         * <p><strong>Be aware that stubbed events can be specified more precisely than captured ones, since the
-         * encapsulated {@link CommandHandler} is responsible for event publication using the
-         * {@link CommandEventPublisher}. Hence, {@link GivenEvent#time(Instant)} and {@link GivenEvent#id(String)}
-         * cannot be specified using this approach.</strong>
-         *
-         * @param fixture the fixture holding the command to execute
-         * @param command the command to execute for event capturing
-         * @return a {@code this} for further fluent API calls
-         * @throws AssertionError in case the given command did not {@linkplain Expect#expectSuccessfulExecution()
-         *     execute successfully}
-         * @param <AnotherCommand> generic command type to execute
-         */
-        public <AnotherCommand extends Command> Given<C> andGivenCommand(
-                CommandHandlingTestFixture<AnotherCommand> fixture, AnotherCommand command) throws AssertionError {
-            return andGivenCommand(fixture, command, Map.of());
+        @Override
+        public <CMD extends Command> GivenDsl<C> command(CommandHandlingTestFixture<CMD> fixture, CMD command) {
+            return command(fixture, command, Map.of());
         }
 
-        /**
-         * Uses any previously configured {@linkplain Given stubbings} to execute the given {@link Command} with
-         * meta-data using the {@link CommandHandlerDefinition} encapsulated within the given fixture to capture any new
-         * events published, which in turn will be applied to {@code this}. This is mostly used for
-         * {@link CommandHandler}s publishing a lot or more complex events, in favor of stubbing the events directly.
-         *
-         * <p><strong>Be aware that stubbed events can be specified more precisely than captured ones, since the
-         * encapsulated {@link CommandHandler} is responsible for event publication using the
-         * {@link CommandEventPublisher}. Hence, {@link GivenEvent#time(Instant)} and {@link GivenEvent#id(String)}
-         * cannot be specified using this approach.</strong>
-         *
-         * @param fixture the fixture holding the command to execute
-         * @param command the command to execute for event capturing
-         * @param metaData the command meta-data
-         * @return a {@code this} for further fluent API calls
-         * @throws AssertionError in case the given command did not {@linkplain Expect#expectSuccessfulExecution()
-         *     execute successfully}
-         * @param <AnotherCommand> generic command type to execute
-         */
-        public <AnotherCommand extends Command> Given<C> andGivenCommand(
-                CommandHandlingTestFixture<AnotherCommand> fixture, AnotherCommand command, Map<String, ?> metaData)
-                throws AssertionError {
-            fixture.givenStubs(stubs)
-                    .when(command, metaData)
-                    .expectSuccessfulExecution()
-                    .capturedEvents
-                    .forEach(capturedEvent -> andGiven(event -> event.subject(capturedEvent.subject())
+        @Override
+        public <CMD extends Command> GivenDsl<C> command(
+                CommandHandlingTestFixture<CMD> fixture, CMD command, Map<String, ?> metaData) {
+            Expect otherExpect = (Expect) fixture.givenStubs(stubs).when(command, metaData);
+
+            otherExpect.succeeds();
+
+            otherExpect.capturedEvents.forEach(
+                    capturedEvent -> addToStubs(event -> event.subject(capturedEvent.subject())
                             .payload(capturedEvent.event())
                             .metaData(capturedEvent.metaData())));
 
             return this;
         }
 
-        /**
-         * Specifies the {@link Event#subject()} to be used for subsequent calls to {@link Given#andGiven(Object...)}.
-         *
-         * <p>This is a convenience method to be used in favor of specifying event subjects using
-         * {@link GivenEvent#subject(String)}, which, if used, however, takes precedence over the subject defined using
-         * this method. <strong>Notice, that the event subject specified by this method does not affect calls to
-         * {@link Given#andGivenCommand(CommandHandlingTestFixture, Command)}.</strong>
-         *
-         * @param subject the event subject to be applied to any subsequent given events
-         * @return a {@code this} for further fluent API calls
-         * @see #usingCommandSubject()
-         */
-        public Given<C> usingSubject(String subject) {
-            return new Given<>(subject, commandHandler, stubs);
+        @Override
+        public GivenDsl<C> usingSubject(String subject) {
+            return new Given(subject, commandHandler, stubs);
         }
 
-        /**
-         * Resets any previously specified {@linkplain #usingSubject(String) event subject} falling back to the
-         * {@link Command#getSubject()} or {@code null}.
-         *
-         * @return a {@code this} for further fluent API calls
-         * @see #usingSubject(String)
-         */
-        public Given<C> usingCommandSubject() {
+        @Override
+        public GivenDsl<C> usingCommandSubject() {
             return usingSubject(null);
         }
 
-        /**
-         * Configures a (new) time-stamp to be used, if {@linkplain Given#andGiven(Object...) further events} shall be
-         * applied with that {@link Event#time()}.
-         *
-         * @param time the new time-stamp to be used
-         * @return a {@code this} for further fluent API calls
-         */
-        public Given<C> andGivenTime(Instant time) {
-            stubs.add(new Stub.Time(time));
-            return this;
-        }
-
-        /**
-         * Shifts the previously configured time-stamp by given duration, if {@linkplain Given#andGiven(Object...)
-         * further events} shall be applied with that {@link Event#time()}.
-         *
-         * @param duration the time-stamp delta to be applied
-         * @return a {@code this} for further fluent API calls
-         */
-        public Given<C> andGivenTimeDelta(Duration duration) {
-            stubs.add(new Stub.TimeDelta(duration));
-            return this;
-        }
-
-        /**
-         * Applies further events in order to the
-         * {@linkplain CommandHandlingTestFixture#withStateRebuildingHandlerDefinitions(StateRebuildingHandlerDefinition[])
-         * configured} {@link StateRebuildingHandlerDefinition}s to update the instance state.
-         *
-         * @param events the events to be applied
-         * @return a {@code this} for further fluent API calls
-         */
-        public Given<C> andGiven(Object... events) {
-            for (Object e : events) {
-                addToStubs(given -> given.payload(e));
-            }
-            return this;
-        }
-
-        /**
-         * Applies a further event using the {@link GivenEvent} consumer for more fine-grained event specification of
-         * the event and its meta-data to update the instance state.
-         *
-         * @param event event specification consumer, at least {@link GivenEvent#payload(Object)} must be called
-         * @return a {@code this} for further fluent API calls
-         */
-        public Given<C> andGiven(Consumer<GivenEvent> event) {
-            addToStubs(event);
-            return this;
-        }
-
-        /**
-         * Executes the {@linkplain Builder#using(Class, CommandHandler)} configured} {@link CommandHandler} using the
-         * previously initialized instance state. All events {@linkplain CommandEventPublisher published} as part of the
-         * execution as well as any exceptions thrown will be captured in-memory for further {@linkplain Expect
-         * assertion}.
-         *
-         * <p>Events will get applied to the current instance state using the
-         * {@linkplain CommandHandlingTestFixture#withStateRebuildingHandlerDefinitions(StateRebuildingHandlerDefinition[])
-         * configured} {@link StateRebuildingHandlerDefinition}s, if and only if the {@link CommandHandler} terminates
-         * non exceptionally. This mimics the {@link CommandRouter} behaviour, as events will only be published to the
-         * event store for successful executions.<b>Be aware, however, that instance mutability cannot be enforced.
-         * Hence, {@link CommandHandler}s publishing events, which result in mutated instance state, cannot be rolled
-         * back.</b>
-         *
-         * @param command the {@link Command} to execute
-         * @return an {@link Expect} instance for further fluent API calls
-         */
-        public Expect when(C command) {
+        @Override
+        public ExpectDsl.Outcome when(C command) {
             return when(command, Map.of());
         }
 
-        /**
-         * Executes the {@linkplain Builder#using(Class, CommandHandler)} configured} {@link CommandHandler} using the
-         * previously initialized instance state. All events {@linkplain CommandEventPublisher published} as part of the
-         * execution as well as any exceptions thrown will be captured in-memory for further {@linkplain Expect
-         * assertion}.
-         *
-         * <p>Events will get applied to the current instance state using the
-         * {@linkplain CommandHandlingTestFixture#withStateRebuildingHandlerDefinitions(StateRebuildingHandlerDefinition[])
-         * configured} {@link StateRebuildingHandlerDefinition}s, if and only if the {@link CommandHandler} terminates
-         * non exceptionally. This mimics the {@link CommandRouter} behaviour, as events will only be published to the
-         * event store for successful executions.<b>Be aware, however, that instance mutability cannot be enforced.
-         * Hence, {@link CommandHandler}s publishing events, which result in mutated instance state, cannot be rolled
-         * back.</b>
-         *
-         * @param command the {@link Command} to execute
-         * @param metaData additional command meta-data supplied to the {@link CommandHandler}
-         * @return an {@link Expect} instance for further fluent API calls
-         */
-        public Expect when(C command, Map<String, ?> metaData) {
-            AtomicReference<Result> stubResult = new AtomicReference<>(
-                    new Result(instanceClass, null, null, command, stateRebuildingHandlerDefinitions, Set.of()));
+        @Override
+        @SuppressWarnings("unchecked")
+        public ExpectDsl.Outcome when(C command, Map<String, ?> metaData) {
+            AtomicReference<StubResult> stubResult = new AtomicReference<>(new StubResult(
+                    instanceClass, null, Instant.now(), command, stateRebuildingHandlerDefinitions, Set.of()));
             stubs.forEach(stub -> stubResult.updateAndGet(result -> result.merge(stub)));
 
             Object currentState = stubResult.get().state();
-            CommandEventCapturer<?> eventCapturer = new CommandEventCapturer<Object>(
+
+            CommandEventCapturer<Object> eventCapturer = new CommandEventCapturer<>(
                     currentState,
                     command.getSubject(),
                     stateRebuildingHandlerDefinitions.stream()
                             .filter(it -> it.instanceClass().equals(instanceClass))
                             .toList());
 
-            var stateStubbed = stubs.stream().anyMatch(s -> s.getClass().equals(Stub.State.class));
+            var stateStubbed = stubs.stream().anyMatch(s -> s instanceof Stub.State);
+
             if (!stateStubbed) {
                 switch (command.getSubjectCondition()) {
                     case PRISTINE -> {
@@ -747,7 +456,6 @@ public class CommandHandlingTestFixture<C extends Command> {
                             return new Expect(
                                     command,
                                     currentState,
-                                    false,
                                     List.of(),
                                     null,
                                     new CommandSubjectAlreadyExistsException("subject already exists", command));
@@ -758,10 +466,9 @@ public class CommandHandlingTestFixture<C extends Command> {
                             return new Expect(
                                     command,
                                     currentState,
-                                    false,
                                     List.of(),
                                     null,
-                                    new CommandSubjectDoesNotExistException("subject does not exists", command));
+                                    new CommandSubjectDoesNotExistException("subject does not exist", command));
                         }
                     }
                     case NONE -> {}
@@ -769,744 +476,540 @@ public class CommandHandlingTestFixture<C extends Command> {
             }
 
             try {
+                CommandHandler<Object, C, Object> typedHandler = (CommandHandler<Object, C, Object>) commandHandler;
                 Object result =
-                        switch (commandHandler) {
-                            case CommandHandler.ForCommand handler -> handler.handle(command, eventCapturer);
-                            case CommandHandler.ForInstanceAndCommand handler ->
+                        switch (typedHandler) {
+                            case CommandHandler.ForCommand<Object, C, Object> handler ->
+                                handler.handle(command, eventCapturer);
+                            case CommandHandler.ForInstanceAndCommand<Object, C, Object> handler ->
                                 handler.handle(currentState, command, eventCapturer);
-                            case CommandHandler.ForInstanceAndCommandAndMetaData handler ->
+                            case CommandHandler.ForInstanceAndCommandAndMetaData<Object, C, Object> handler ->
                                 handler.handle(currentState, command, metaData, eventCapturer);
                         };
+
                 return new Expect(
-                        command,
-                        eventCapturer.previousInstance.get(),
-                        stateStubbed,
-                        eventCapturer.getEvents(),
-                        result,
-                        null);
+                        command, eventCapturer.previousInstance.get(), eventCapturer.getEvents(), result, null);
             } catch (Throwable t) {
-                return new Expect(command, currentState, stateStubbed, List.of(), null, t);
+                return new Expect(command, currentState, List.of(), null, t);
             }
         }
     }
 
     /**
-     * Fluent API helper class encapsulating the results of a {@link CommandHandler} {@linkplain Given#when(Command)
+     * Initializes the {@link CommandHandlingTestFixture} and returns a {@link GivenDsl.Initial} instance for fluent
+     * state stubbing prior to {@linkplain GivenDsl#when(Command) command execution}.
+     *
+     * @return a {@link GivenDsl.Initial} instance for further fluent API calls
+     */
+    public GivenDsl.Initial<C> given() {
+        return new Given(commandHandler);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Given givenStubs(List stubs) {
+        Given given = new Given(commandHandler);
+        given.stubs.addAll(stubs);
+        return given;
+    }
+
+    /**
+     * Fluent API helper class encapsulating the results of a {@link CommandHandler} {@linkplain GivenDsl#when(Command)
      * execution} for assertion.
      *
-     * <p>This class provides stateful event assertions, effectively iterating through the events published during a
-     * {@linkplain Given#when(Command) command handler execution}. Methods within {@code this} annotated using
-     * {@link StatefulAssertion} represent stateful assertions and thus both rely on previous stateful assertions and
-     * proceed through the captured event stream, if invoked.
+     * <p>Assertions are organized into inner classes implementing the {@link ExpectDsl} sub-interfaces:
+     *
+     * <ul>
+     *   <li>{@link Succeeding} for assertions after successful command execution
+     *   <li>{@link Failing} for assertions after failed command execution
+     *   <li>{@link AllEvents} for non-sequential assertions on all captured events
+     *   <li>{@link NextEvents} for cursor-based sequential assertions on captured events
+     * </ul>
      */
-    public class Expect {
-
-        /**
-         * Marker annotation for assertion methods within {@link CommandHandlingTestFixture.Expect} which proceed
-         * through the captured event stream, if invoked.
-         */
-        @Documented
-        @Target(ElementType.METHOD)
-        @Retention(RetentionPolicy.SOURCE)
-        public @interface StatefulAssertion {}
-
-        private boolean eventVerified = false;
+    public static class Expect implements ExpectDsl.Outcome {
         private final Command command;
         private final Object state;
-        private final boolean stateStubbed;
-        private final List<CapturedEvent> capturedEvents;
-        private final ListIterator<CapturedEvent> nextEvent;
+        final List<CapturedEvent> capturedEvents;
         private final Object result;
         private final Throwable throwable;
 
         private Expect(
-                Command command,
-                Object state,
-                boolean stateStubbed,
-                List<CapturedEvent> capturedEvents,
-                Object result,
-                Throwable throwable) {
+                Command command, Object state, List<CapturedEvent> capturedEvents, Object result, Throwable throwable) {
             this.command = command;
             this.state = state;
-            this.stateStubbed = stateStubbed;
             this.capturedEvents = capturedEvents;
-            this.nextEvent = capturedEvents.listIterator();
             this.result = result;
             this.throwable = throwable;
         }
 
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) executed} non exceptionally.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the {@link CommandHandler} terminated exceptionally
-         */
-        public Expect expectSuccessfulExecution() throws AssertionError {
-            if (throwable != null) throw new AssertionError("Failed execution, due to", throwable);
-
-            return this;
-        }
-
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) executed} exceptionally, irrespective
-         * of the exception type.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the {@link CommandHandler} terminated non exceptionally
-         */
-        public Expect expectUnsuccessfulExecution() throws AssertionError {
-            return expectException(Throwable.class);
-        }
-
-        /**
-         * Asserts that the {@link CommandHandler} returned the expected result.
-         *
-         * @param expected the expected result (may be {@code null})
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the {@link CommandHandler} returned a result non-equal to the expected one
-         * @param <R> the generic result type
-         */
-        public <R> Expect expectResult(R expected) throws AssertionError {
-            if (expected == null && result == null) return this;
-
-            if (expected == null || !expected.equals(result)) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("Command handler result expected to be equal, but captured result:\n");
-                builder.append(result);
-                builder.append("\n");
-                builder.append("differs from:\n");
-                builder.append(expected);
-
-                throw new AssertionError(builder.toString());
+        public class Succeeding implements ExpectDsl.Succeeding {
+            @Override
+            public ExpectDsl.Succeeding withoutEvents() {
+                if (!capturedEvents.isEmpty()) {
+                    throw new AssertionError(
+                            "Expected no events, but found " + capturedEvents.size() + ": " + capturedEvents);
+                }
+                return this;
             }
-            return this;
-        }
 
-        /**
-         * Asserts that the {@link CommandHandler}'s returned result satisfies the custom assertions using the provided
-         * {@link Consumer}.
-         *
-         * @param assertion a consumer for custom assertions of the captured result
-         * @return {@code this} for further assertions
-         * @throws AssertionError if thrown by the consumer
-         * @param <R> the generic result type
-         */
-        public <R> Expect expectResultSatisfying(Consumer<R> assertion) throws AssertionError {
-            assertion.accept((R) result);
-            return this;
-        }
-
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) executed} exceptionally by throwing
-         * an exception of the given class.
-         *
-         * @param t the expected exception class
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the {@link CommandHandler} executed non exceptionally or an exception was thrown
-         *     that is not assignable to the requested type
-         * @param <T> the generic exception type
-         */
-        public <T extends Throwable> Expect expectException(Class<T> t) throws AssertionError {
-            if (throwable == null) throw new AssertionError("No exception occurred, as expected");
-            if (!t.isAssignableFrom(throwable.getClass()))
-                throw new AssertionError(
-                        "Captured exception has wrong type: "
-                                + throwable.getClass().getSimpleName(),
-                        throwable);
-
-            return this;
-        }
-
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) executed} exceptionally and allows
-         * for further custom assertions using the provided {@link Consumer}.
-         *
-         * @param assertion a consumer for custom assertions of the captured exception
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the {@link CommandHandler} executed non exceptionally or if thrown by the given
-         *     consumer
-         * @param <T> the generic exception type
-         */
-        public <T extends Throwable> Expect expectExceptionSatisfying(Consumer<T> assertion) throws AssertionError {
-            if (throwable == null) throw new AssertionError("No exception occurred, as expected");
-
-            assertion.accept((T) throwable);
-
-            return this;
-        }
-
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) could not be executed} due to a
-         * violated {@link com.opencqrs.framework.command.Command.SubjectCondition}.
-         *
-         * <p><strong>This method must not be used together with {@link #givenState(Object)}, since no event subjects
-         * may be available for assertion in that case.</strong>
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no {@link com.opencqrs.framework.command.Command.SubjectCondition} was violated
-         */
-        public Expect expectCommandSubjectConditionViolated() throws AssertionError {
-            if (stateStubbed) {
-                throw new IllegalStateException(
-                        "Command subject condition violation cannot be verified, if givenState() was used");
+            @Override
+            public ExpectDsl.Succeeding havingResult(Object expected) {
+                if (expected == null && result == null) return this;
+                if (expected == null || (result == null) || !expected.equals(result)) {
+                    StringBuilder builder = new StringBuilder();
+                    builder.append("Command handler result expected to be equal, but captured result:\n");
+                    builder.append(result);
+                    builder.append("\n");
+                    builder.append("differs from:\n");
+                    builder.append(expected);
+                    throw new AssertionError(builder.toString());
+                }
+                return this;
             }
-            if (throwable == null
-                    || !CommandSubjectConditionViolatedException.class.isAssignableFrom(throwable.getClass())) {
-                throw new AssertionError("Expected command subject condition not violated");
+
+            @Override
+            public ExpectDsl.Succeeding resultSatisfying(Consumer<Object> assertion) {
+                assertion.accept(result);
+                return this;
             }
-            return this;
+
+            @Override
+            public ExpectDsl.Succeeding havingState(Object expectedState) {
+                if (state == null) throw new AssertionError("No state captured");
+                if (!state.equals(expectedState)) {
+                    StringBuilder builder = new StringBuilder();
+                    builder.append("State expected to be equal, but captured state:\n");
+                    builder.append(state);
+                    builder.append("\n");
+                    builder.append("differs from:\n");
+                    builder.append(expectedState);
+                    throw new AssertionError(builder.toString());
+                }
+                return this;
+            }
+
+            @Override
+            public ExpectDsl.Succeeding stateSatisfying(Consumer<Object> assertion) {
+                assertion.accept(state);
+                return this;
+            }
+
+            @Override
+            public <T> ExpectDsl.Succeeding stateExtracting(Function<Object, T> extractor, T expected) {
+                if (state == null) throw new AssertionError("No state captured");
+                T extracted = extractor.apply(state);
+                if (expected == null && extracted == null) return this;
+                if (expected == null || (extracted == null) || !expected.equals(extracted)) {
+                    StringBuilder builder = new StringBuilder();
+                    builder.append("Extracted state expected to be equal, but captured extracted state:\n");
+                    builder.append(extracted);
+                    builder.append("\n");
+                    builder.append("differs from:\n");
+                    builder.append(expected);
+                    throw new AssertionError(builder.toString());
+                }
+                return this;
+            }
+
+            @Override
+            public ExpectDsl.All allEvents() {
+                return new AllEvents();
+            }
+
+            @Override
+            public ExpectDsl.Next nextEvents() {
+                return new NextEvents();
+            }
         }
 
-        /**
-         * Asserts that the {@link CommandHandler} {@linkplain Given#when(Command) could not be executed} because it
-         * violates the specified {@link com.opencqrs.framework.command.Command.SubjectCondition}.
-         *
-         * <p><strong>This method must not be used together with {@link #givenState(Object)}, since no event subjects
-         * may be available for assertion in that case.</strong>
-         *
-         * @param expected the subject condition expected to be violated
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or any other than the specified
-         *     {@link com.opencqrs.framework.command.Command.SubjectCondition} was violated
-         */
-        public Expect expectCommandSubjectConditionViolated(Command.SubjectCondition expected) throws AssertionError {
-            if (expected == Command.SubjectCondition.NONE) {
-                throw new IllegalArgumentException("Command subject condition NONE cannot be violated");
+        public class Failing implements ExpectDsl.Failing {
+            @Override
+            public <T extends Throwable> ExpectDsl.Failing throwing(Class<T> t) {
+                if (throwable == null) throw new AssertionError("No exception occurred, as expected");
+                if (!t.isAssignableFrom(throwable.getClass())) {
+                    throw new AssertionError(
+                            "Captured exception has wrong type: "
+                                    + throwable.getClass().getSimpleName(),
+                            throwable);
+                }
+                return this;
             }
-            return expectCommandSubjectConditionViolated().expectExceptionSatisfying(t -> {
-                switch (t) {
-                    case CommandSubjectConditionViolatedException e -> {
-                        if (!e.getSubjectCondition().equals(expected)) {
-                            throw new AssertionError("Expected command subject condition not violated: " + expected);
+
+            @Override
+            public <T extends Throwable> ExpectDsl.Failing throwing(T t) {
+                if (throwable == null) throw new AssertionError("No exception occurred, as expected");
+                if (!t.getClass().isAssignableFrom(throwable.getClass())) {
+                    throw new AssertionError(
+                            "Captured exception has wrong type: expected "
+                                    + t.getClass().getSimpleName() + " but got "
+                                    + throwable.getClass().getSimpleName(),
+                            throwable);
+                }
+                if (!Objects.equals(t.getMessage(), throwable.getMessage())) {
+                    throw new AssertionError(
+                            "Captured exception has wrong message: expected \""
+                                    + t.getMessage() + "\" but got \""
+                                    + throwable.getMessage() + "\"",
+                            throwable);
+                }
+                return this;
+            }
+
+            @Override
+            public <T extends Throwable> ExpectDsl.Failing throwsSatisfying(Consumer<T> assertion) {
+                if (throwable == null) throw new AssertionError("No exception occurred, as expected");
+                assertion.accept((T) throwable);
+                return this;
+            }
+
+            @Override
+            public ExpectDsl.Failing violatingAnyCondition() {
+                if (!(throwable instanceof CommandSubjectAlreadyExistsException
+                        || throwable instanceof CommandSubjectDoesNotExistException)) {
+                    throw new AssertionError("Expected command subject condition not violated");
+                }
+                return this;
+            }
+
+            @Override
+            public ExpectDsl.Failing violatingExactly(Command.SubjectCondition condition) {
+                if (condition == Command.SubjectCondition.NONE) {
+                    throw new IllegalArgumentException("Command subject condition NONE cannot be violated");
+                }
+                if (condition == Command.SubjectCondition.PRISTINE) {
+                    if (!(throwable instanceof CommandSubjectAlreadyExistsException)) {
+                        throw new AssertionError("Expected command subject condition not violated: PRISTINE");
+                    }
+                } else if (condition == Command.SubjectCondition.EXISTS) {
+                    if (!(throwable instanceof CommandSubjectDoesNotExistException)) {
+                        throw new AssertionError("Expected command subject condition not violated: EXISTS");
+                    }
+                }
+                return this;
+            }
+        }
+
+        public class AllEvents implements ExpectDsl.All {
+            @Override
+            public ExpectDsl.All count(int count) {
+                if (count < 0) throw new IllegalArgumentException("Count must be zero or positive");
+
+                if (capturedEvents.size() != count) {
+                    throw new AssertionError("Number of expected events differs, expected " + count + " but captured: "
+                            + capturedEvents.size() + ":\n"
+                            + capturedEvents.stream().map(CapturedEvent::event));
+                }
+
+                return this;
+            }
+
+            @Override
+            public ExpectDsl.All single(Consumer<ExpectDsl.EventValidator> consumer) {
+                List<Consumer<ExpectDsl.EventValidator>> allConsumers = new ArrayList<>();
+                allConsumers.add(consumer);
+
+                for (Consumer<ExpectDsl.EventValidator> validatorConsumer : allConsumers) {
+                    int matches = 0;
+
+                    for (CapturedEvent event : capturedEvents) {
+                        try {
+                            EventValidatorImpl validator = new EventValidatorImpl(event);
+                            validatorConsumer.accept(validator);
+                            matches++;
+                        } catch (AssertionError e) {
                         }
                     }
-                    default -> throw new IllegalStateException("should not occur", t);
+
+                    if (matches == 0) {
+                        throw new AssertionError("Expected exactly one event matching validator, but found none");
+                    } else if (matches > 1) {
+                        throw new AssertionError("Expected exactly one event matching validator, but found " + matches);
+                    }
                 }
-            });
-        }
 
-        /**
-         * Asserts that the (potentially altered) state resulting from the @link CommandHandler}
-         * {@linkplain Given#when(Command) execution} {@linkplain Object#equals(Object) is equal} to the given state.
-         *
-         * @param state the expected state
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the captured state is {@code null} or not equal to the expected state
-         * @param <I> the generic state type
-         */
-        public <I> Expect expectState(I state) throws AssertionError {
-            if (this.state == null) throw new AssertionError("No state captured");
-            if (!state.equals(this.state)) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("State expected to be equal, but captured state:\n");
-                builder.append(this.state.toString());
-                builder.append("\n");
-                builder.append("differs from:\n");
-                builder.append(state);
-
-                throw new AssertionError(builder.toString());
+                return this;
             }
 
-            return this;
-        }
+            @Override
+            public ExpectDsl.All any(Consumer<ExpectDsl.EventValidator> consumer) {
+                boolean found = false;
 
-        /**
-         * Asserts that the (potentially altered) state resulting from the @link CommandHandler}
-         * {@linkplain Given#when(Command) execution} {@linkplain Object#equals(Object) is equal} to the given state
-         * using the extractor function.
-         *
-         * @param extractor extractor function applied to the state before comparison
-         * @param expected the extracted state expected, may be {@code null} if needed
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the captured state is {@code null} or the extracted state is not as expected
-         * @param <R> the result type of the extractor function
-         * @param <I> the generic state type
-         */
-        public <I, R> Expect expectStateExtracting(Function<I, R> extractor, R expected) throws AssertionError {
-            if (state == null) throw new AssertionError("No state captured");
-            R extracted = extractor.apply((I) state);
+                for (CapturedEvent event : capturedEvents) {
+                    try {
+                        EventValidatorImpl validator = new EventValidatorImpl(event);
+                        consumer.accept(validator);
+                        found = true;
+                        break;
+                    } catch (AssertionError e) {
+                    }
+                }
 
-            if (expected == null && extracted == null) return this;
+                if (!found) {
+                    throw new AssertionError("Expected at least one event matching validator, but found none");
+                }
 
-            if (expected == null || !expected.equals(extracted)) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("Extracted state expected to be equal, but captured extracted state:\n");
-                builder.append(extracted);
-                builder.append("\n");
-                builder.append("differs from:\n");
-                builder.append(expected);
-
-                throw new AssertionError(builder.toString());
+                return this;
             }
 
-            return this;
-        }
+            @Override
+            public ExpectDsl.All all(Consumer<ExpectDsl.EventValidator> consumer) {
+                if (capturedEvents.isEmpty()) {
+                    throw new AssertionError("Expected all events to match validator, but no events were captured");
+                }
 
-        /**
-         * Asserts the (potentially altered) state resulting from the @link CommandHandler}
-         * {@linkplain Given#when(Command) execution} using the given {@link Consumer}.
-         *
-         * @param assertion the consumer used for custom state assertions
-         * @return {@code this} for further assertions
-         * @throws AssertionError if thrown by the given consumer
-         * @param <I> the generic state type
-         */
-        public <I> Expect expectStateSatisfying(Consumer<I> assertion) throws AssertionError {
-            assertion.accept((I) this.state);
-            return this;
-        }
+                for (CapturedEvent event : capturedEvents) {
+                    EventValidatorImpl validator = new EventValidatorImpl(event);
+                    consumer.accept(validator);
+                }
 
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream
-         * {@linkplain Object#equals(Object) are equal} to the given events in order.
-         *
-         * @param events the expected events
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less captured events remain than expected or any of the expected events is not
-         *     equal
-         */
-        @StatefulAssertion
-        public Expect expectEvents(Object... events) throws AssertionError {
-            Arrays.stream(events).forEach(this::expectNextEvent);
+                return this;
+            }
 
-            return this;
-        }
+            @Override
+            public ExpectDsl.All none(Consumer<ExpectDsl.EventValidator> consumer) {
+                int matches = 0;
+                for (CapturedEvent event : capturedEvents) {
+                    try {
+                        EventValidatorImpl validator = new EventValidatorImpl(event);
+                        consumer.accept(validator);
+                        matches++;
+                    } catch (AssertionError e) {
+                    }
+                }
+                if (matches > 0) {
+                    throw new AssertionError("Expected no events matching validator, but found " + matches);
+                }
+                return this;
+            }
 
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream
-         * {@linkplain Class#isAssignableFrom(Class)} are assignable} to the given event types in order.
-         *
-         * @param types the expected event types
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less captured events remain than expected or any of the expected event types is not
-         *     assignable
-         */
-        @StatefulAssertion
-        public Expect expectEventTypes(Class<?>... types) throws AssertionError {
-            Arrays.stream(types).forEach(this::expectNextEventType);
-
-            return this;
-        }
-
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream are
-         * successfully asserted by the given consumer.
-         *
-         * @param assertion consumer asserting the remaining events
-         * @return {@code this} for further assertions
-         * @throws AssertionError if thrown by the consumer
-         */
-        @StatefulAssertion
-        public Expect expectEventsSatisfying(Consumer<List<Object>> assertion) throws AssertionError {
-            eventVerified = true;
-
-            ArrayList<Object> events = new ArrayList<>();
-            nextEvent.forEachRemaining(next -> events.add(next.event()));
-            assertion.accept(events);
-
-            return this;
-        }
-
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream
-         * {@linkplain Object#equals(Object) are equal} to the given events in <b>any</b> order.
-         *
-         * @param events the expected events (in any order)
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less captured events remain than expected or any of the expected events is not
-         *     equal
-         */
-        @StatefulAssertion
-        public Expect expectEventsInAnyOrder(Object... events) throws AssertionError {
-            eventVerified = true;
-
-            ArrayList<Object> capturedEvents = new ArrayList<>();
-            for (int i = 0; i < events.length; i++) {
-                if (!nextEvent.hasNext())
+            @Override
+            public ExpectDsl.All exactly(Object... events) {
+                if (capturedEvents.size() != events.length) {
                     throw new AssertionError(
-                            "No more events captured, expected " + (events.length - i) + " more events");
-                capturedEvents.add(nextEvent.next().event());
+                            "Expected exactly " + events.length + " events, but captured " + capturedEvents.size());
+                }
+
+                for (int i = 0; i < events.length; i++) {
+                    Object captured = capturedEvents.get(i).event();
+                    Object expected = events[i];
+                    if (!captured.equals(expected)) {
+                        StringBuilder builder = new StringBuilder();
+                        builder.append("Event at position ")
+                                .append(i)
+                                .append(" expected to be equal, but captured event payload:\n");
+                        builder.append(captured);
+                        builder.append("\n");
+                        builder.append("differs from:\n");
+                        builder.append(expected);
+                        throw new AssertionError(builder.toString());
+                    }
+                }
+
+                return this;
             }
-            capturedEvents.removeAll(Arrays.stream(events).toList());
 
-            if (!capturedEvents.isEmpty()) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("The following events were captured, but did not match the expected events:\n");
-                capturedEvents.forEach(e -> {
-                    builder.append(e.toString());
-                    builder.append("\n");
-                });
-
-                throw new AssertionError(builder.toString());
+            public ExpectDsl.Succeeding and() {
+                return new Succeeding();
             }
-
-            return this;
         }
 
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next event payloads} within the captured event stream
-         * {@linkplain Class#isAssignableFrom(Class)} are assignable} to the given event types in <b>any</b> order.
-         *
-         * @param types the expected event types (in any order)
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less captured events remain than expected or any of the expected event type is not
-         *     assignable
-         */
-        @StatefulAssertion
-        public Expect expectEventTypesInAnyOrder(Class<?>... types) throws AssertionError {
-            eventVerified = true;
+        public class NextEvents implements ExpectDsl.Next {
+            private final ListIterator<CapturedEvent> nextEvent;
 
-            ArrayList<Class<?>> capturedEventTypes = new ArrayList<>();
-            for (int i = 0; i < types.length; i++) {
-                if (!nextEvent.hasNext())
+            NextEvents() {
+                this.nextEvent = capturedEvents.listIterator();
+            }
+
+            @Override
+            public ExpectDsl.Next skipping(int num) {
+                for (int i = 0; i < num; i++) {
+                    if (!nextEvent.hasNext()) {
+                        throw new AssertionError("Cannot skip " + num + " events, only " + i + " remaining");
+                    }
+                    nextEvent.next();
+                }
+                return this;
+            }
+
+            @Override
+            public ExpectDsl.Succeeding noMore() {
+                if (nextEvent.hasNext()) {
+                    throw new AssertionError("Expected no more events, but found more");
+                }
+                return new Succeeding();
+            }
+
+            @Override
+            public ExpectDsl.Succeeding remaining(int count) {
+                return skipping(count).noMore();
+            }
+
+            @Override
+            public ExpectDsl.Succeeding single(Consumer<ExpectDsl.EventValidator> consumer) {
+                int matches = 0;
+                while (nextEvent.hasNext()) {
+                    CapturedEvent event = nextEvent.next();
+                    try {
+                        EventValidatorImpl validator = new EventValidatorImpl(event);
+                        consumer.accept(validator);
+                        matches++;
+                    } catch (AssertionError e) {
+                    }
+                }
+                if (matches == 0) {
                     throw new AssertionError(
-                            "No more events captured, expected " + (types.length - i) + " more events");
-                capturedEventTypes.add(nextEvent.next().event().getClass());
-            }
-            capturedEventTypes.removeAll(Arrays.stream(types).toList());
-
-            if (!capturedEventTypes.isEmpty()) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("The following events were captured, but did not match the expected event types:\n");
-                capturedEventTypes.forEach(e -> {
-                    builder.append(e.getSimpleName());
-                    builder.append("\n");
-                });
-
-                throw new AssertionError(builder.toString());
+                            "Expected exactly one event matching validator in remaining events, but found none");
+                } else if (matches > 1) {
+                    throw new AssertionError(
+                            "Expected exactly one event matching validator in remaining events, but found " + matches);
+                }
+                return new Succeeding();
             }
 
-            return this;
-        }
-
-        /**
-         * Asserts that the {@linkplain StatefulAssertion next payload payload} within the captured payload stream
-         * {@linkplain Object#equals(Object) is equal} to the given payload.
-         *
-         * @param payload the expected payload
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no captured events remain or the next payload does not equal the expected one
-         * @param <E> the generic payload type
-         */
-        @StatefulAssertion
-        public <E> Expect expectNextEvent(E payload) throws AssertionError {
-            if (!nextEvent.hasNext())
-                throw new AssertionError("No more events captured, but expected payload of type: "
-                        + payload.getClass().getSimpleName());
-
-            return expectNextEvent(it -> it.payload(payload));
-        }
-
-        /**
-         * Asserts the {@linkplain StatefulAssertion next event} within the captured event stream using the given
-         * {@linkplain EventAsserter event asserting consumer}.
-         *
-         * @param assertion consumer for further event assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no captured events remain or if thrown by the event assertion consumer
-         */
-        @StatefulAssertion
-        public Expect expectNextEvent(Consumer<EventAsserter> assertion) {
-            eventVerified = true;
-
-            if (!nextEvent.hasNext()) throw new AssertionError("No more events captured.");
-
-            CapturedEvent next = nextEvent.next();
-            assertion.accept(new EventAsserter(command, next));
-            return this;
-        }
-
-        /**
-         * Asserts that {@linkplain StatefulAssertion next event} within the captured event stream
-         * {@linkplain Class#isAssignableFrom(Class)} is assignable} to the given event type.
-         *
-         * @param type the expected event type
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no captured events remain or the next event is not assignable to the expected type
-         */
-        @StatefulAssertion
-        public Expect expectNextEventType(Class<?> type) throws AssertionError {
-            if (!nextEvent.hasNext())
-                throw new AssertionError(
-                        "No more events captured, but expected event of type: " + type.getSimpleName());
-
-            return expectNextEvent(it -> it.payloadType(type));
-        }
-
-        /**
-         * Asserts that {@linkplain StatefulAssertion next event} within the captured event stream is successfully
-         * asserted by the given {@link Consumer}.
-         *
-         * @param assertion custom assertion applied to the next event
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no captured events remain or if thrown by the custom assertion
-         * @param <E> the generic event type
-         */
-        @StatefulAssertion
-        public <E> Expect expectNextEventSatisfying(Consumer<E> assertion) throws AssertionError {
-            return expectNextEvent(it -> it.payloadSatisfying(assertion));
-        }
-
-        /**
-         * Asserts that no more events have been captured.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if there are any remaining events
-         */
-        public Expect expectNoMoreEvents() throws AssertionError {
-            if (nextEvent.hasNext()) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("No more events expected, but got:\n");
-                nextEvent.forEachRemaining(e -> {
-                    builder.append(e.event().toString());
-                    builder.append("\n");
-                });
-                throw new AssertionError(builder.toString());
+            @Override
+            public ExpectDsl.Succeeding any(Consumer<ExpectDsl.EventValidator> consumer) {
+                boolean found = false;
+                while (nextEvent.hasNext()) {
+                    CapturedEvent event = nextEvent.next();
+                    try {
+                        EventValidatorImpl validator = new EventValidatorImpl(event);
+                        consumer.accept(validator);
+                        found = true;
+                    } catch (AssertionError e) {
+                    }
+                }
+                if (!found) {
+                    throw new AssertionError(
+                            "Expected at least one remaining event matching validator, but found none");
+                }
+                return new Succeeding();
             }
 
-            return this;
-        }
+            @Override
+            public ExpectDsl.Succeeding exactly(Object... events) {
+                for (int i = 0; i < events.length; i++) {
+                    if (!nextEvent.hasNext()) {
+                        throw new AssertionError(
+                                "Expected " + events.length + " more events, but only " + i + " remaining");
+                    }
+                    Object captured = nextEvent.next().event();
+                    Object expected = events[i];
+                    if (!captured.equals(expected)) {
+                        StringBuilder builder = new StringBuilder();
+                        builder.append("Event at position ")
+                                .append(i)
+                                .append(" expected to be equal, but captured event payload:\n");
+                        builder.append(captured);
+                        builder.append("\n");
+                        builder.append("differs from:\n");
+                        builder.append(expected);
+                        throw new AssertionError(builder.toString());
+                    }
+                }
 
-        /**
-         * Asserts that a single payload was captured as part of the published payload stream whose payload
-         * {@linkplain Object#equals(Object) is equal} to the expected one.
-         *
-         * @param payload the expected payload type
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or the captured payload does not equal the expected
-         *     one
-         * @param <E> the generic payload type
-         */
-        public <E> Expect expectSingleEvent(E payload) throws AssertionError {
-            if (eventVerified)
-                throw new Error("Cannot expect single payload, if previous events have already been verified.");
-            return expectNextEvent(payload).expectNoMoreEvents();
-        }
+                if (nextEvent.hasNext()) {
+                    int remaining = 0;
+                    while (nextEvent.hasNext()) {
+                        nextEvent.next();
+                        remaining++;
+                    }
+                    throw new AssertionError(
+                            "Expected exactly " + events.length + " events, but " + remaining + " more remaining");
+                }
 
-        /**
-         * Asserts that a single event was captured as part of the published event stream which using the given
-         * {@linkplain EventAsserter event asserting consumer}.
-         *
-         * @param assertion consumer for further event assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or if thrown by the event assertion consumer
-         */
-        public Expect expectSingleEvent(Consumer<EventAsserter> assertion) {
-            if (eventVerified)
-                throw new Error("Cannot expect single event, if previous events have already been verified.");
-            return expectNextEvent(assertion).expectNoMoreEvents();
-        }
-
-        /**
-         * Asserts that a single event was captured as part of the published event stream which
-         * {@linkplain Class#isAssignableFrom(Class)} is assignable} to the given event type.
-         *
-         * @param type the expected event type
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or the captured event is not assignable to the
-         *     expected type
-         */
-        public Expect expectSingleEventType(Class<?> type) throws AssertionError {
-            if (eventVerified)
-                throw new Error("Cannot expect single event, if previous events have already been verified.");
-            return expectNextEventType(type).expectNoMoreEvents();
-        }
-
-        /**
-         * Asserts that a single event was captured as part of the published event stream which matches the custom
-         * assertion provided as {@link Consumer}.
-         *
-         * @param assertion the custom assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or if thrown by the custom assertion
-         * @param <E> the generic payload type
-         */
-        public <E> Expect expectSingleEventSatisfying(Consumer<E> assertion) throws AssertionError {
-            if (eventVerified)
-                throw new Error("Cannot expect single event, if previous events have already been verified.");
-            return expectNextEventSatisfying(assertion).expectNoMoreEvents();
-        }
-
-        /**
-         * Asserts that number of events captured as part of the published event stream matches the given number.
-         *
-         * @param num the number of expected events, may be zero
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the number of published events differs
-         */
-        public Expect expectNumEvents(int num) throws AssertionError {
-            if (num < 0) throw new IllegalArgumentException("Num must be zero or positive");
-
-            if (capturedEvents.size() != num)
-                throw new AssertionError("Number of expected events differs, expected " + num + " but captured: "
-                        + capturedEvents.size());
-
-            return this;
-        }
-
-        /**
-         * Asserts that no event was captured as part of the published event stream.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if any event was published
-         */
-        public Expect expectNoEvents() throws AssertionError {
-            return expectNumEvents(0);
-        }
-
-        /**
-         * Skips the given number of {@linkplain StatefulAssertion next events} for upcoming assertions.
-         *
-         * @param num the number of events to skip
-         * @return {@code this} for further assertions
-         * @throws AssertionError if less events were captured than the requested number to skip
-         */
-        @StatefulAssertion
-        public Expect skipEvents(int num) throws AssertionError {
-            if (num <= 0) throw new IllegalArgumentException("Num must be positive");
-
-            for (int i = 0; i < num; i++) {
-                if (!nextEvent.hasNext()) throw new AssertionError("Not enough events captured for skipping");
-                nextEvent.next();
+                return new Succeeding();
             }
 
-            return this;
-        }
-
-        /**
-         * Asserts that any event's payload in the remaining set of captured events {@linkplain Object#equals(Object) is
-         * equal} to the given payload.
-         *
-         * @param payload the expected payload
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no events were captured or none of them does equal the expected one
-         * @param <E> the generic payload type
-         */
-        public <E> Expect expectAnyEvent(E payload) throws AssertionError {
-            return expectAnyEvent(it -> it.payload(payload));
-        }
-
-        /**
-         * Asserts that any of the remaining events in the set of captured events asserts successfully using the given
-         * {@linkplain EventAsserter event asserting consumer}.
-         *
-         * @param assertion consumer for further event assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no or more events were captured or if thrown by the event assertion consumer
-         */
-        public Expect expectAnyEvent(Consumer<EventAsserter> assertion) throws AssertionError {
-            if (!nextEvent.hasNext()) throw new AssertionError("No more events captured to assert on");
-
-            ArrayList<AssertionError> capturedErrors = new ArrayList<>();
-            boolean anySuccessfullyAsserts =
-                    capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()).stream()
-                            .map(e -> {
-                                try {
-                                    assertion.accept(new EventAsserter(command, e));
-                                } catch (AssertionError error) {
-                                    capturedErrors.add(error);
-                                    return false;
-                                }
-                                return true;
-                            })
-                            .reduce(false, (a, b) -> a || b);
-
-            if (!anySuccessfullyAsserts) {
-                StringBuilder builder = new StringBuilder();
-                builder.append(
-                        "None of the remaining captured events matched the given assertion, the following assertion errors have been captured:\n");
-                capturedErrors.forEach(error -> builder.append(error.getMessage() + "\n"));
-                throw new AssertionError(builder.toString());
+            @Override
+            public ExpectDsl.Succeeding none(Consumer<ExpectDsl.EventValidator> consumer) {
+                int matches = 0;
+                while (nextEvent.hasNext()) {
+                    CapturedEvent event = nextEvent.next();
+                    try {
+                        EventValidatorImpl validator = new EventValidatorImpl(event);
+                        consumer.accept(validator);
+                        matches++;
+                    } catch (AssertionError e) {
+                    }
+                }
+                if (matches > 0) {
+                    throw new AssertionError("Expected no remaining events matching validator, but found " + matches);
+                }
+                return new Succeeding();
             }
 
-            return this;
-        }
-
-        /**
-         * Asserts that none of the remaining events in the captured event stream satisfies the given assertion
-         * criteria. This is the inverse of {@link #expectAnyEvent(Consumer)}.
-         *
-         * <p>This method looks through all remaining events from the current iterator position and verifies that none
-         * of them passes the provided assertion. If any event passes the assertion, an AssertionError is thrown.
-         *
-         * @param assertion consumer specifying the event assertion criteria that should not be satisfied
-         * @return {@code this} for further assertions
-         * @throws AssertionError if any remaining event satisfies the assertion criteria
-         */
-        public Expect expectNoEvent(Consumer<EventAsserter> assertion) throws AssertionError {
-            if (!nextEvent.hasNext()) throw new AssertionError("No more events captured to assert on");
-
-            ArrayList<CapturedEvent> matchingEvents = new ArrayList<>();
-            boolean anySuccessfullyAsserts =
-                    capturedEvents.subList(nextEvent.nextIndex(), capturedEvents.size()).stream()
-                            .map(e -> {
-                                try {
-                                    assertion.accept(new EventAsserter(command, e));
-                                    matchingEvents.add(e);
-                                } catch (AssertionError error) {
-                                    return false;
-                                }
-                                return true;
-                            })
-                            .reduce(false, (a, b) -> a || b);
-
-            if (anySuccessfullyAsserts) {
-                StringBuilder builder = new StringBuilder();
-                builder.append("The following remaining captured events matched the given assertion:\n");
-                matchingEvents.forEach(event -> builder.append(event.event().toString() + "\n"));
-                System.out.println("builder:" + builder);
-                throw new AssertionError(builder.toString());
+            @Override
+            public ExpectDsl.Next matches(Consumer<ExpectDsl.EventValidator> consumer) {
+                if (!nextEvent.hasNext()) {
+                    throw new AssertionError("Expected an event at cursor position, but no more events remain");
+                }
+                CapturedEvent event = nextEvent.next();
+                EventValidatorImpl validator = new EventValidatorImpl(event);
+                consumer.accept(validator);
+                return this;
             }
 
-            return this;
+            public ExpectDsl.Succeeding and() {
+                return new Succeeding();
+            }
         }
 
-        /**
-         * Asserts that any event in the remaining set of captured events {@linkplain Class#isAssignableFrom(Class)} is
-         * assignable} to the given event type.
-         *
-         * @param type the expected event type
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no events were captured or none of them is assignable to the expected type
-         */
-        public Expect expectAnyEventType(Class<?> type) throws AssertionError {
-            return expectAnyEvent(it -> it.payloadType(type));
+        @Override
+        public ExpectDsl.Succeeding succeeds() {
+            if (throwable != null) {
+                throw new AssertionError("Expected successful execution but got exception", throwable);
+            }
+            return new Succeeding();
         }
 
-        /**
-         * Verifies that any event in the remaining set of captured events asserts using the given custom assertion
-         * {@link Consumer}.
-         *
-         * @param assertion custom assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if no events were captured or none of them was successfully asserted by the custom
-         *     assertion
-         * @param <E> the generic payload type
-         */
-        public <E> Expect expectAnyEventSatisfying(Consumer<E> assertion) throws AssertionError {
-            return expectAnyEvent(it -> it.payloadSatisfying(assertion));
+        @Override
+        public ExpectDsl.Failing fails() {
+            if (throwable == null) {
+                throw new AssertionError("Expected failed execution but command succeeded");
+            }
+            return new Failing();
         }
 
-        /**
-         * Asserts that none of the remaining events in the captured event stream is assignable to the given type.
-         *
-         * @param type the event type that should not be present in the remaining events
-         * @return {@code this} for further assertions
-         * @throws AssertionError if any remaining event of the given type is found
-         */
-        public Expect expectNoEventOfType(Class<?> type) throws AssertionError {
-            return expectNoEvent(it -> it.payloadType(type));
+        /** Implementation of {@link ExpectDsl.EventValidator} for validating individual captured events. */
+        public class EventValidatorImpl implements ExpectDsl.EventValidator {
+            private final CapturedEvent event;
+
+            public EventValidatorImpl(CapturedEvent event) {
+                this.event = event;
+            }
+
+            @Override
+            public ExpectDsl.EventValidator comparing(Object expectedEvent) {
+                return asserting(eventAsserter -> eventAsserter.payload(expectedEvent));
+            }
+
+            @Override
+            public <E> ExpectDsl.EventValidator satisfying(Consumer<E> assertion) {
+                return asserting(eventAsserter -> eventAsserter.payloadSatisfying(assertion));
+            }
+
+            @Override
+            public ExpectDsl.EventValidator asserting(Consumer<EventAsserting> asserting) {
+                asserting.accept(new EventAsserter(command, event));
+                return this;
+            }
+
+            @Override
+            public ExpectDsl.EventValidator ofType(Class<?> type) {
+                if (!type.isAssignableFrom(event.event().getClass())) {
+                    throw new AssertionError("Event type not as expected: "
+                            + event.event().getClass().getSimpleName() + ", expected: " + type.getSimpleName());
+                }
+                return this;
+            }
         }
     }
 
     /**
-     * Fluent API helper class for asserting a captured events.
+     * Fluent API helper class for asserting captured events.
      *
-     * @see CommandHandlingTestFixture.Expect#expectNextEvent(Consumer)
-     * @see CommandHandlingTestFixture.Expect#expectSingleEvent(Consumer)
-     * @see CommandHandlingTestFixture.Expect#expectAnyEvent(Consumer)
+     * @see ExpectDsl.EventValidator#asserting(Consumer)
      */
-    public static class EventAsserter {
+    public static class EventAsserter implements EventAsserting {
 
         private final Command command;
         private final CapturedEvent captured;
@@ -1516,13 +1019,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             this.captured = captured;
         }
 
-        /**
-         * Asserts that the captured event payload {@linkplain Class#isAssignableFrom(Class)} is assignable to} the
-         * expected type
-         *
-         * @param type the assignable type
-         * @return {@code this} for further assertions
-         */
+        @Override
         public EventAsserter payloadType(Class<?> type) {
             return payloadSatisfying(payload -> {
                 if (!type.isAssignableFrom(payload.getClass()))
@@ -1531,14 +1028,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             });
         }
 
-        /**
-         * Asserts that the captured event payload {@linkplain Object#equals(Object) is equal} to the expected one.
-         *
-         * @param expected the expected event payload
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the captured event payload is not equal to the expected one
-         * @param <E> the generic payload type
-         */
+        @Override
         public <E> EventAsserter payload(E expected) throws AssertionError {
             return payloadSatisfying(payload -> {
                 if (!payload.equals(expected)) {
@@ -1554,17 +1044,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             });
         }
 
-        /**
-         * Asserts that the captured event's payload property from the given extractor function
-         * {@linkplain Object#equals(Object) is equal} to the expected one.
-         *
-         * @param extractor the extractor function
-         * @param expected the expected event payload property, may be {@code null}
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the extracted payload property is not equal to the expected value
-         * @param <E> the generic payload type
-         * @param <R> the generic extraction result type
-         */
+        @Override
         public <E, R> EventAsserter payloadExtracting(Function<E, R> extractor, R expected) throws AssertionError {
             return payloadSatisfying((E payload) -> {
                 R extracted = extractor.apply(payload);
@@ -1584,26 +1064,13 @@ public class CommandHandlingTestFixture<C extends Command> {
             });
         }
 
-        /**
-         * Verifies that the captured event payload asserts successfully using the given custom assertion.
-         *
-         * @param assertion custom assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if thrown by the custom assertion
-         * @param <E> the generic payload type
-         */
+        @Override
         public <E> EventAsserter payloadSatisfying(Consumer<E> assertion) throws AssertionError {
             assertion.accept((E) captured.event());
             return this;
         }
 
-        /**
-         * Asserts that the captured event meta-data {@linkplain Object#equals(Object) is equal} to the expected one.
-         *
-         * @param expected the expected event meta-data
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the meta-data of the event is not as expected
-         */
+        @Override
         public EventAsserter metaData(Map<String, ?> expected) throws AssertionError {
             return metaDataSatisfying(metaData -> {
                 if (!metaData.equals(expected)) {
@@ -1619,24 +1086,13 @@ public class CommandHandlingTestFixture<C extends Command> {
             });
         }
 
-        /**
-         * Verifies that the captured event meta-data asserts successfully using the given custom assertion.
-         *
-         * @param assertion custom assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if thrown by the custom assertion
-         */
+        @Override
         public EventAsserter metaDataSatisfying(Consumer<Map<String, ?>> assertion) throws AssertionError {
             assertion.accept(captured.metaData());
             return this;
         }
 
-        /**
-         * Verifies that no (aka empty) meta-data was published for the captured event.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the meta-data is not empty
-         */
+        @Override
         public EventAsserter noMetaData() throws AssertionError {
             metaDataSatisfying(metaData -> {
                 if (!metaData.isEmpty()) {
@@ -1650,13 +1106,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             return this;
         }
 
-        /**
-         * Asserts that the captured event subject {@linkplain Object#equals(Object) is equal} to the expected one.
-         *
-         * @param expected the expected event subject
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the event subject is not as expected
-         */
+        @Override
         public EventAsserter subject(String expected) throws AssertionError {
             return subjectSatisfying(subject -> {
                 if (!subject.equals(expected)) {
@@ -1672,24 +1122,13 @@ public class CommandHandlingTestFixture<C extends Command> {
             });
         }
 
-        /**
-         * Verifies that the captured event subject asserts successfully using the given custom assertion.
-         *
-         * @param assertion custom assertion
-         * @return {@code this} for further assertions
-         * @throws AssertionError if thrown by the custom assertion
-         */
+        @Override
         public EventAsserter subjectSatisfying(Consumer<String> assertion) throws AssertionError {
             assertion.accept(captured.subject());
             return this;
         }
 
-        /**
-         * Verifies that the captured event was published for the {@link Command#getSubject()}.
-         *
-         * @return {@code this} for further assertions
-         * @throws AssertionError if the published event subject differs from the command's subject
-         */
+        @Override
         public EventAsserter commandSubject() throws AssertionError {
             return subject(command.getSubject());
         }

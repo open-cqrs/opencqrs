@@ -15,10 +15,12 @@ public class ReaderHandlingTest {
     @Test
     public void canRegister(@Autowired CommandHandlingTestFixture<RegisterReaderCommand> fixture) {
         var readerId = UUID.randomUUID();
-        fixture.givenNothing()
+        fixture.given()
+                .nothing()
                 .when(new RegisterReaderCommand(readerId, "Hugo Tester"))
-                .expectSuccessfulExecution()
-                .expectSingleEvent(new ReaderRegisteredEvent(readerId, "Hugo Tester"))
-                .expectResult(readerId);
+                .succeeds()
+                .havingResult(readerId)
+                .nextEvents()
+                .exactly(new ReaderRegisteredEvent(readerId, "Hugo Tester"));
     }
 }

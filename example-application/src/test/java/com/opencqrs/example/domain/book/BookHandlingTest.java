@@ -21,10 +21,14 @@ public class BookHandlingTest {
 
     @Test
     public void canBePurchased(@Autowired CommandHandlingTestFixture<PurchaseBookCommand> fixture) {
-        fixture.givenNothing()
+        fixture.given()
+                .nothing()
                 .when(new PurchaseBookCommand("4711", "JRR Tolkien", "LOTR", 435))
-                .expectSuccessfulExecution()
-                .expectSingleEvent(event -> event.commandSubject().noMetaData().payloadType(BookPurchasedEvent.class));
+                .succeeds()
+                .nextEvents()
+                .matches(event ->
+                        event.asserting(a -> a.commandSubject().noMetaData().payloadType(BookPurchasedEvent.class)))
+                .noMore();
     }
 
     @Test
@@ -32,18 +36,23 @@ public class BookHandlingTest {
         var reader = UUID.randomUUID();
         doReturn(true).when(readerRepository).existsById(reader);
 
-        fixture.given(new BookPurchasedEvent("4711", "JRR Tolkien", "LOTR", 435))
+        fixture.given()
+                .events(new BookPurchasedEvent("4711", "JRR Tolkien", "LOTR", 435))
                 .when(new BorrowBookCommand("4711", reader))
-                .expectSuccessfulExecution()
-                .expectSingleEvent(new BookLentEvent("4711", reader));
+                .succeeds()
+                .allEvents()
+                .exactly(new BookLentEvent("4711", reader));
     }
 
     @Test
     public void canBeReturnedIfLent(@Autowired CommandHandlingTestFixture<ReturnBookCommand> fixture) {
-        fixture.givenState(new Book("4711", 435, Set.of(), new Book.Lending.Lent(UUID.randomUUID())))
+        fixture.given()
+                .state(new Book("4711", 435, Set.of(), new Book.Lending.Lent(UUID.randomUUID())))
                 .when(new ReturnBookCommand("4711"))
-                .expectSuccessfulExecution()
-                .expectSingleEventType(BookReturnedEvent.class);
+                .succeeds()
+                .nextEvents()
+                .matches(e -> e.ofType(BookReturnedEvent.class))
+                .noMore();
     }
 
     @Test
@@ -52,13 +61,16 @@ public class BookHandlingTest {
         var reader = UUID.randomUUID();
         doReturn(true).when(readerRepository).existsById(reader);
 
-        fixture.given(new BookPurchasedEvent("4711", "JRR Tolkien", "LOTR", 435))
-                .andGiven(new BookPageDamagedEvent.ByReader("4711", 1L, reader))
-                .andGiven(new BookPageDamagedEvent.ByReader("4711", 2L, reader))
-                .andGiven(new BookPageDamagedEvent.ByReader("4711", 3L, reader))
-                .andGiven(new BookPageDamagedEvent.ByReader("4711", 4L, reader))
-                .andGiven(new BookPageDamagedEvent.ByReader("4711", 5L, reader))
+        fixture.given()
+                .events(
+                        new BookPurchasedEvent("4711", "JRR Tolkien", "LOTR", 435),
+                        new BookPageDamagedEvent.ByReader("4711", 1L, reader),
+                        new BookPageDamagedEvent.ByReader("4711", 2L, reader),
+                        new BookPageDamagedEvent.ByReader("4711", 3L, reader),
+                        new BookPageDamagedEvent.ByReader("4711", 4L, reader),
+                        new BookPageDamagedEvent.ByReader("4711", 5L, reader))
                 .when(new BorrowBookCommand("4711", reader))
-                .expectException(BookNeedsReplacementException.class);
+                .fails()
+                .throwing(BookNeedsReplacementException.class);
     }
 }
