@@ -181,7 +181,7 @@ public interface ExpectDsl {
          *
          * <p>Navigation methods ({@link Next#skipping(int)}, {@link Next#matches(Consumer)}) advance the cursor and
          * return {@link Next} for further navigation. Consuming methods ({@link Next#single(Consumer)},
-         * {@link Next#any(Consumer)}, {@link Next#none(Consumer)}, {@link Next#exactly(Consumer, Consumer[])},
+         * {@link Next#any(Consumer)}, {@link Next#none(Consumer)}, {@link Next#exactly(Object...)},
          * {@link Next#noMore()}, {@link Next#remaining(int)}) consume remaining events and return {@link Succeeding}.
          *
          * <p>Example:
@@ -372,7 +372,7 @@ public interface ExpectDsl {
          * exist. This does <strong>not</strong> assert that only one event was captured in total.
          *
          * <p>To assert that exactly one event was captured <strong>and</strong> it matches, use
-         * {@link #exactly(Consumer, Consumer[])} with a single consumer, or combine with {@link #count(int)}:
+         * {@link #exactly(Object...)} with a single consumer, or combine with {@link #count(int)}:
          *
          * <pre>
          * .allEvents().exactly(e -&gt; e.ofType(PaymentReceivedEvent.class));
@@ -450,8 +450,8 @@ public interface ExpectDsl {
      *   <li><strong>Navigating</strong> ({@link #skipping(int)}, {@link #matches(Consumer)}) — advance the cursor and
      *       return {@code Next} for further chaining.
      *   <li><strong>Consuming</strong> ({@link #single(Consumer)}, {@link #any(Consumer)}, {@link #none(Consumer)},
-     *       {@link #exactly(Consumer, Consumer[])}, {@link #noMore()}, {@link #remaining(int)}) — consume remaining
-     *       events and return {@link Succeeding} for result/state assertions or further event assertions.
+     *       {@link #exactly(Object...)}, {@link #noMore()}, {@link #remaining(int)}) — consume remaining events and
+     *       return {@link Succeeding} for result/state assertions or further event assertions.
      * </ul>
      *
      * <p>Example:

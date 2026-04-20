@@ -42,7 +42,7 @@ import java.util.function.Function;
  *              .nothing()
  *              .when(new AddBookCommand(bookId, "Tolkien", "LOTR", "DE234723432"))
  *              .succeeds()
- *              .nextEvents()
+ *              .allEvents()
  *              .exactly(new BookAddedEvent(bookId, "Tolkien", "LOTR", "DE234723432"));
  *     }
  * </pre>

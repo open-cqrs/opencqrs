@@ -25,9 +25,10 @@ public class BookHandlingTest {
                 .nothing()
                 .when(new PurchaseBookCommand("4711", "JRR Tolkien", "LOTR", 435))
                 .succeeds()
-                .allEvents()
-                .single(event ->
-                        event.asserting(a -> a.commandSubject().noMetaData().payloadType(BookPurchasedEvent.class)));
+                .nextEvents()
+                .matches(event ->
+                        event.asserting(a -> a.commandSubject().noMetaData().payloadType(BookPurchasedEvent.class)))
+                .noMore();
     }
 
     @Test
@@ -39,7 +40,7 @@ public class BookHandlingTest {
                 .events(new BookPurchasedEvent("4711", "JRR Tolkien", "LOTR", 435))
                 .when(new BorrowBookCommand("4711", reader))
                 .succeeds()
-                .nextEvents()
+                .allEvents()
                 .exactly(new BookLentEvent("4711", reader));
     }
 
@@ -49,25 +50,9 @@ public class BookHandlingTest {
                 .state(new Book("4711", 435, Set.of(), new Book.Lending.Lent(UUID.randomUUID())))
                 .when(new ReturnBookCommand("4711"))
                 .succeeds()
-                .allEvents()
-                .single(e -> e.ofType(BookReturnedEvent.class));
-    }
-
-    @Test
-    public void canBeReturnedIfLent_resultAndEventAssertions(
-            @Autowired CommandHandlingTestFixture<ReturnBookCommand> fixture) {
-        // demonstrates free chaining: noMore() → Succeeding → allEvents() → and() → havingResult()
-        fixture.given()
-                .state(new Book("4711", 435, Set.of(), new Book.Lending.Lent(UUID.randomUUID())))
-                .when(new ReturnBookCommand("4711"))
-                .succeeds()
                 .nextEvents()
                 .matches(e -> e.ofType(BookReturnedEvent.class))
-                .noMore()
-                .allEvents()
-                .count(1)
-                .and()
-                .havingResult(null);
+                .noMore();
     }
 
     @Test

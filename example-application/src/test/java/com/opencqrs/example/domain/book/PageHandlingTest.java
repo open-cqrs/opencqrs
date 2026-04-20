@@ -18,8 +18,9 @@ public class PageHandlingTest {
                 .nothing()
                 .when(new MarkBookPageDamagedCommand("4711", 42L, UUID.randomUUID()))
                 .succeeds()
-                .allEvents()
-                .single(event ->
-                        event.asserting(a -> a.commandSubject().payloadType(BookPageDamagedEvent.ByReader.class)));
+                .nextEvents()
+                .matches(event ->
+                        event.asserting(a -> a.commandSubject().payloadType(BookPageDamagedEvent.ByReader.class)))
+                .noMore();
     }
 }

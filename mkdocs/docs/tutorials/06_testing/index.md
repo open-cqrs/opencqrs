@@ -146,11 +146,12 @@ public void canBeBorrowed(@Autowired CommandHandlingTestFixture<BorrowBookComman
             .when(new BorrowBookCommand(id))
             .succeeds()
             .resultSatisfying((Instant instant) -> assertThat(instant).isInTheFuture())
-            .allEvents()
-            .single(e -> e.satisfying((BookLentEvent evt) -> {
+            .nextEvents()
+            .matches(e -> e.satisfying((BookLentEvent evt) -> {
                 assertThat(evt.id()).isEqualTo(id);
                 assertThat(evt.returnDueAt()).isInTheFuture();
-            }));
+            }))
+            .noMore();
 }
 ```
 !!! tip
