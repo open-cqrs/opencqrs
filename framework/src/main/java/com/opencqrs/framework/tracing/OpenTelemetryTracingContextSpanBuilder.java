@@ -11,27 +11,31 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-/**
- * OpenTelemetry-based implementation of 
+/** OpenTelemetry-based implementation of {@link TracingContextSpanBuilder} interface which works in conjunction with
+ * OTel's official java instrumentation
+ *
+ * @see <a href="https://opentelemetry.io/docs/zero-code/java/">Official documentation for OpenTelemetry Java
+ *     instrumentation</a>
  */
 public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpanBuilder {
 
     private final Tracer tracer;
 
     public OpenTelemetryTracingContextSpanBuilder(OpenTelemetry openTelemetry) {
-        this.tracer = openTelemetry.getTracer("scope-name"); // TODO: Better solution than hard-coded
+        this(openTelemetry, "default-scope");
     }
 
-    protected OpenTelemetryTracingContextSpanBuilder(Tracer tracer) {
+    public OpenTelemetryTracingContextSpanBuilder(OpenTelemetry openTelemetry, String defaultScopeName) {
+        this(openTelemetry.getTracer(defaultScopeName));
+    }
+
+    public OpenTelemetryTracingContextSpanBuilder(Tracer tracer) {
         this.tracer = tracer;
     }
 
     /**
-     * 
      * see: {@link TracingContextSpanBuilder#executeRunnableWithNewSpan(Map, Runnable)}
-     * 
-     * @param spanInfo
-     * @param runnable
+     *
      */
     @Override
     public void executeRunnableWithNewSpan(Map<String, String> spanInfo, Runnable runnable) {
@@ -39,12 +43,8 @@ public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpa
     }
 
     /**
-     * 
-     * see: {@link TracingContextSpanBuilder#executeRunnableWithNewSpan(Map, Runnable)}
-     * 
-     * @param spanInfo contains metadata to enrich the span with
-     * @param runnable closure containing the logic to be executed within the new span
-     * @param spanInfoPostProcessor function returning new or updated span information after the runnable has been executed
+     * see: {@link TracingContextSpanBuilder#executeRunnableWithNewSpan(Map, Runnable, UnaryOperator<Map<String, String>>)}
+     *
      */
     @Override
     public void executeRunnableWithNewSpan(
@@ -57,18 +57,13 @@ public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpa
             runnable.run();
             success = true;
         } finally {
-            setAttributesAndEndSpan(spanInfoPostProcessor.apply(spanInfo), span, success);
+            updateAttributesAndEndSpan(spanInfoPostProcessor.apply(spanInfo), span, success);
         }
     }
 
     /**
-     * 
      * see: {@link TracingContextSpanBuilder#executeSupplierWithNewSpan(Map, Supplier)}
-     * 
-     * @param spanInfo
-     * @param supplier
-     * @return
-     * @param <R>
+     *
      */
     @Override
     public <R> R executeSupplierWithNewSpan(Map<String, String> spanInfo, Supplier<R> supplier) {
@@ -76,14 +71,8 @@ public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpa
     }
 
     /**
-     *
      * see: {@link TracingContextSpanBuilder#executeSupplierWithNewSpan(Map, Supplier, BiFunction)}
      *
-     * @param spanInfo contains metadata to enrich the span with
-     * @param supplier closure containing the logic to be executed within the new span
-     * @param spanInfoPostProcessor  function returning new or updated span information after the runnable has been executed
-     * @return
-     * @param <R>
      */
     @Override
     public <R> R executeSupplierWithNewSpan(
@@ -99,7 +88,7 @@ public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpa
             result = supplier.get();
             success = true;
         } finally {
-            setAttributesAndEndSpan(spanInfoPostProcessor.apply(result, spanInfo), span, success);
+            updateAttributesAndEndSpan(spanInfoPostProcessor.apply(result, spanInfo), span, success);
         }
 
         return result;
@@ -112,7 +101,7 @@ public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpa
         return spanBuilder.startSpan();
     }
 
-    private void setAttributesAndEndSpan(Map<String, String> spanInfo, Span span, boolean success) {
+    private void updateAttributesAndEndSpan(Map<String, String> spanInfo, Span span, boolean success) {
         for (var entry : spanInfo.entrySet()) {
             span.setAttribute(entry.getKey(), entry.getValue());
         }

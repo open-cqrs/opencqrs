@@ -8,9 +8,7 @@ import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 
-/**
- * OpenTelemetry-based implementation of {@link EventTracingContextExtractor}
- */
+/** OpenTelemetry-based implementation of {@link EventTracingContextExtractor} */
 public class OpenTelemetryEventTracingContextExtractor implements EventTracingContextExtractor {
 
     private final TextMapPropagator propagator;
@@ -34,7 +32,7 @@ public class OpenTelemetryEventTracingContextExtractor implements EventTracingCo
      */
     @Override
     public void extractAndRestoreContextFromEvent(Event event, Runnable runnable) {
-        try (Scope ignored1 =
+        try (Scope unused =
                 propagator.extract(Context.current(), event, textMapGetter).makeCurrent()) {
 
             runnable.run();

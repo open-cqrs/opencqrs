@@ -87,11 +87,5 @@ public interface TracingSpanInformationSource {
     String getHandlingClassFullName();
 
     String getHandlingMethodSignature();
-
-    default Map<String, String> getEventHandlingSpanInformation() {
-        return Map.ofEntries(
-                Map.entry("handling.class", getHandlingClassFullName()),
-                Map.entry("handling.method", getHandlingMethodSignature()));
-    }
 }
 ```

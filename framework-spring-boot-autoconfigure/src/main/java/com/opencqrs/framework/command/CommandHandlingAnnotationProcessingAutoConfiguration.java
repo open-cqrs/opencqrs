@@ -214,20 +214,22 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
 
         @Override
         public String getHandlingClassFullName() {
-            // TODO: Code Duplicate (see: EventHandlingAnnotationProcessingAutoConfiguration.java)
             return ClassUtils.getUserClass(target.getClass()).getName();
         }
 
         @Override
         public String getHandlingMethodSignature() {
-            // TODO: Code Duplicate (see: EventHandlingAnnotationProcessingAutoConfiguration.java)
-            String methodName = method.getName();
 
-            String params = Arrays.stream(method.getParameters())
-                    .map(p -> p.getType().getSimpleName())
-                    .collect(Collectors.joining(", "));
+            var signature = new StringBuilder(method.getName());
+            signature.append("(");
+            signature.append(
+                    Arrays.stream(method.getParameters())
+                            .map(p -> p.getType().getSimpleName())
+                            .collect(Collectors.joining(", "))
+            );
+            signature.append(")");
 
-            return methodName + "(" + params + ")";
+            return signature.toString();
         }
 
         record ParameterPositions(int instance, int command, int metaData, int commandEventPublisher) {

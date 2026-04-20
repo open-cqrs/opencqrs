@@ -227,7 +227,47 @@ public class EventHandlingProcessor implements Runnable {
                     eventReader.consumeRaw(
                             (client, eventConsumer) -> client.observe(subject, options, eventConsumer),
                             (rawCallback, raw) -> {
+
                                 try {
+
+                                    Runnable processEventInRestoredContext = () -> rawCallback.upcast(
+                                            (upcastedCallback, upcasted) -> upcastedCallback.convert((metadata, event) -> {
+                                                Consumer<EventHandlerDefinition> handleEventInNewSpan = ehd -> {
+                                                    var spanInformation = createEventHandlingSpanInformation(raw, ehd);
+                                                    spanBuilder.executeRunnableWithNewSpan(spanInformation, () -> {
+                                                        try {
+                                                            switch (ehd.handler()) {
+                                                                case EventHandler.ForObject handler ->
+                                                                        handler.handle(event);
+                                                                case EventHandler.ForObjectAndMetaData handler ->
+                                                                        handler.handle(event, metadata);
+                                                                case EventHandler.ForObjectAndMetaDataAndRawEvent handler ->
+                                                                        handler.handle(event, metadata, raw);
+                                                            }
+                                                        } catch (Error | RuntimeException e) {
+                                                            throw new WrappedEventHandlingException(raw, e);
+                                                        }
+                                                    });
+                                                };
+
+                                                var convertedEventRelevant =
+                                                        switch (eventSequenceResolver) {
+                                                            case EventSequenceResolver.ForRawEvent ignored -> true;
+                                                            case EventSequenceResolver.ForObjectAndMetaDataAndRawEvent
+                                                                         esr ->
+                                                                    partitionKeyResolver.resolve(
+                                                                            esr.sequenceIdFor(event, metadata))
+                                                                            == partition;
+                                                        };
+
+                                                if (convertedEventRelevant) {
+                                                    eventHandlerDefinitions.stream()
+                                                            .filter(ehd -> ehd.eventClass()
+                                                                    .isAssignableFrom(upcastedCallback.getEventJavaClass()))
+                                                            .forEach(handleEventInNewSpan);
+                                                }
+                                            }));
+
                                     executorService
                                             .submit(() -> {
                                                 progressTracker.proceed(groupId, partition, () -> {
@@ -244,85 +284,7 @@ public class EventHandlingProcessor implements Runnable {
                                                                 };
                                                         if (rawEventRelevant) {
                                                             contextExtractor.extractAndRestoreContextFromEvent(
-                                                                    raw,
-                                                                    () -> rawCallback.upcast(
-                                                                            (upcastedCallback, upcasted) ->
-                                                                                    upcastedCallback.convert(
-                                                                                            (metadata, event) -> {
-                                                                                                var
-                                                                                                        convertedEventRelevant =
-                                                                                                                switch (eventSequenceResolver) {
-                                                                                                                    case EventSequenceResolver
-                                                                                                                                    .ForRawEvent
-                                                                                                                            ignored ->
-                                                                                                                        true;
-                                                                                                                    case EventSequenceResolver
-                                                                                                                                    .ForObjectAndMetaDataAndRawEvent
-                                                                                                                            esr ->
-                                                                                                                        partitionKeyResolver
-                                                                                                                                        .resolve(
-                                                                                                                                                esr
-                                                                                                                                                        .sequenceIdFor(
-                                                                                                                                                                event,
-                                                                                                                                                                metadata))
-                                                                                                                                == partition;
-                                                                                                                };
-                                                                                                if (convertedEventRelevant) {
-                                                                                                    eventHandlerDefinitions
-                                                                                                            .stream()
-                                                                                                            .filter(
-                                                                                                                    ehd ->
-                                                                                                                            ehd.eventClass()
-                                                                                                                                    .isAssignableFrom(
-                                                                                                                                            upcastedCallback
-                                                                                                                                                    .getEventJavaClass()))
-                                                                                                            .forEach(
-                                                                                                                    ehd -> {
-                                                                                                                        var
-                                                                                                                                spanInformation =
-                                                                                                                                        createEventHandlingSpanInformation(
-                                                                                                                                                raw,
-                                                                                                                                                ehd);
-                                                                                                                        spanBuilder
-                                                                                                                                .executeRunnableWithNewSpan(
-                                                                                                                                        spanInformation,
-                                                                                                                                        () -> {
-                                                                                                                                            try {
-                                                                                                                                                switch (ehd
-                                                                                                                                                        .handler()) {
-                                                                                                                                                    case EventHandler
-                                                                                                                                                                    .ForObject
-                                                                                                                                                            handler ->
-                                                                                                                                                        handler
-                                                                                                                                                                .handle(
-                                                                                                                                                                        event);
-                                                                                                                                                    case EventHandler
-                                                                                                                                                                    .ForObjectAndMetaData
-                                                                                                                                                            handler ->
-                                                                                                                                                        handler
-                                                                                                                                                                .handle(
-                                                                                                                                                                        event,
-                                                                                                                                                                        metadata);
-                                                                                                                                                    case EventHandler
-                                                                                                                                                                    .ForObjectAndMetaDataAndRawEvent
-                                                                                                                                                            handler ->
-                                                                                                                                                        handler
-                                                                                                                                                                .handle(
-                                                                                                                                                                        event,
-                                                                                                                                                                        metadata,
-                                                                                                                                                                        raw);
-                                                                                                                                                }
-                                                                                                                                            } catch (Error
-                                                                                                                                                    | RuntimeException
-                                                                                                                                                            e) {
-                                                                                                                                                throw new WrappedEventHandlingException(
-                                                                                                                                                        raw,
-                                                                                                                                                        e);
-                                                                                                                                            }
-                                                                                                                                        });
-                                                                                                                    });
-                                                                                                }
-                                                                                            })));
+                                                                    raw, processEventInRestoredContext);
                                                         }
 
                                                         if (retryHandler.isRetryExecution()) {
@@ -460,11 +422,17 @@ public class EventHandlingProcessor implements Runnable {
         switch (ehd.handler()) {
             case TracingSpanInformationSource ehSpanInfoSource:
                 result = new HashMap<>(result);
-                result.replace(
-                        "span.name",
-                        result.get("span.name") + " " + ehSpanInfoSource.getHandlingClassSimpleName() + "."
-                                + ehSpanInfoSource.getHandlingMethodSignature());
-                result.putAll(ehSpanInfoSource.getEventHandlingSpanInformation());
+
+                StringBuilder spanNameBuilder = new StringBuilder();
+                spanNameBuilder.append(result.get("span.name"));
+                spanNameBuilder.append(" ");
+                spanNameBuilder.append(ehSpanInfoSource.getHandlingClassSimpleName());
+                spanNameBuilder.append(".");
+                spanNameBuilder.append(ehSpanInfoSource.getHandlingMethodSignature());
+
+                result.replace("span.name", spanNameBuilder.toString());
+                result.put("handling.class", ehSpanInfoSource.getHandlingClassFullName());
+                result.put("handling.method", ehSpanInfoSource.getHandlingMethodSignature());
             default:
                 return result;
         }

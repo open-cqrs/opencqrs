@@ -2,7 +2,6 @@
 package com.opencqrs.framework.tracing;
 
 import com.opencqrs.esdb.client.Event;
-import com.opencqrs.esdb.client.EventCandidate;
 
 /**
  * Interface for extracting W3C Trace Context-conforming tracing data from {@link Event} records

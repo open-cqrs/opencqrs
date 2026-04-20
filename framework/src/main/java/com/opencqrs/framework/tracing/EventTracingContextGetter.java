@@ -6,15 +6,23 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Custom implementation of the {@link io.opentelemetry.context.propagation.TextMapGetter} interface to handle the
+ * propagation of the 'traceparent' and 'tracestate' headers persisted in an event.
+ */
 public class EventTracingContextGetter implements TextMapGetter<Event> {
+
+    private final String TRACE_PARENT = "traceparent";
+    private final String TRACE_STATE = "tracestate";
+
     @Override
     public Iterable<String> keys(Event event) {
         List<String> keyList = new ArrayList<>();
         if (event.traceParent() != null) {
-            keyList.add("traceparent");
+            keyList.add(TRACE_PARENT);
 
             if (event.traceState() != null) {
-                keyList.add("tracestate");
+                keyList.add(TRACE_STATE);
             }
         }
         return keyList;
@@ -23,8 +31,8 @@ public class EventTracingContextGetter implements TextMapGetter<Event> {
     @Override
     public String get(Event event, String s) {
         return switch (s) {
-            case "traceparent" -> event.traceParent();
-            case "tracestate" -> event.traceState();
+            case TRACE_PARENT -> event.traceParent();
+            case TRACE_STATE -> event.traceState();
             default -> "";
         };
     }

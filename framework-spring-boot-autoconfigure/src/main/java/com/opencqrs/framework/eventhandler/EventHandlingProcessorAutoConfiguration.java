@@ -485,8 +485,8 @@ public class EventHandlingProcessorAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(OpenTelemetry.class)
-    public EventTracingContextExtractor openCqrsDefaultEventTracingContextExtractor() {
-        return new DefaultEventTracingContextExtractor();
+    public EventTracingContextExtractor openCqrsNoEventTracingContextExtractor() {
+        return new NoEventTracingContextExtractor();
     }
 
     @Bean
@@ -498,6 +498,6 @@ public class EventHandlingProcessorAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(OpenTelemetry.class)
     public TracingContextSpanBuilder openCqrsDefaultEventTracingContextSpanBuilder() {
-        return new DefaultTracingContextSpanBuilder();
+        return new NoTracingContextSpanBuilder();
     }
 }

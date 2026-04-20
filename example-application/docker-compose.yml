@@ -50,7 +50,6 @@ services:
             - h2database
             - zipkin
             - otel
-            # Insert dependency to OTEL here
         deploy:
             replicas: 2
 
