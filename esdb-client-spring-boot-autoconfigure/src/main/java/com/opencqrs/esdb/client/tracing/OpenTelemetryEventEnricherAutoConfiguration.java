@@ -9,6 +9,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.opentelemetry.autoconfigure.OpenTelemetrySdkAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 
+/**
+ * Adds a {@link OpenTelemetryTracingEventEnricher} bean to the application context, when {@link OpenTelemetry} is in
+ * the classpath and no other implementations of {@link TracingEventEnricher} are available
+ */
 @AutoConfiguration(after = OpenTelemetrySdkAutoConfiguration.class)
 @ConditionalOnClass(OpenTelemetry.class)
 public class OpenTelemetryEventEnricherAutoConfiguration {

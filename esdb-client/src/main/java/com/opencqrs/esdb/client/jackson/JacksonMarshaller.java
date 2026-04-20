@@ -213,8 +213,8 @@ public class JacksonMarshaller implements Marshaller {
             String subject,
             String type,
             Map<String, ?> data,
-            String traceparent,
-            String tracestate) {}
+            @Nullable String traceparent,
+            @Nullable String tracestate) {}
 
     interface JacksonPrecondition {
         record IsPristine(String type, Payload payload) implements JacksonPrecondition {
@@ -288,7 +288,7 @@ public class JacksonMarshaller implements Marshaller {
                     Instant time,
                     String datacontenttype,
                     String hash,
-                    String predecessorhash) {}
+                    String predecessorhash,
                     String traceparent,
                     String tracestate) {}
         }

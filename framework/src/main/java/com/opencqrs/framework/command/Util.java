@@ -48,13 +48,13 @@ class Util {
     }
 
     private static <I> Map<String, String> createStateRebuildingSpanInformation(
-            I instance, Event sourcedEvent, StateRebuildingHandlerDefinition<?, ?> srhd) {
-        var rebuildStateFromSourcedEvent = (sourcedEvent != null);
+            @Nullable I instance, @Nullable Event sourcedEvent, StateRebuildingHandlerDefinition<?, ?> srhd) {
+
         var srhdInfo = Map.ofEntries(
-                Map.entry("span.name", "state " + (rebuildStateFromSourcedEvent ? "sourcing" : "update")),
+                Map.entry("span.name", "state " + ((sourcedEvent != null) ? "sourcing" : "update")),
                 Map.entry("event.class", srhd.eventClass().getName()));
 
-        Map<String, String> rawEventInfo = rebuildStateFromSourcedEvent
+        Map<String, String> rawEventInfo = (sourcedEvent != null)
                 ? Map.ofEntries(
                         Map.entry("event.id", sourcedEvent.id()),
                         Map.entry("event.type", sourcedEvent.type()),
@@ -73,11 +73,16 @@ class Util {
 
         switch (srhd.handler()) {
             case TracingSpanInformationSource srhInfoSource:
-                result.put(
-                        "span.name",
-                        result.get("span.name") + " " + srhInfoSource.getHandlingClassSimpleName() + "."
-                                + srhInfoSource.getHandlingMethodSignature());
-                result.putAll(srhInfoSource.getEventHandlingSpanInformation());
+                StringBuilder spanNameBuilder = new StringBuilder();
+                spanNameBuilder.append(result.get("span.name"));
+                spanNameBuilder.append(" ");
+                spanNameBuilder.append(srhInfoSource.getHandlingClassSimpleName());
+                spanNameBuilder.append(".");
+                spanNameBuilder.append(srhInfoSource.getHandlingMethodSignature());
+
+                result.put("span.name", spanNameBuilder.toString());
+                result.put("handling.class", srhInfoSource.getHandlingClassFullName());
+                result.put("handling.method", srhInfoSource.getHandlingMethodSignature());
             default:
                 return result;
         }

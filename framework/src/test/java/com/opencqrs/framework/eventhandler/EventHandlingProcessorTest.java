@@ -19,7 +19,7 @@ import com.opencqrs.framework.eventhandler.progress.Progress;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.serialization.EventData;
-import com.opencqrs.framework.tracing.EventTracingContextExtractor;
+import com.opencqrs.framework.tracing.EventTracingContextExecutor;
 import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.time.Instant;
@@ -65,7 +65,7 @@ public class EventHandlingProcessorTest {
     private EventSequenceResolver.ForRawEvent eventSequenceResolver;
 
     @Mock
-    private EventTracingContextExtractor contextExtractor;
+    private EventTracingContextExecutor contextExtractor;
 
     @Mock
     private TracingContextSpanBuilder spanBuilder;
@@ -221,7 +221,7 @@ public class EventHandlingProcessorTest {
                     return null;
                 })
                 .when(contextExtractor)
-                .extractAndRestoreContextFromEvent(any(), any());
+                .executeInRestoreContextFromEvent(any(), any());
         doAnswer(invocationOnMock -> {
                     Runnable runnable = invocationOnMock.getArgument(1);
 

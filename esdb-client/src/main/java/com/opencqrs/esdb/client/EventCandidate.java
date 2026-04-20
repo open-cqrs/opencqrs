@@ -1,6 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
@@ -23,8 +24,8 @@ public record EventCandidate(
         String subject,
         String type,
         Map<String, ?> data,
-        String traceParent,
-        String traceState) {
+        @Nullable String traceParent,
+        @Nullable String traceState) {
 
     /**
      * Convenience constructor for EventCandidates with no tracing data available.
@@ -34,8 +35,7 @@ public record EventCandidate(
      * @param type
      * @param data
      */
-    public EventCandidate(
-            String source, String subject, String type, Map<String, ?> data) {
+    public EventCandidate(String source, String subject, String type, Map<String, ?> data) {
         this(source, subject, type, data, null, null);
     }
 }

@@ -22,7 +22,7 @@ public class NoTracingEventEnricherAutoConfigurationTest {
 
     @Test
     public void otherTracingEventEnricherFoundAndUsed() {
-        runner.withConfiguration(AutoConfigurations.of(OpenTelemetryEventEnricherAutoConfiguration.class))
+        runner.withConfiguration(AutoConfigurations.of(NoTracingEventEnricherAutoConfiguration.class))
                 .withBean(TracingEventEnricher.class, Mockito::mock)
                 .run(context -> {
                     assertThat(context).hasNotFailed().doesNotHaveBean(NoTracingEventEnricher.class);

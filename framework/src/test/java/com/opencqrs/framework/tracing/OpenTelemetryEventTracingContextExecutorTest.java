@@ -17,7 +17,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-public class OpenTelemetryEventTracingContextExtractorTest {
+public class OpenTelemetryEventTracingContextExecutorTest {
 
     private String TRACE_PARENT = "00-11111111111111111111111111111111-2222222222222222-01";
     private String TRACE_STATE = "congo=t61rcWkgMzE";
@@ -27,14 +27,14 @@ public class OpenTelemetryEventTracingContextExtractorTest {
 
     private TracingContextSpanBuilder spanBuilder;
 
-    private OpenTelemetryEventTracingContextExtractor subject;
+    private OpenTelemetryEventTracingContextExecutor subject;
 
     @BeforeEach
     void setUp() {
         propagator = mock(TextMapPropagator.class);
         textMapGetter = mock(EventTracingContextGetter.class);
 
-        subject = new OpenTelemetryEventTracingContextExtractor(propagator, textMapGetter);
+        subject = new OpenTelemetryEventTracingContextExecutor(propagator, textMapGetter);
     }
 
     @Test
@@ -49,7 +49,7 @@ public class OpenTelemetryEventTracingContextExtractorTest {
 
         when(propagator.extract(eq(initialCtx), any(), any())).thenReturn(expectedCtx);
 
-        subject.extractAndRestoreContextFromEvent(mocked, () -> assertEquals(expectedCtx, Context.current()));
+        subject.executeInRestoreContextFromEvent(mocked, () -> assertEquals(expectedCtx, Context.current()));
 
         assertEquals(initialCtx, Context.current());
     }

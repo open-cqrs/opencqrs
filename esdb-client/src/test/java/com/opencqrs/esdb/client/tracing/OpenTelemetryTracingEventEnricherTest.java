@@ -4,33 +4,49 @@ package com.opencqrs.esdb.client.tracing;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
 
 import com.opencqrs.esdb.client.EventCandidate;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapPropagator;
 import java.util.Collections;
 import java.util.Map;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Answers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class OpenTelemetryTracingEventEnricherTest {
 
-    private TextMapPropagator propagator;
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private OpenTelemetry openTelemetry;
+
+    @InjectMocks
     private OpenTelemetryTracingEventEnricher enricher;
 
-    @BeforeEach
-    void setUp() {
-        propagator = mock(TextMapPropagator.class);
-        enricher = new OpenTelemetryTracingEventEnricher(propagator);
+    /** Stellt die geforderten Test-Kombinationen als Stream zur Verfügung. Argumente: (traceparent, tracestate) */
+    static Stream<Arguments> tracingDataCombinations() {
+        return Stream.of(
+                Arguments.of(null, null),
+                Arguments.of("00-11111111111111111111111111111111-2222222222222222-01", null),
+                Arguments.of("00-11111111111111111111111111111111-2222222222222222-01", "congo=t61rcWkgMzE"));
     }
 
-    @Test
-    void shouldEnrichFromPropagatedTracingContext() {
+    @ParameterizedTest
+    @MethodSource("tracingDataCombinations")
+    void shouldEnrichFromPropagatedTracingContext(String expectedTraceParent, String expectedTraceState) {
+
+        var propagator = openTelemetry.getPropagators().getTextMapPropagator();
+
         doAnswer(invocation -> {
                     Map<String, String> carrier = invocation.getArgument(1);
-                    carrier.put("traceparent", "00-11111111111111111111111111111111-2222222222222222-01");
-                    carrier.put("tracestate", "congo=t61rcWkgMzE");
+                    if (expectedTraceParent != null) carrier.put("traceparent", expectedTraceParent);
+                    if (expectedTraceState != null) carrier.put("tracestate", expectedTraceState);
                     return null;
                 })
                 .when(propagator)
@@ -45,18 +61,21 @@ class OpenTelemetryTracingEventEnricherTest {
         assertEquals("subject", enrichedCandidate.subject());
         assertEquals("type", enrichedCandidate.type());
         assertEquals(Collections.emptyMap(), enrichedCandidate.data());
-        assertEquals("00-11111111111111111111111111111111-2222222222222222-01", enrichedCandidate.traceParent());
-        assertEquals("congo=t61rcWkgMzE", enrichedCandidate.traceState());
+
+        assertEquals(expectedTraceParent, enrichedCandidate.traceParent());
+        assertEquals(expectedTraceState, enrichedCandidate.traceState());
     }
 
-    @Test
-    void shouldKeepExistingTracingHeaders() {
+    @ParameterizedTest
+    @MethodSource("tracingDataCombinations")
+    void shouldKeepExistingTracingHeaders(String existingTraceParent, String existingTraceState) {
+
         EventCandidate originalCandidate = new EventCandidate(
-                "source", "subject", "type", Collections.emptyMap(), "existing-traceparent", "existing-tracestate");
+                "source", "subject", "type", Collections.emptyMap(), existingTraceParent, existingTraceState);
 
         EventCandidate enrichedCandidate = enricher.enrichWithTracingData(originalCandidate);
 
-        assertEquals("existing-traceparent", enrichedCandidate.traceParent());
-        assertEquals("existing-tracestate", enrichedCandidate.traceState());
+        assertEquals(existingTraceParent, enrichedCandidate.traceParent());
+        assertEquals(existingTraceState, enrichedCandidate.traceState());
     }
 }

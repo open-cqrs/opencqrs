@@ -497,7 +497,7 @@ public class CommandAndEventHandlingIntegrationTest {
 
     @Container
     static MockServerContainer mockServer =
-            new MockServerContainer(DockerImageName.parse("mockserver/mockserver:latest"));
+            new MockServerContainer(DockerImageName.parse("mockserver/mockserver:5.15.0"));
 
     @DynamicPropertySource
     static void otelProperties(DynamicPropertyRegistry registry) {

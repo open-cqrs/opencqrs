@@ -8,19 +8,17 @@ import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 
-/**
- * OpenTelemetry-based implementation of {@link EventTracingContextExtractor}
- */
-public class OpenTelemetryEventTracingContextExtractor implements EventTracingContextExtractor {
+/** OpenTelemetry-based implementation of {@link EventTracingContextExecutor} */
+public class OpenTelemetryEventTracingContextExecutor implements EventTracingContextExecutor {
 
     private final TextMapPropagator propagator;
     private final TextMapGetter<Event> textMapGetter;
 
-    public OpenTelemetryEventTracingContextExtractor(OpenTelemetry openTelemetry, TextMapGetter<Event> textMapGetter) {
+    public OpenTelemetryEventTracingContextExecutor(OpenTelemetry openTelemetry, TextMapGetter<Event> textMapGetter) {
         this(openTelemetry.getPropagators().getTextMapPropagator(), textMapGetter);
     }
 
-    protected OpenTelemetryEventTracingContextExtractor(
+    protected OpenTelemetryEventTracingContextExecutor(
             TextMapPropagator propagator, TextMapGetter<Event> textMapGetter) {
         this.propagator = propagator;
         this.textMapGetter = textMapGetter;
@@ -33,8 +31,8 @@ public class OpenTelemetryEventTracingContextExtractor implements EventTracingCo
      * @param runnable a closure containing logic to be executed within the resurrected trace
      */
     @Override
-    public void extractAndRestoreContextFromEvent(Event event, Runnable runnable) {
-        try (Scope ignored1 =
+    public void executeInRestoreContextFromEvent(Event event, Runnable runnable) {
+        try (Scope unused =
                 propagator.extract(Context.current(), event, textMapGetter).makeCurrent()) {
 
             runnable.run();

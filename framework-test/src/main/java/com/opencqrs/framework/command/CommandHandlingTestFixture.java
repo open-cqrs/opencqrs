@@ -3,10 +3,8 @@ package com.opencqrs.framework.command;
 
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.persistence.CapturedEvent;
-import com.opencqrs.framework.tracing.DefaultTracingContextSpanBuilder;
+import com.opencqrs.framework.tracing.NoTracingContextSpanBuilder;
 import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
-import com.opencqrs.framework.types.EventTypeResolver;
-import com.opencqrs.framework.upcaster.EventUpcaster;
 import java.lang.annotation.*;
 import java.time.Duration;
 import java.time.Instant;
@@ -126,7 +124,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             CommandHandler<?, C, ?> commandHandler) {
         this.instanceClass = instanceClass;
         this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
-        this.spanBuilder = new DefaultTracingContextSpanBuilder();
+        this.spanBuilder = new NoTracingContextSpanBuilder();
         this.commandHandler = commandHandler;
     }
 
@@ -288,7 +286,7 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 event.payload(),
                                 event.metaData() != null ? event.metaData() : Map.of(),
                                 rawEvent,
-                                new DefaultTracingContextSpanBuilder())) { // TODO: Find better solution (?)
+                                new NoTracingContextSpanBuilder())) { // TODO: Find better solution (?)
                             throw new IllegalArgumentException(
                                     "No suitable state rebuilding handler definition found for event type: "
                                             + event.payload().getClass().getSimpleName());
