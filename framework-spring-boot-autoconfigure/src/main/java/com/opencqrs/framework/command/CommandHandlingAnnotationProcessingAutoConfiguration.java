@@ -7,7 +7,6 @@ import com.opencqrs.framework.tracing.TracingSpanInformationSource;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.ParameterResolutionDelegate;
@@ -214,20 +213,25 @@ public class CommandHandlingAnnotationProcessingAutoConfiguration {
 
         @Override
         public String getHandlingClassFullName() {
-            // TODO: Code Duplicate (see: EventHandlingAnnotationProcessingAutoConfiguration.java)
             return ClassUtils.getUserClass(target.getClass()).getName();
         }
 
         @Override
         public String getHandlingMethodSignature() {
-            // TODO: Code Duplicate (see: EventHandlingAnnotationProcessingAutoConfiguration.java)
-            String methodName = method.getName();
+            var signatureSb = new StringBuilder(method.getName());
+            signatureSb.append("(");
 
-            String params = Arrays.stream(method.getParameters())
+            var parameters = Arrays.stream(method.getParameters())
                     .map(p -> p.getType().getSimpleName())
-                    .collect(Collectors.joining(", "));
+                    .iterator();
 
-            return methodName + "(" + params + ")";
+            if (parameters.hasNext()) {
+                signatureSb.append(parameters.next());
+            }
+            parameters.forEachRemaining((parameter) -> signatureSb.append(", ").append(parameter));
+            signatureSb.append(")");
+
+            return signatureSb.toString();
         }
 
         record ParameterPositions(int instance, int command, int metaData, int commandEventPublisher) {

@@ -21,11 +21,7 @@ public class OpenTelemetryTracingEventEnricher implements TracingEventEnricher {
     private final TextMapPropagator propagator;
 
     public OpenTelemetryTracingEventEnricher(OpenTelemetry openTelemetry) {
-        this(openTelemetry.getPropagators().getTextMapPropagator());
-    }
-
-    protected OpenTelemetryTracingEventEnricher(TextMapPropagator propagator) {
-        this.propagator = propagator;
+        propagator = openTelemetry.getPropagators().getTextMapPropagator();
     }
 
     /**
@@ -37,17 +33,21 @@ public class OpenTelemetryTracingEventEnricher implements TracingEventEnricher {
      */
     @Override
     public EventCandidate enrichWithTracingData(EventCandidate candidate) {
-        var headers = getHeaders();
+        var tracingHeaders = getTracingHeaders();
         return new EventCandidate(
                 candidate.source(),
                 candidate.subject(),
                 candidate.type(),
                 candidate.data(),
-                candidate.traceParent() != null ? candidate.traceParent() : headers.getOrDefault("traceparent", null),
-                candidate.traceState() != null ? candidate.traceState() : headers.getOrDefault("tracestate", null));
+                candidate.traceParent() != null
+                        ? candidate.traceParent()
+                        : tracingHeaders.getOrDefault("traceparent", null),
+                candidate.traceState() != null
+                        ? candidate.traceState()
+                        : tracingHeaders.getOrDefault("tracestate", null));
     }
 
-    protected Map<String, String> getHeaders() {
+    protected Map<String, String> getTracingHeaders() {
         Map<String, String> headers = new HashMap<>();
         Context context = Context.current().with(Span.current());
         propagator.inject(context, headers, Map::put);

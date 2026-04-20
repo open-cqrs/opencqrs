@@ -319,8 +319,8 @@ public class EventHandlingProcessorAutoConfiguration {
                     DefaultPartitionKeyResolver partitionKeyResolver = new DefaultPartitionKeyResolver(
                             processorSettings.lifeCycle().partitions());
 
-                    EventTracingContextExtractor eventTracingContextExtractor =
-                            parentContext.getBean(EventTracingContextExtractor.class);
+                    EventTracingContextExecutor eventTracingContextExecutor =
+                            parentContext.getBean(EventTracingContextExecutor.class);
 
                     TracingContextSpanBuilder tracingContextSpanBuilder =
                             parentContext.getBean(TracingContextSpanBuilder.class);
@@ -342,7 +342,7 @@ public class EventHandlingProcessorAutoConfiguration {
                                         progressTracker,
                                         sequenceResolver,
                                         partitionKeyResolver,
-                                        eventTracingContextExtractor,
+                                        eventTracingContextExecutor,
                                         tracingContextSpanBuilder,
                                         ehds,
                                         createBackOff(processorSettings.retry()))));
@@ -479,14 +479,14 @@ public class EventHandlingProcessorAutoConfiguration {
 
     @Bean
     @ConditionalOnBean(OpenTelemetry.class)
-    public EventTracingContextExtractor openCqrsOpenTelemetryEventTracingContextExtractor(OpenTelemetry openTelemetry) {
-        return new OpenTelemetryEventTracingContextExtractor(openTelemetry, new EventTracingContextGetter());
+    public EventTracingContextExecutor openCqrsOpenTelemetryEventTracingContextExtractor(OpenTelemetry openTelemetry) {
+        return new OpenTelemetryEventTracingContextExecutor(openTelemetry, new EventTracingContextGetter());
     }
 
     @Bean
     @ConditionalOnMissingBean(OpenTelemetry.class)
-    public EventTracingContextExtractor openCqrsDefaultEventTracingContextExtractor() {
-        return new DefaultEventTracingContextExtractor();
+    public EventTracingContextExecutor openCqrsNoEventTracingContextExtractor() {
+        return new NoEventTracingContextExecutor();
     }
 
     @Bean
@@ -498,6 +498,6 @@ public class EventHandlingProcessorAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(OpenTelemetry.class)
     public TracingContextSpanBuilder openCqrsDefaultEventTracingContextSpanBuilder() {
-        return new DefaultTracingContextSpanBuilder();
+        return new NoTracingContextSpanBuilder();
     }
 }

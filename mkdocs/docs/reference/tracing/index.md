@@ -23,7 +23,7 @@ When not using the Spring Boot starter, pass the instance to the {{ javadoc_clas
 
 ## Extract Trace Information 
 
-To extract stored trace information from a given event in the ESDB, implement the {{ javadoc_class_ref("com.opencqrs.framework.tracing.EventTracingContextExtractor") }}-Interface:
+To extract stored trace information from a given event in the ESDB, implement the {{ javadoc_class_ref("com.opencqrs.framework.tracing.EventTracingContextExecutor") }}-Interface:
 
 ```java
 public interface EventTracingContextExtractor {
@@ -87,11 +87,5 @@ public interface TracingSpanInformationSource {
     String getHandlingClassFullName();
 
     String getHandlingMethodSignature();
-
-    default Map<String, String> getEventHandlingSpanInformation() {
-        return Map.ofEntries(
-                Map.entry("handling.class", getHandlingClassFullName()),
-                Map.entry("handling.method", getHandlingMethodSignature()));
-    }
 }
 ```

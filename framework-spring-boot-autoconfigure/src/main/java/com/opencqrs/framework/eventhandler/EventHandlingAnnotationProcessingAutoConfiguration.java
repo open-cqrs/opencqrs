@@ -11,7 +11,6 @@ import com.opencqrs.framework.transaction.TransactionOperationsAdapter;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.ParameterResolutionDelegate;
@@ -234,20 +233,26 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
 
         @Override
         public String getHandlingClassFullName() {
-            // TODO: Code Duplicate (see: CommandHandlingAnnotationProcessingAutoConfiguration.java)
             return ClassUtils.getUserClass(target.getClass()).getName();
         }
 
         @Override
         public String getHandlingMethodSignature() {
-            // TODO: Code Duplicate (see: CommandHandlingAnnotationProcessingAutoConfiguration.java)
-            String methodName = method.getName();
 
-            String params = Arrays.stream(method.getParameters())
-                    .map(p -> p.getType().getSimpleName() + " " + p.getName())
-                    .collect(Collectors.joining(", "));
+            var signatureSb = new StringBuilder(method.getName());
+            signatureSb.append("(");
 
-            return methodName + "(" + params + ")";
+            var parameters = Arrays.stream(method.getParameters())
+                    .map(p -> p.getType().getSimpleName())
+                    .iterator();
+
+            if (parameters.hasNext()) {
+                signatureSb.append(parameters.next());
+            }
+            parameters.forEachRemaining((parameter) -> signatureSb.append(", ").append(parameter));
+            signatureSb.append(")");
+
+            return signatureSb.toString();
         }
 
         record ParameterPositions(int object, int metaData, int raw) {
