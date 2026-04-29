@@ -19,6 +19,8 @@ import com.opencqrs.framework.eventhandler.progress.Progress;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.serialization.EventData;
+import com.opencqrs.framework.tracing.EventTracingContextExtractor;
+import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.time.Instant;
 import java.util.*;
@@ -63,6 +65,12 @@ public class EventHandlingProcessorTest {
     private EventSequenceResolver.ForRawEvent eventSequenceResolver;
 
     @Mock
+    private EventTracingContextExtractor contextExtractor;
+
+    @Mock
+    private TracingContextSpanBuilder spanBuilder;
+
+    @Mock
     private PartitionKeyResolver partitionKeyResolver;
 
     @Mock
@@ -103,7 +111,9 @@ public class EventHandlingProcessorTest {
                 Instant.now(),
                 "content-type",
                 "1",
-                "0");
+                "0",
+                null,
+                null);
         submittedEvents.put(raw, new EventData<>(metaData, payload));
         assertThat(eventQueue.add(raw)).as("could not submit event to queue").isTrue();
         return raw;
@@ -119,6 +129,8 @@ public class EventHandlingProcessorTest {
                 progressTracker,
                 eventSequenceResolver,
                 partitionKeyResolver,
+                contextExtractor,
+                spanBuilder,
                 List.of(
                         new EventHandlerDefinition<>(groupId, BookAddedEvent.class, eventHandler1),
                         new EventHandlerDefinition<>(groupId, MyEvent.class, eventHandler2),
@@ -180,7 +192,9 @@ public class EventHandlingProcessorTest {
                                                 raw.time(),
                                                 raw.dataContentType(),
                                                 raw.hash(),
-                                                raw.predecessorHash())),
+                                                raw.predecessorHash(),
+                                                null,
+                                                null)),
                                 raw);
                     });
                     return null;
@@ -200,6 +214,22 @@ public class EventHandlingProcessorTest {
                 .when(progressTracker)
                 .proceed(any(), eq(0L), any());
         doReturn("seq01").when(eventSequenceResolver).sequenceIdFor(any());
+        doAnswer(invocationOnMock -> {
+                    Runnable runnable = invocationOnMock.getArgument(1);
+
+                    runnable.run();
+                    return null;
+                })
+                .when(contextExtractor)
+                .extractAndRestoreContextFromEvent(any(), any());
+        doAnswer(invocationOnMock -> {
+                    Runnable runnable = invocationOnMock.getArgument(1);
+
+                    runnable.run();
+                    return null;
+                })
+                .when(spanBuilder)
+                .executeRunnableWithNewSpan(any(), any());
         doReturn(0L).when(partitionKeyResolver).resolve("seq01");
     }
 
@@ -272,6 +302,8 @@ public class EventHandlingProcessorTest {
                 progressTracker,
                 esr,
                 partitionKeyResolver,
+                contextExtractor,
+                spanBuilder,
                 List.of(
                         new EventHandlerDefinition<>(groupId, BookAddedEvent.class, eventHandler1),
                         new EventHandlerDefinition<>(groupId, MyEvent.class, eventHandler2),

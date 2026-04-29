@@ -17,6 +17,7 @@ import com.opencqrs.framework.persistence.ImmediateEventPublisher;
 import com.opencqrs.framework.serialization.EventData;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
 import com.opencqrs.framework.serialization.JacksonEventDataMarshaller;
+import com.opencqrs.framework.tracing.NoTracingContextSpanBuilder;
 import com.opencqrs.framework.types.ClassNameEventTypeResolver;
 import com.opencqrs.framework.types.EventTypeResolver;
 import java.time.Instant;
@@ -79,7 +80,9 @@ public class CommandRouterTest {
                                         raw.time(),
                                         raw.dataContentType(),
                                         raw.hash(),
-                                        raw.predecessorHash())),
+                                        raw.predecessorHash(),
+                                        null,
+                                        null)),
                         raw));
     };
 
@@ -111,7 +114,9 @@ public class CommandRouterTest {
                             Instant.now(),
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            null,
+                            null));
                     consumer.accept(new Event(
                             "test",
                             command.getSubject() + "/pages/42",
@@ -122,7 +127,9 @@ public class CommandRouterTest {
                             Instant.now(),
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            null,
+                            null));
                     return null;
                 })
                 .when(client)
@@ -174,7 +181,8 @@ public class CommandRouterTest {
                 stateRebuildingHandlerDefinitions,
                 new NoStateRebuildingCache(),
                 PropagationMode.KEEP_IF_PRESENT,
-                Set.of("propagated01"));
+                Set.of("propagated01"),
+                new NoTracingContextSpanBuilder());
 
         UUID result = subject.send(command, commandMetaData);
 
@@ -216,7 +224,8 @@ public class CommandRouterTest {
         CommandHandlerDefinition<Object, AddBookCommand, Void> chd =
                 new CommandHandlerDefinition<>(Object.class, AddBookCommand.class, commandHandler);
 
-        CommandRouter subject = new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), List.of());
+        CommandRouter subject = new CommandRouter(
+                eventReader, immediateEventPublisher, List.of(chd), List.of(), new NoTracingContextSpanBuilder());
 
         var cmd = new AddBookCommand("isbn");
         var metaData = Map.of("key01", true);
@@ -263,7 +272,9 @@ public class CommandRouterTest {
                                     Instant.now(),
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    null,
+                                    null));
                             return null;
                         })
                         .when(client)
@@ -283,7 +294,9 @@ public class CommandRouterTest {
                                     Instant.now(),
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    null,
+                                    null));
                             return null;
                         })
                         .when(client)
@@ -294,7 +307,8 @@ public class CommandRouterTest {
                 new CommandHandlerDefinition<>(Book.class, command.getClass(), (CommandHandler.ForInstanceAndCommand)
                         (book, cmd, eventPublisher) -> null);
 
-        CommandRouter subject = new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), List.of());
+        CommandRouter subject = new CommandRouter(
+                eventReader, immediateEventPublisher, List.of(chd), List.of(), new NoTracingContextSpanBuilder());
 
         assertThatCode(() -> subject.send(command)).doesNotThrowAnyException();
     }
@@ -331,7 +345,9 @@ public class CommandRouterTest {
                                     Instant.now(),
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    null,
+                                    null));
                             return null;
                         })
                         .when(client)
@@ -351,7 +367,9 @@ public class CommandRouterTest {
                                     Instant.now(),
                                     "application/json",
                                     UUID.randomUUID().toString(),
-                                    UUID.randomUUID().toString()));
+                                    UUID.randomUUID().toString(),
+                                    null,
+                                    null));
                             return null;
                         })
                         .when(client)
@@ -362,7 +380,8 @@ public class CommandRouterTest {
                 new CommandHandlerDefinition<>(Book.class, command.getClass(), (CommandHandler.ForInstanceAndCommand)
                         (book, cmd, eventPublisher) -> null);
 
-        CommandRouter subject = new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), List.of());
+        CommandRouter subject = new CommandRouter(
+                eventReader, immediateEventPublisher, List.of(chd), List.of(), new NoTracingContextSpanBuilder());
 
         assertThatThrownBy(() -> subject.send(command)).isInstanceOfSatisfying(CqrsFrameworkException.class, e -> {
             switch (condition) {
@@ -389,7 +408,8 @@ public class CommandRouterTest {
                         (book, cmd, eventPublisher) -> null,
                 sourcingMode);
 
-        CommandRouter subject = new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), List.of());
+        CommandRouter subject = new CommandRouter(
+                eventReader, immediateEventPublisher, List.of(chd), List.of(), new NoTracingContextSpanBuilder());
 
         var command = new BorrowBookCommand("isbn");
         subject.send(command);
@@ -425,7 +445,9 @@ public class CommandRouterTest {
                 Instant.now(),
                 "application/json",
                 UUID.randomUUID().toString(),
-                UUID.randomUUID().toString());
+                UUID.randomUUID().toString(),
+                null,
+                null);
 
         doAnswer(invocation -> {
                     Consumer<Event> consumer = invocation.getArgument(2);
@@ -445,7 +467,12 @@ public class CommandRouterTest {
                                 Book, BorrowBookCommand, Void>)
                         (book, cmd, eventPublisher) -> null);
 
-        new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), stateRebuildingHandlerDefinitions)
+        new CommandRouter(
+                        eventReader,
+                        immediateEventPublisher,
+                        List.of(chd),
+                        stateRebuildingHandlerDefinitions,
+                        new NoTracingContextSpanBuilder())
                 .send(command);
 
         switch (srh) {
@@ -479,7 +506,9 @@ public class CommandRouterTest {
                             Instant.now(),
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            null,
+                            null));
                     return null;
                 })
                 .when(client)
@@ -508,7 +537,12 @@ public class CommandRouterTest {
                                 Book, BorrowBookCommand, Void>)
                         (book, cmd, eventPublisher) -> null);
 
-        new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), stateRebuildingHandlerDefinitions)
+        new CommandRouter(
+                        eventReader,
+                        immediateEventPublisher,
+                        List.of(chd),
+                        stateRebuildingHandlerDefinitions,
+                        new NoTracingContextSpanBuilder())
                 .send(command);
 
         verify(srh1).on(any(), eq(sourcedEvent));
@@ -546,7 +580,12 @@ public class CommandRouterTest {
                             return null;
                         });
 
-        new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), stateRebuildingHandlerDefinitions)
+        new CommandRouter(
+                        eventReader,
+                        immediateEventPublisher,
+                        List.of(chd),
+                        stateRebuildingHandlerDefinitions,
+                        new NoTracingContextSpanBuilder())
                 .send(command);
 
         switch (srh) {
@@ -593,7 +632,12 @@ public class CommandRouterTest {
                             return null;
                         });
 
-        new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), stateRebuildingHandlerDefinitions)
+        new CommandRouter(
+                        eventReader,
+                        immediateEventPublisher,
+                        List.of(chd),
+                        stateRebuildingHandlerDefinitions,
+                        new NoTracingContextSpanBuilder())
                 .send(new AddBookCommand("4711"));
 
         verify(srh1).on(any(), eq(publishedEvent));
@@ -620,7 +664,9 @@ public class CommandRouterTest {
                             Instant.now(),
                             "application/json",
                             UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString()));
+                            UUID.randomUUID().toString(),
+                            null,
+                            null));
                     return null;
                 })
                 .when(client)
@@ -636,7 +682,11 @@ public class CommandRouterTest {
                         (book, cmd, eventPublisher) -> null);
 
         assertThatThrownBy(() -> new CommandRouter(
-                                eventReader, immediateEventPublisher, List.of(chd), stateRebuildingHandlerDefinitions)
+                                eventReader,
+                                immediateEventPublisher,
+                                List.of(chd),
+                                stateRebuildingHandlerDefinitions,
+                                new NoTracingContextSpanBuilder())
                         .send(command))
                 .isInstanceOf(CqrsFrameworkException.NonTransientException.class)
                 .hasMessageContainingAll(
@@ -659,7 +709,11 @@ public class CommandRouterTest {
                         });
 
         assertThatThrownBy(() -> new CommandRouter(
-                                eventReader, immediateEventPublisher, List.of(chd), stateRebuildingHandlerDefinitions)
+                                eventReader,
+                                immediateEventPublisher,
+                                List.of(chd),
+                                stateRebuildingHandlerDefinitions,
+                                new NoTracingContextSpanBuilder())
                         .send(command))
                 .isInstanceOf(CqrsFrameworkException.NonTransientException.class)
                 .hasMessageContainingAll(
@@ -678,7 +732,8 @@ public class CommandRouterTest {
                     throw exception;
                 });
 
-        CommandRouter subject = new CommandRouter(eventReader, immediateEventPublisher, List.of(chd), List.of());
+        CommandRouter subject = new CommandRouter(
+                eventReader, immediateEventPublisher, List.of(chd), List.of(), new NoTracingContextSpanBuilder());
 
         assertThatThrownBy(() -> subject.send(new BorrowBookCommand("4711"))).isSameAs(exception);
 
@@ -692,14 +747,20 @@ public class CommandRouterTest {
                                 Book, BorrowBookCommand, Void>)
                         (book, cmd, eventPublisher) -> null);
 
-        assertThatThrownBy(() -> new CommandRouter(eventReader, immediateEventPublisher, List.of(chd, chd), List.of()))
+        assertThatThrownBy(() -> new CommandRouter(
+                        eventReader,
+                        immediateEventPublisher,
+                        List.of(chd, chd),
+                        List.of(),
+                        new NoTracingContextSpanBuilder()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContainingAll("duplicate command handler definition", BorrowBookCommand.class.getName());
     }
 
     @Test
     public void missingCommandHandlerDetected() {
-        var subject = new CommandRouter(eventReader, immediateEventPublisher, List.of(), List.of());
+        var subject = new CommandRouter(
+                eventReader, immediateEventPublisher, List.of(), List.of(), new NoTracingContextSpanBuilder());
 
         assertThatThrownBy(() -> subject.send(new BorrowBookCommand("4711")))
                 .isInstanceOf(CqrsFrameworkException.NonTransientException.class)

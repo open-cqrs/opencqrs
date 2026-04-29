@@ -8,6 +8,8 @@ import com.opencqrs.framework.eventhandler.progress.InMemoryProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.JdbcProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
+import com.opencqrs.framework.tracing.*;
+import io.opentelemetry.api.OpenTelemetry;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -316,9 +318,17 @@ public class EventHandlingProcessorAutoConfiguration {
 
                     DefaultPartitionKeyResolver partitionKeyResolver = new DefaultPartitionKeyResolver(
                             processorSettings.lifeCycle().partitions());
+
+                    EventTracingContextExtractor eventTracingContextExtractor =
+                            parentContext.getBean(EventTracingContextExtractor.class);
+
+                    TracingContextSpanBuilder tracingContextSpanBuilder =
+                            parentContext.getBean(TracingContextSpanBuilder.class);
+
                     for (int partition = 0;
                             partition < processorSettings.lifeCycle().partitions();
                             partition++) {
+
                         var beanName = "openCqrsEventHandlingProcessor_" + group + "_" + partition;
                         final int finalPartition = partition;
                         registry.registerBean(
@@ -332,6 +342,8 @@ public class EventHandlingProcessorAutoConfiguration {
                                         progressTracker,
                                         sequenceResolver,
                                         partitionKeyResolver,
+                                        eventTracingContextExtractor,
+                                        tracingContextSpanBuilder,
                                         ehds,
                                         createBackOff(processorSettings.retry()))));
 
@@ -463,5 +475,29 @@ public class EventHandlingProcessorAutoConfiguration {
     @Bean
     public NoEventSequenceResolver openCqrsNoEventSequenceResolver() {
         return new NoEventSequenceResolver();
+    }
+
+    @Bean
+    @ConditionalOnBean(OpenTelemetry.class)
+    public EventTracingContextExtractor openCqrsOpenTelemetryEventTracingContextExtractor(OpenTelemetry openTelemetry) {
+        return new OpenTelemetryEventTracingContextExtractor(openTelemetry, new EventTracingContextGetter());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(OpenTelemetry.class)
+    public EventTracingContextExtractor openCqrsNoEventTracingContextExtractor() {
+        return new NoEventTracingContextExtractor();
+    }
+
+    @Bean
+    @ConditionalOnBean(OpenTelemetry.class)
+    public TracingContextSpanBuilder openCqrsOpenTelemetryEventTracingContextSpanBuilder(OpenTelemetry openTelemetry) {
+        return new OpenTelemetryTracingContextSpanBuilder(openTelemetry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(OpenTelemetry.class)
+    public TracingContextSpanBuilder openCqrsDefaultEventTracingContextSpanBuilder() {
+        return new NoTracingContextSpanBuilder();
     }
 }

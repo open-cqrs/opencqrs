@@ -1,9 +1,7 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.eventhandler;
 
-import com.opencqrs.esdb.client.ClientException;
-import com.opencqrs.esdb.client.Event;
-import com.opencqrs.esdb.client.Option;
+import com.opencqrs.esdb.client.*;
 import com.opencqrs.framework.CqrsFrameworkException;
 import com.opencqrs.framework.client.ClientInterruptedException;
 import com.opencqrs.framework.eventhandler.partitioning.EventSequenceResolver;
@@ -12,10 +10,15 @@ import com.opencqrs.framework.eventhandler.progress.Progress;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
+import com.opencqrs.framework.tracing.EventTracingContextExtractor;
+import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
+import com.opencqrs.framework.tracing.TracingSpanInformationSource;
 import com.opencqrs.framework.types.EventTypeResolver;
 import com.opencqrs.framework.upcaster.EventUpcasters;
 import java.lang.reflect.UndeclaredThrowableException;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -29,9 +32,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * {@linkplain Runnable#run() Asynchronous} event processor
- * {@linkplain com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer) observing an event stream} to be
- * handled by matching {@link EventHandlerDefinition}s all belonging to the same
+ * {@linkplain Runnable#run() Asynchronous} event processor {@linkplain EsdbClient#observe(String, Set, Consumer)
+ * observing an event stream} to be handled by matching {@link EventHandlerDefinition}s all belonging to the same
  * {@linkplain EventHandlerDefinition#group() processing group and partition} with configurable
  * {@linkplain ProgressTracker progress tracking} and {@linkplain BackOff retry} in case of errors.
  *
@@ -52,6 +54,8 @@ public class EventHandlingProcessor implements Runnable {
     private final EventReader eventReader;
     final ProgressTracker progressTracker;
     final EventSequenceResolver eventSequenceResolver;
+    final EventTracingContextExtractor contextExtractor;
+    final TracingContextSpanBuilder spanBuilder;
     private final PartitionKeyResolver partitionKeyResolver;
     private final List<EventHandlerDefinition> eventHandlerDefinitions;
     final BackOff backoff;
@@ -65,6 +69,8 @@ public class EventHandlingProcessor implements Runnable {
             ProgressTracker progressTracker,
             EventSequenceResolver eventSequenceResolver,
             PartitionKeyResolver partitionKeyResolver,
+            EventTracingContextExtractor contextExtractor,
+            TracingContextSpanBuilder spanBuilder,
             List<EventHandlerDefinition> eventHandlerDefinitions,
             BackOff backoff,
             Delayer delayer) {
@@ -89,6 +95,8 @@ public class EventHandlingProcessor implements Runnable {
         this.progressTracker = progressTracker;
         this.eventSequenceResolver = eventSequenceResolver;
         this.partitionKeyResolver = partitionKeyResolver;
+        this.contextExtractor = contextExtractor;
+        this.spanBuilder = spanBuilder;
         this.eventHandlerDefinitions = eventHandlerDefinitions;
         this.backoff = backoff;
         this.delayer = delayer;
@@ -98,8 +106,7 @@ public class EventHandlingProcessor implements Runnable {
      * Creates a pre-configured instance of {@code this}.
      *
      * @param partition the partition number handled by {@code this} with respect to the processing group
-     * @param subject the subject to {@linkplain com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)
-     *     observe}
+     * @param subject the subject to {@linkplain EsdbClient#observe(String, Set, Consumer) observe}
      * @param recursive whether the subject should be observed recursively, that is including child subjects
      * @param eventReader the event source
      * @param progressTracker the progress tracker to maintain the progress within the observed event stream
@@ -116,6 +123,8 @@ public class EventHandlingProcessor implements Runnable {
             ProgressTracker progressTracker,
             EventSequenceResolver eventSequenceResolver,
             PartitionKeyResolver partitionKeyResolver,
+            EventTracingContextExtractor contextExtractor,
+            TracingContextSpanBuilder spanBuilder,
             List<EventHandlerDefinition> eventHandlerDefinitions,
             BackOff backoff) {
         this(
@@ -126,6 +135,8 @@ public class EventHandlingProcessor implements Runnable {
                 progressTracker,
                 eventSequenceResolver,
                 partitionKeyResolver,
+                contextExtractor,
+                spanBuilder,
                 eventHandlerDefinitions,
                 backoff,
                 Thread::sleep);
@@ -150,8 +161,8 @@ public class EventHandlingProcessor implements Runnable {
      * <ol>
      *   <li>fetching the {@linkplain ProgressTracker#current(String, long)} current progress} for the configured
      *       processing group and partition
-     *   <li>{@linkplain com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer) observing} the event stream
-     *       for the configured subject starting from the current progress
+     *   <li>{@linkplain EsdbClient#observe(String, Set, Consumer) observing} the event stream for the configured
+     *       subject starting from the current progress
      *   <li>checking if the {@linkplain EventSequenceResolver raw event's sequence id} is
      *       {@linkplain PartitionKeyResolver#resolve(String) relevant for this partition}, otherwise skip it
      *   <li>{@linkplain EventUpcasters#upcast(Event) upcasting} any observed event
@@ -187,8 +198,8 @@ public class EventHandlingProcessor implements Runnable {
      * <p><strong>This method is assumed to be started within a thread pool with one additional spare thread, which is
      * used to dispatch any raw {@link Event} received via {@link EventReader#consumeRaw(EventReader.ClientRequestor,
      * BiConsumer)}. This effectively offloads event upcasting, type resolution, deserialization, and the actual event
-     * handling from the underlying {@link java.net.http.HttpClient} {@link java.net.http.HttpResponse.BodySubscriber}
-     * thread, in order to be able to {@link #stop()} {@code this} properly.</strong>
+     * handling from the underlying {@link HttpClient} {@link HttpResponse.BodySubscriber} thread, in order to be able
+     * to {@link #stop()} {@code this} properly.</strong>
      */
     @Override
     public void run() {
@@ -216,7 +227,47 @@ public class EventHandlingProcessor implements Runnable {
                     eventReader.consumeRaw(
                             (client, eventConsumer) -> client.observe(subject, options, eventConsumer),
                             (rawCallback, raw) -> {
+
                                 try {
+
+                                    Runnable processEventInRestoredContext = () -> rawCallback.upcast(
+                                            (upcastedCallback, upcasted) -> upcastedCallback.convert((metadata, event) -> {
+                                                Consumer<EventHandlerDefinition> handleEventInNewSpan = ehd -> {
+                                                    var spanInformation = createEventHandlingSpanInformation(raw, ehd);
+                                                    spanBuilder.executeRunnableWithNewSpan(spanInformation, () -> {
+                                                        try {
+                                                            switch (ehd.handler()) {
+                                                                case EventHandler.ForObject handler ->
+                                                                        handler.handle(event);
+                                                                case EventHandler.ForObjectAndMetaData handler ->
+                                                                        handler.handle(event, metadata);
+                                                                case EventHandler.ForObjectAndMetaDataAndRawEvent handler ->
+                                                                        handler.handle(event, metadata, raw);
+                                                            }
+                                                        } catch (Error | RuntimeException e) {
+                                                            throw new WrappedEventHandlingException(raw, e);
+                                                        }
+                                                    });
+                                                };
+
+                                                var convertedEventRelevant =
+                                                        switch (eventSequenceResolver) {
+                                                            case EventSequenceResolver.ForRawEvent ignored -> true;
+                                                            case EventSequenceResolver.ForObjectAndMetaDataAndRawEvent
+                                                                         esr ->
+                                                                    partitionKeyResolver.resolve(
+                                                                            esr.sequenceIdFor(event, metadata))
+                                                                            == partition;
+                                                        };
+
+                                                if (convertedEventRelevant) {
+                                                    eventHandlerDefinitions.stream()
+                                                            .filter(ehd -> ehd.eventClass()
+                                                                    .isAssignableFrom(upcastedCallback.getEventJavaClass()))
+                                                            .forEach(handleEventInNewSpan);
+                                                }
+                                            }));
+
                                     executorService
                                             .submit(() -> {
                                                 progressTracker.proceed(groupId, partition, () -> {
@@ -232,60 +283,8 @@ public class EventHandlingProcessor implements Runnable {
                                                                             ignored -> true;
                                                                 };
                                                         if (rawEventRelevant) {
-                                                            rawCallback.upcast((upcastedCallback, upcasted) ->
-                                                                    upcastedCallback.convert((metadata, event) -> {
-                                                                        var convertedEventRelevant =
-                                                                                switch (eventSequenceResolver) {
-                                                                                    case EventSequenceResolver
-                                                                                                    .ForRawEvent
-                                                                                            ignored -> true;
-                                                                                    case EventSequenceResolver
-                                                                                                    .ForObjectAndMetaDataAndRawEvent
-                                                                                            esr ->
-                                                                                        partitionKeyResolver.resolve(
-                                                                                                        esr
-                                                                                                                .sequenceIdFor(
-                                                                                                                        event,
-                                                                                                                        metadata))
-                                                                                                == partition;
-                                                                                };
-                                                                        if (convertedEventRelevant) {
-                                                                            eventHandlerDefinitions.stream()
-                                                                                    .filter(
-                                                                                            ehd -> ehd.eventClass()
-                                                                                                    .isAssignableFrom(
-                                                                                                            upcastedCallback
-                                                                                                                    .getEventJavaClass()))
-                                                                                    .forEach(ehd -> {
-                                                                                        try {
-                                                                                            switch (ehd.handler()) {
-                                                                                                case EventHandler
-                                                                                                                .ForObject
-                                                                                                        handler ->
-                                                                                                    handler.handle(
-                                                                                                            event);
-                                                                                                case EventHandler
-                                                                                                                .ForObjectAndMetaData
-                                                                                                        handler ->
-                                                                                                    handler.handle(
-                                                                                                            event,
-                                                                                                            metadata);
-                                                                                                case EventHandler
-                                                                                                                .ForObjectAndMetaDataAndRawEvent
-                                                                                                        handler ->
-                                                                                                    handler.handle(
-                                                                                                            event,
-                                                                                                            metadata,
-                                                                                                            raw);
-                                                                                            }
-                                                                                        } catch (Error
-                                                                                                | RuntimeException e) {
-                                                                                            throw new WrappedEventHandlingException(
-                                                                                                    raw, e);
-                                                                                        }
-                                                                                    });
-                                                                        }
-                                                                    }));
+                                                            contextExtractor.extractAndRestoreContextFromEvent(
+                                                                    raw, processEventInRestoredContext);
                                                         }
 
                                                         if (retryHandler.isRetryExecution()) {
@@ -408,6 +407,37 @@ public class EventHandlingProcessor implements Runnable {
         }
     }
 
+    public Map<String, String> createEventHandlingSpanInformation(Event event, EventHandlerDefinition<?> ehd) {
+        var result = Map.ofEntries(
+                Map.entry("span.name", "event " + (ehd.group() + "-" + this.partition)),
+                Map.entry("event.id", event.id()),
+                Map.entry("event.type", event.type()),
+                Map.entry("event.subject", event.subject()),
+                Map.entry("event.source", event.source()),
+                Map.entry("event.timestamp", event.time().toString()),
+                Map.entry("event.class", ehd.eventClass().getName()),
+                Map.entry("handler.group", ehd.group()),
+                Map.entry("handler.partition", String.valueOf(this.partition)));
+
+        switch (ehd.handler()) {
+            case TracingSpanInformationSource ehSpanInfoSource:
+                result = new HashMap<>(result);
+
+                StringBuilder spanNameBuilder = new StringBuilder();
+                spanNameBuilder.append(result.get("span.name"));
+                spanNameBuilder.append(" ");
+                spanNameBuilder.append(ehSpanInfoSource.getHandlingClassSimpleName());
+                spanNameBuilder.append(".");
+                spanNameBuilder.append(ehSpanInfoSource.getHandlingMethodSignature());
+
+                result.replace("span.name", spanNameBuilder.toString());
+                result.put("handling.class", ehSpanInfoSource.getHandlingClassFullName());
+                result.put("handling.method", ehSpanInfoSource.getHandlingMethodSignature());
+            default:
+                return result;
+        }
+    }
+
     private class RetryHandler {
         private BackOff.Execution execution;
 
@@ -455,11 +485,11 @@ public class EventHandlingProcessor implements Runnable {
     }
 
     /**
-     * Internal {@linkplain ClientException exception} used to capture exceptions from the
-     * {@link com.opencqrs.esdb.client.EsdbClient}s event consumer callback.
+     * Internal {@linkplain ClientException exception} used to capture exceptions from the {@link EsdbClient}s event
+     * consumer callback.
      *
-     * @see com.opencqrs.esdb.client.HttpRequestErrorHandler#handle(HttpRequest, Function)
-     * @see com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)
+     * @see HttpRequestErrorHandler#handle(HttpRequest, Function)
+     * @see EsdbClient#observe(String, Set, Consumer)
      */
     private static class WrappedEventHandlingException extends ClientException {
 
