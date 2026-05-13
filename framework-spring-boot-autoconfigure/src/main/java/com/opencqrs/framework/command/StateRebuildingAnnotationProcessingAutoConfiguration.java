@@ -4,11 +4,9 @@ package com.opencqrs.framework.command;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.reflection.AutowiredParameter;
 import com.opencqrs.framework.reflection.AutowiredParameterResolver;
+import com.opencqrs.framework.tracing.TracingSpanInformationSource;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -170,7 +168,8 @@ public class StateRebuildingAnnotationProcessingAutoConfiguration {
     }
 
     static class ReflectiveMethodInvocationStateRebuildingHandler extends AutowiredParameterResolver
-            implements StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<Object, Object> {
+            implements StateRebuildingHandler.FromObjectAndMetaDataAndSubjectAndRawEvent<Object, Object>,
+                    TracingSpanInformationSource {
 
         private final Object target;
         private final ParameterPositions parameterPositions;
@@ -190,6 +189,35 @@ public class StateRebuildingAnnotationProcessingAutoConfiguration {
             var requiredParams = parameterPositions.mapArguments(instance, event, metaData, subject, rawEvent);
 
             return ReflectionUtils.invokeMethod(method, target, resolveIncludingAutowiredParameters(requiredParams));
+        }
+
+        @Override
+        public String getHandlingClassSimpleName() {
+            return ClassUtils.getUserClass(target.getClass()).getSimpleName();
+        }
+
+        @Override
+        public String getHandlingClassFullName() {
+            return ClassUtils.getUserClass(target.getClass()).getName();
+        }
+
+        @Override
+        public String getHandlingMethodSignature() {
+
+            var signatureSb = new StringBuilder(method.getName());
+            signatureSb.append("(");
+
+            var parameters = Arrays.stream(method.getParameters())
+                    .map(p -> p.getType().getSimpleName())
+                    .iterator();
+
+            if (parameters.hasNext()) {
+                signatureSb.append(parameters.next());
+            }
+            parameters.forEachRemaining((parameter) -> signatureSb.append(", ").append(parameter));
+            signatureSb.append(")");
+
+            return signatureSb.toString();
         }
 
         record ParameterPositions(int instance, int event, int metaData, int subject, int raw) {

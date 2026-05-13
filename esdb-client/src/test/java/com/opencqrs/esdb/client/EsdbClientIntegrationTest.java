@@ -9,6 +9,11 @@ import static org.mockito.Mockito.*;
 import com.opencqrs.esdb.client.eventql.EventQueryBuilder;
 import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
 import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.TraceFlags;
+import io.opentelemetry.api.trace.TraceState;
+import io.opentelemetry.context.Scope;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -34,6 +39,9 @@ import tools.jackson.databind.ObjectMapper;
 public class EsdbClientIntegrationTest {
 
     private static final String TEST_SOURCE = "tag://test-execution";
+    private static final String TEST_TRACE_PARENT = "00-4bf92f0853545edc50c7bc64bcbf0b01-00f067aa0ba902b7-01";
+    private static final String TEST_TRACE_STATE =
+            "congo=t67eff,rojo=00f067aa0ba902b7,foo=bar,example@vendor=some-custom-value";
 
     @Autowired
     private EsdbClient client;
@@ -353,6 +361,48 @@ public class EsdbClientIntegrationTest {
 
             assertThat(client.read(subject, Set.of())).as("no events written").isEmpty();
         }
+
+        @Test
+        public void writesExistingTraceInformation() {
+
+            TraceState traceState = TraceState.builder()
+                    .put("example@vendor", "some-custom-value")
+                    .put("foo", "bar")
+                    .put("rojo", "00f067aa0ba902b7")
+                    .put("congo", "t67eff")
+                    .build();
+            SpanContext w3cContext = SpanContext.create(
+                    "4bf92f0853545edc50c7bc64bcbf0b01", // gültige 32-stellige Hex Trace-ID
+                    "00f067aa0ba902b7", // gültige 16-stellige Hex Span-ID
+                    TraceFlags.getSampled(),
+                    traceState);
+
+            try (Scope scope = Span.wrap(w3cContext).makeCurrent()) {
+                String subject = randomSubject();
+
+                Map<String, Object> data =
+                        objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class);
+
+                List<Event> published = client.write(
+                        List.of(new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-added.v1", data)),
+                        List.of(new Precondition.SubjectIsPristine(subject)));
+
+                assertThat(published).singleElement().satisfies(e -> {
+                    assertThat(e.source()).isEqualTo(TEST_SOURCE);
+                    assertThat(e.subject()).isEqualTo(subject);
+                    assertThat(e.type()).isEqualTo("com.opencqrs.books-added.v1");
+                    assertThat(e.specVersion()).isEqualTo("1.0");
+                    assertThat(e.dataContentType()).isEqualTo("application/json");
+                    assertThat(e.id()).isNotBlank();
+                    assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
+                    assertThat(e.hash()).isNotBlank();
+                    assertThat(e.predecessorHash()).isNotBlank();
+                    assertThat(e.data()).isEqualTo(data);
+                    assertThat(e.traceParent()).isEqualTo(TEST_TRACE_PARENT);
+                    assertThat(e.traceState()).isEqualTo(TEST_TRACE_STATE);
+                });
+            }
+        }
     }
 
     @Nested
@@ -556,7 +606,9 @@ public class EsdbClientIntegrationTest {
                             TEST_SOURCE,
                             subject,
                             "com.opencqrs.books-added.v1",
-                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
+                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class),
+                            TEST_TRACE_PARENT,
+                            TEST_TRACE_STATE)),
                     List.of(new Precondition.SubjectIsPristine(subject))));
 
             client.read("/", Set.of(new Option.Recursive()), consumedEvents::add);
@@ -571,6 +623,8 @@ public class EsdbClientIntegrationTest {
                 assertThat(e.id()).isNotBlank();
                 assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
                 assertThat(e.predecessorHash()).isNotBlank();
+                assertThat(e.traceParent()).isEqualTo(TEST_TRACE_PARENT);
+                assertThat(e.traceState()).isEqualTo(TEST_TRACE_STATE);
                 assertThat(objectMapper.convertValue(e.data(), BookAddedEvent.class))
                         .isEqualTo(new BookAddedEvent("JRR Tolkien", "LOTR"));
             }));
@@ -663,7 +717,7 @@ public class EsdbClientIntegrationTest {
             assertThat(ref).hasValueSatisfying(event -> {
                 assertThat(event)
                         .usingRecursiveComparison()
-                        .ignoringFields("id", "time", "hash", "predecessorHash")
+                        .ignoringFields("id", "time", "hash", "predecessorHash", "traceParent", "traceState")
                         .isEqualTo(new Event(
                                 eventCandidate.source(),
                                 subject,
@@ -673,6 +727,8 @@ public class EsdbClientIntegrationTest {
                                 null,
                                 null,
                                 "application/json",
+                                null,
+                                null,
                                 null,
                                 null));
                 assertThat(event.id()).isNotBlank();

@@ -1,3 +1,4 @@
+
 description = "Spring Boot auto configurations for the ESDB client SDK"
 
 dependencies {
@@ -5,9 +6,11 @@ dependencies {
     compileOnly("org.springframework.boot:spring-boot-starter-jackson")
     compileOnly("org.springframework.boot:spring-boot-starter-validation")
     compileOnly("org.springframework.boot:spring-boot-starter-actuator")
+    compileOnly("org.springframework.boot:spring-boot-starter-opentelemetry")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator")
+    testImplementation("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
     testImplementation("org.springframework.boot:spring-boot-starter-jackson")
     // https://github.com/gradle/gradle/issues/33950
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

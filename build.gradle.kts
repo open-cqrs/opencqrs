@@ -252,6 +252,7 @@ subprojects {
         dependencyManagement {
             imports {
                 mavenBom("org.springframework.boot:spring-boot-dependencies:${frameworkVersions.get("spring.boot.version")}")
+                mavenBom("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:${frameworkVersions.get("opentelemetry.instrumentation.version")}")
             }
         }
 
