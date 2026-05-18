@@ -11,3 +11,4 @@ mkdocs/site
 mkdocs/.cache
 mkdocs/__pycache__/
 .DS_Store
+.envrc.local
