@@ -1,4 +1,3 @@
-/** Contains cache components supporting command execution. */
 @NullMarked
 package com.opencqrs.framework.command.cache;
 

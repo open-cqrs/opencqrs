@@ -7,9 +7,10 @@ plugins {
 }
 
 dependencies {
+    compileOnly("org.jspecify:jspecify")
+    compileOnly(libs.nullawayAnnotations)
     implementation(project(":framework-spring-boot-starter"))
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-integration")
     implementation("org.springframework.integration:spring-integration-jdbc")

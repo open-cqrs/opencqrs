@@ -17,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -208,7 +209,7 @@ public class HttpRequestEventQueryErrorHandlerTest {
                         URI.create("http://localhost:" + port + "/api/charset/" + StandardCharsets.UTF_16.name()))
                 .GET()
                 .build();
-        AtomicReference<Charset> charset = new AtomicReference<>();
+        AtomicReference<@Nullable Charset> charset = new AtomicReference<>();
 
         String response = subject.handle(request, httpHeaders -> {
             var responseCharset = Util.fromHttpHeaders(httpHeaders);

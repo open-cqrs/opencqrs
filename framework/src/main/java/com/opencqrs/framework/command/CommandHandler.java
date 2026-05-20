@@ -2,6 +2,7 @@
 package com.opencqrs.framework.command;
 
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Sealed base interface for inherited {@link FunctionalInterface} variants encapsulating command-handling logic.
@@ -64,7 +65,8 @@ public sealed interface CommandHandler<I, C extends Command, R>
          * @param commandEventPublisher a callback to publish new events
          * @return a generic command execution result, may be {@code null}
          */
-        R handle(I instance, C command, CommandEventPublisher<I> commandEventPublisher);
+        @Nullable
+        R handle(@Nullable I instance, C command, CommandEventPublisher<I> commandEventPublisher);
     }
 
     /**
@@ -90,6 +92,11 @@ public sealed interface CommandHandler<I, C extends Command, R>
          * @param commandEventPublisher a callback to publish new events
          * @return a generic command execution result, may be {@code null}
          */
-        R handle(I instance, C command, Map<String, ?> metaData, CommandEventPublisher<I> commandEventPublisher);
+        @Nullable
+        R handle(
+                @Nullable I instance,
+                C command,
+                Map<String, ?> metaData,
+                CommandEventPublisher<I> commandEventPublisher);
     }
 }

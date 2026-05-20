@@ -5,11 +5,9 @@ import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.reflection.AutowiredParameter;
 import com.opencqrs.framework.reflection.AutowiredParameterResolver;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.ParameterResolutionDelegate;
@@ -67,7 +65,7 @@ public class StateRebuildingAnnotationProcessingAutoConfiguration {
                             } else {
                                 try {
                                     Class<?> beanClass = ClassUtils.forName(
-                                            bd.getBeanClassName(),
+                                            abd.getBeanClassName(),
                                             registry.getClass().getClassLoader());
                                     standardMetadata =
                                             (StandardAnnotationMetadata) AnnotationMetadata.introspect(beanClass);
@@ -149,7 +147,7 @@ public class StateRebuildingAnnotationProcessingAutoConfiguration {
                                         2,
                                         new ReflectiveMethodInvocationStateRebuildingHandler.ParameterPositions(
                                                 requiredParamPositions.getOrDefault(instanceType, -1),
-                                                requiredParamPositions.get(eventParamType),
+                                                Objects.requireNonNull(requiredParamPositions.get(eventParamType)),
                                                 requiredParamPositions.getOrDefault(Map.class, -1),
                                                 requiredParamPositions.getOrDefault(String.class, -1),
                                                 requiredParamPositions.getOrDefault(Event.class, -1)));
@@ -186,18 +184,27 @@ public class StateRebuildingAnnotationProcessingAutoConfiguration {
         }
 
         @Override
-        public Object on(Object instance, Object event, Map<String, ?> metaData, String subject, Event rawEvent) {
+        public @Nullable Object on(
+                @Nullable Object instance,
+                Object event,
+                Map<String, ?> metaData,
+                String subject,
+                @Nullable Event rawEvent) {
             var requiredParams = parameterPositions.mapArguments(instance, event, metaData, subject, rawEvent);
 
             return ReflectionUtils.invokeMethod(method, target, resolveIncludingAutowiredParameters(requiredParams));
         }
 
         record ParameterPositions(int instance, int event, int metaData, int subject, int raw) {
-            public Map<Integer, Object> mapArguments(
-                    Object instance, Object event, Map<String, ?> metaData, String subject, Event rawEvent) {
+            public Map<Integer, @Nullable Object> mapArguments(
+                    @Nullable Object instance,
+                    Object event,
+                    Map<String, ?> metaData,
+                    String subject,
+                    @Nullable Event rawEvent) {
                 Predicate<Integer> present = integer -> integer != -1;
 
-                Map<Integer, Object> result = new HashMap<>();
+                Map<Integer, @Nullable Object> result = new HashMap<>();
                 if (present.test(instance())) result.put(instance(), instance);
                 if (present.test(event())) result.put(event(), event);
                 if (present.test(metaData())) result.put(metaData(), metaData);

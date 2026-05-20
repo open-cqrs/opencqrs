@@ -11,6 +11,7 @@ import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import java.time.Duration;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.jspecify.annotations.NullUnmarked;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -21,6 +22,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param standard Default settings valid for all event processing groups, unless overridden using "groups".
  * @param groups Event processing group specific override settings. Merged with "standard" settings.
  */
+@NullUnmarked
 @ConfigurationProperties("opencqrs.event-handling")
 public record EventHandlingProperties(ProcessorSettings standard, Map<String, ProcessorSettings> groups) {
 

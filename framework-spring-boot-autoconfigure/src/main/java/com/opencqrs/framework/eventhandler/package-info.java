@@ -1,4 +1,3 @@
-/** Contains event handler and processing components. */
 @NullMarked
 package com.opencqrs.framework.eventhandler;
 
