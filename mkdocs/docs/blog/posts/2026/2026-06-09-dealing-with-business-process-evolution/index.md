@@ -1,6 +1,6 @@
 ---
 draft: false
-title: "Pinning the Process - Versioning Business Logic in Event-Sourced Systems"
+title: "Dealing With Business Process Evolution - Versioning Business Logic in Event-Sourced Systems"
 date: 2026-06-09
 authors:
   - kersten
@@ -12,10 +12,10 @@ tags:
   - business rules
   - strategy pattern
   - CQRS
-slug: pinning-the-process
+slug: dealing-with-business-process-evolution
 ---
 
-# Pinning the Process - Versioning Business Logic in Event-Sourced Systems
+# Dealing With Business Process Evolution - Versioning Business Logic in Event-Sourced Systems
 
 Modern software does not just store data. It orchestrates business processes - approvals, fulfillments, onboarding flows - and these processes evolve. Regulations change, policies tighten, new approval steps appear, old thresholds shift. The code you wrote six months ago no longer represents the rules your business operates under today.
 
@@ -29,7 +29,7 @@ This is where process version pinning enters the picture. Instead of trying to b
 
 ## Why Schema-Evolution Strategies Stop Here
 
-Upcasting is a data transformation. It takes an event written under an older schema and produces a representation that matches the current code's expectations - new fields appear, optional ones get populated, structures get reshaped. What upcasting cannot do is change which code runs when the transformed event is replayed. The behavior on top of the data is determined by the application logic, not by the events themselves.
+**[Upcasting](../../../../concepts/upcasting/index.md)** is a data transformation. It takes an event written under an older schema and produces a representation that matches the current code's expectations - new fields appear, optional ones get populated, structures get reshaped. What upcasting cannot do is change which code runs when the transformed event is replayed. The behavior on top of the data is determined by the application logic, not by the events themselves.
 
 Lazy enrichment goes one step further by writing new events to the stream when something is missing. But even there, the missing piece is data. The enrichment fills in what was never recorded, so that the next command can find the field it needs. If the rule itself has changed - if the very logic of "what counts as an approved loan" has shifted - enrichment does not help, because there is no field to add. There is a new decision policy to apply, and that policy lives in code, not in events.
 
@@ -37,9 +37,12 @@ Consider a concrete case. Your loan approval process required a single underwrit
 
 The team's instinct is "let us just collect a second signature and continue" - but the disclosure that should have been sent at submission was never sent, because at that time the rule did not exist. You cannot pretend it happened. The version a process started under is not just a label - it is the contract under which the process must complete.
 
+??? warning "Why missed process steps cannot be backfilled"
+    A skipped notification, an unrecorded approval, or a missing audit entry is not "data that needs to be added later" - it is a step in a regulated process that should have happened at a specific moment. Sending the disclosure today does not satisfy a rule that required it at submission time. The clean path is to honor the version the process started under, and to let the new rules apply only to processes that began after the change.
+
 ## Pinning the Version - The Event as Anchor
 
-The mechanism is straightforward. At the moment a process starts - typically the first meaningful command on a new instance - you emit a special event that records which version of the process applies to this particular run. From then on, that version is part of the instance's history, written into the event stream alongside the business events. When you replay the stream years later, the version is right there with the rest of the facts.
+The mechanism is straightforward. At the moment a process starts - typically the first meaningful command on a new instance - you emit a special event that records which version of the process applies to this particular run. From then on, that version is part of the instance's history, written into the **[event stream](../../../../concepts/events/index.md)** alongside the business events. When you replay the stream years later, the version is right there with the rest of the facts.
 
 Here is what the event and its emission look like for a loan application. The handler resolves which version applies right now, then writes both the pinning event and the business event in one step. The version becomes part of the stream from the very first write, indelible and replay-stable.
 
@@ -93,9 +96,15 @@ sequenceDiagram
 
 The pinning event acts like an anchor at the start of the stream. Every command that follows, no matter how much time has passed, picks up the same version when the instance is loaded. The application running under version 2 today will still run under version 2 in five years - even if the system has long moved on to version 5.
 
+??? info "What makes this work mechanically"
+    The pinning event is just an event - same persistence, same ordering, same replay behavior as any other domain event. There is no special storage, no separate "version table", no out-of-band lookup at runtime. The version travels with the instance because it is part of the instance's history.
+
 ## Strategy-per-Version - A Complete Ruleset Per Variant
 
-Knowing which version applies is only half the picture. The other half is what each version actually does. The cleanest way to model this is as a strategy - one interface, one implementation per version, each implementation a complete statement of how this version behaves. No conditionals scattered across business handlers, no feature flags toggling individual rules. The version is the strategy.
+Knowing which version applies is only half the picture. The other half is what each version actually does. The cleanest way to model this is as a strategy (1) - one interface, one implementation per version, each implementation a complete statement of how this version behaves. No conditionals scattered across business handlers, no feature flags toggling individual rules. The version is the strategy.
+{ .annotate }
+
+1.  The classic Strategy design pattern from Gang of Four - a family of algorithms encapsulated behind a single interface, selected at runtime. The familiar use case is swappable sorting or compression algorithms; here the selection happens once at process start and stays fixed for the instance's lifetime.
 
 Here is the loan approval process modeled this way. Version 1 represents the original single-underwriter rule across all loan volumes. Version 2 enforces the new dual-underwriter requirement and the regulatory disclosure step for high-value loans.
 
@@ -129,7 +138,7 @@ class LoanApprovalProcessV2 : LoanApprovalProcess {
 }
 ```
 
-Each implementation is a complete picture of what that version of the process expects. V1 knows nothing about thresholds, dual signatures, or regulatory disclosures - those concepts did not exist when V1 was written. V2 knows them, and applies them with its own logic. When a new version arrives, you add a new class; you do not edit the old ones, because the old ones are still in production. The bridge between the pinning event and the chosen strategy lives in the event sourcing handler, which reconstructs both the version and the strategy when the instance is replayed.
+Each implementation is a complete picture of what that version of the process expects. V1 knows nothing about thresholds, dual signatures, or regulatory disclosures - those concepts did not exist when V1 was written. V2 knows them, and applies them with its own logic. When a new version arrives, you add a new class; you do not edit the old ones, because the old ones are still in production. The bridge between the pinning event and the chosen strategy lives in the **[event sourcing handler](../../../../reference/extension_points/state_rebuilding_handler/index.md)**, which reconstructs both the version and the strategy when the instance is replayed.
 
 ```kotlin
 data class ProcessingModel(
@@ -167,9 +176,15 @@ flowchart LR
 
 A reasonable question at this point: why not use a feature flag? Feature flags flip the behavior of the entire system at once - the moment you switch the flag, every running process suddenly behaves under the new rules. That is precisely what you want to avoid. Pinning is per instance. Each loan application carries its own version through to completion, regardless of what newer applications use.
 
+??? tip "When to add a new strategy version"
+    A new version is justified when the rule change is observable at the process boundary - a new required step, a different threshold, a new required side effect. Internal refactorings of existing logic do not need a new version; they just modify the existing strategy class. The rule of thumb: if existing instances must finish under the old behavior, you need a new version. If they should pick up the change immediately, you do not.
+
 ## Putting It Together - Commands Through a Pinned Process
 
-With pinning and strategies in place, the rest of the application becomes refreshingly boring. Business command handlers simply consult the processing model that the instance has already reconstructed for itself. They do not check versions, they do not branch on rule sets, they just call methods on the strategy. The polymorphism does the heavy lifting.
+With pinning and strategies in place, the rest of the application becomes refreshingly boring. Business **[command handlers](../../../../reference/extension_points/command_handler/index.md)** simply consult the processing model (1) that the instance has already reconstructed for itself. They do not check versions, they do not branch on rule sets, they just call methods on the strategy. The polymorphism does the heavy lifting.
+{ .annotate }
+
+1.  The processing model is the in-memory state representation built up by the event sourcing handlers during replay. In OpenCQRS, this is the typed object that the command handler receives as its current state argument - the result of feeding all prior events through the state-rebuilding handlers.
 
 Here is what an underwriter-decision handler looks like once the strategy is in place. It does not know or care which version applies - it only knows that the strategy will tell it how many signatures are needed. Everything version-specific lives behind the strategy interface.
 
@@ -200,6 +215,9 @@ class SubmitUnderwriterDecisionHandler {
 ```
 
 No version check, no if-chain on a process version string, no conditional path through the handler. The handler reads from the instance, asks the strategy, and emits the appropriate events. Adding a new version - V3 with three underwriters, or some entirely different approval workflow - requires no change here. The handler is permanently insulated from process evolution, because the evolution happens behind the strategy interface.
+
+??? note "Where the savings show up"
+    The payoff arrives slowly but compounds. Each new version adds one new class and one registry entry, and the existing command handlers stay untouched. After three or four versions, the cost of evolving the process is essentially the cost of writing a new strategy implementation - everything else is already wired.
 
 ## What You Have Learned
 
