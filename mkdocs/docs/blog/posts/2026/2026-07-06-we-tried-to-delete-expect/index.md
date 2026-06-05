@@ -1,7 +1,7 @@
 ---
 draft: false
 title: "We Tried to Delete `expect`. We Got a New Test DSL Instead."
-date: 2026-08-03
+date: 2026-07-06
 authors:
   - kersten
 categories:
