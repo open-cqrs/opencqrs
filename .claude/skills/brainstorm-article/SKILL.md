@@ -2,7 +2,7 @@
 name: brainstorm-article
 description: Develop a blog article topic through a guided conversation. Takes a topic and key focus, then interviews the user to shape the article before handing off to the writer.
 argument-hint: "[topic] [key-focus]"
-allowed-tools: AskUserQuestion, Read, Glob, Grep, Skill
+allowed-tools: AskUserQuestion, Read, Glob, Grep, Bash, Write, Skill
 ---
 
 # Article Brainstorming Skill
@@ -10,6 +10,17 @@ allowed-tools: AskUserQuestion, Read, Glob, Grep, Skill
 Develop a blog article through a guided conversation based on the following input: $ARGUMENTS
 
 You are an **article interviewer and topic developer**. Your job is to help the user shape a raw topic idea into a well-defined article plan through a structured conversation. You ask focused questions, synthesize the user's answers, and produce a comprehensive Article Brief that the `write-article` skill can execute directly — without re-asking any questions.
+
+## Check for an Upstream Dialogue Transcript
+
+**Before you begin the conversation**, scan `$ARGUMENTS` for a reference to a file at `.claude/article-dialogues/`. If you find one:
+
+1. Read that file. It contains a `Distilled Summary` section at the top (the four key answers — what / who / claim / motivation — plus sharp points the user already made) and a `Full Transcript` below.
+2. Treat the distilled summary as **pre-answered** parts of the brainstorming. Do not re-ask those questions. Acknowledge what you already know from the dialogue, briefly, in your opening message — so the user knows you have read it.
+3. Skip directly to the parts of the brainstorming that the dialogue did not cover. Typical remaining questions: codebase orientation, fictional-domain choice, diagram style, target audience refinement, series placement, slug, tags, exact section structure.
+4. The full transcript is your source of truth for the user's own words and reasoning. Reach back to it when drafting the brief if you need to preserve the user's actual phrasing or examples.
+
+If `$ARGUMENTS` does not reference a dialogue transcript, proceed with the standard conversation flow from Phase 1 onward.
 
 ## Conversation Flow
 
@@ -110,9 +121,66 @@ Once all phases are complete, produce a structured **Article Brief** in the foll
 <Numbered list of the most important, quotable insights the article should deliver>
 ```
 
-### Phase 6: Handoff to Writer
+### Phase 6: Save the Brief as an Artifact and Hand Off to the Writer
 
-After the user approves the brief, ask whether they want to **proceed directly to writing** using the `write-article` skill. If yes, invoke the `write-article` skill with the complete Article Brief as the argument.
+After the user approves the brief, save it as a markdown file before handing off. The brief becomes a durable artifact that the writer (and any later step) reads from disk.
+
+#### Step 1: Ensure the storage directory exists
+
+```bash
+mkdir -p .claude/article-briefs
+```
+
+Idempotent. If the directory already exists, nothing happens.
+
+#### Step 2: Derive the file name
+
+Use today's date and the slug from the brief itself (the `**Slug:**` line). The filename pattern:
+
+`{YYYY-MM-DD}-{slug}.md`
+
+If a dialogue transcript exists for this topic at `.claude/article-dialogues/{date}-{slug}.md`, reuse the **slug** from that filename so the brief and the dialogue line up visibly when listed.
+
+#### Step 3: Write the brief file
+
+Use the Write tool to save the brief to `.claude/article-briefs/{YYYY-MM-DD}-{slug}.md` with the following structure:
+
+```markdown
+---
+title: <Article Title>
+slug: <slug>
+date: <YYYY-MM-DD>
+dialogue_transcript: <relative path to dialogue file, if there was one, otherwise omit this line>
+status: brief-ready
+---
+
+# Article Brief: <Title>
+
+<the complete Article Brief as approved by the user, preserving all sections — Title, Slug, Category, Tags, Author, Series, Series Position, Target Audience, Core Thesis, Article Structure with all sections and conclusion, Technical Details, Key Insights to Highlight>
+```
+
+The frontmatter is the machine-readable header. The body is the brief verbatim — what the user approved is what gets saved, no rephrasing.
+
+If a dialogue transcript was the upstream artifact for this brief, **include the `dialogue_transcript` line** in the frontmatter. This is the explicit pointer the writer uses to find the conversation source if it needs the user's actual voice or examples.
+
+#### Step 4: Confirm the save
+
+Tell the user the saved path in plain text: "Brief saved to `.claude/article-briefs/2026-06-06-gateway-pattern.md`."
+
+#### Step 5: Hand off to the writer
+
+Ask whether the user wants to **proceed directly to writing** using the `write-article` skill. If yes, invoke `write-article` via the Skill tool. Pass the brief file path as the argument:
+
+```
+Skill: write-article
+Args: |
+  An approved Article Brief has been saved at:
+  .claude/article-briefs/<filename>.md
+
+  Read that file first as the primary input. Its frontmatter may include a `dialogue_transcript` field — if so, the dialogue at that path is available as a secondary reference for the user's original voice and any examples that the brief may have compressed. Treat the brief as the contract; reach for the dialogue only when you need the user's actual phrasing or a specific example not fully captured in the brief.
+```
+
+If the user prefers not to invoke the writer immediately, simply confirm the brief is saved and stop — they can run `write-article` against the same file later.
 
 ## OpenCQRS Terminology
 

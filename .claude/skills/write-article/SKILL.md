@@ -13,11 +13,21 @@ Write a professional article based on the following input: $ARGUMENTS
 
 ### Step 1: Determine Input Type
 
-Examine the input carefully. It falls into one of two categories:
+Examine the input carefully. It falls into one of three categories:
 
-**A) Structured Article Brief** — The input contains an Article Brief with fields like **Title**, **Slug**, **Category**, **Tags**, **Author**, **Core Thesis**, **Article Structure**, **Technical Details**, etc. This typically comes from the `brainstorm-article` skill. In this case, **skip Step 2 entirely** and proceed directly to Step 3 (Writing). Use all information from the brief — do not re-ask questions that are already answered.
+**A) Reference to a Brief Artifact** — The input contains a path to a file at `.claude/article-briefs/`. This is the standard handoff from `brainstorm-article`. Do this:
 
-**B) Loose topic or instructions** — The input is a free-form topic, a rough idea, or a set of instructions without a structured brief. In this case, proceed to Step 2 to gather the information you need before writing.
+1. Read the brief file. Its frontmatter contains `title`, `slug`, `date`, optionally `dialogue_transcript`, and `status`. Its body is the full Article Brief as approved by the user.
+2. Check the frontmatter for a `dialogue_transcript` field. If present, the original dialogue is available at that path as a **secondary reference**. Do not read it eagerly — but reach for it when you need:
+   - the user's actual phrasing for a section that needs their voice
+   - a specific example or argument they made in conversation that the brief may have compressed
+   - clarification on a section where the brief is terse
+3. Treat the brief as the contract: structure, sections, key insights, technical details, audience — all of those are decided. The dialogue is a deepening source, not an override.
+4. Skip Step 2 entirely. Proceed directly to Step 3 (Writing).
+
+**B) Inline Structured Article Brief** — The input string itself contains an Article Brief (with `**Title:**`, `**Slug:**`, `**Category:**`, sections, key insights, etc.) rather than a path. This is the older handoff style. Use the brief as-is. Skip Step 2 entirely. Proceed directly to Step 3.
+
+**C) Loose topic or instructions** — The input is a free-form topic, a rough idea, or a set of instructions without a structured brief. In this case, proceed to Step 2 to gather the information you need before writing.
 
 ### Step 2: Lightweight Intake (only if no Article Brief)
 
