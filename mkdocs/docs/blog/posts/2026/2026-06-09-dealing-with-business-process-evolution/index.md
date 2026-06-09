@@ -38,13 +38,30 @@ Consider a concrete case. Your loan approval process required a single underwrit
 The team's instinct is "let us just collect a second signature and continue" - but the disclosure that should have been sent at submission was never sent, because at that time the rule did not exist. You cannot pretend it happened. The version a process started under is not just a label - it is the contract under which the process must complete.
 
 ??? warning "Why missed process steps cannot be backfilled"
-    A skipped notification, an unrecorded approval, or a missing audit entry is not "data that needs to be added later" - it is a step in a regulated process that should have happened at a specific moment. Sending the disclosure today does not satisfy a rule that required it at submission time. The clean path is to honor the version the process started under, and to let the new rules apply only to processes that began after the change.
+    A skipped notification, an unrecorded approval, or a missing audit entry is not "data that needs to be added later" - it is a step in a regulated process that should have happened at a specific moment. Sending the disclosure today does not satisfy a rule that required it at submission time. The clean path here is to honor the version the process started under - because the disclosure cannot be reconstructed retroactively. Not every rule change is this strict, and the mechanism that lets you make this judgment per instance is the topic of the next section.
+
+## What Pinning Actually Buys You - Per-Instance Choice
+
+The disclosure example illustrates the strictest case: a missing step that cannot be reconstructed, so the running instance must finish under the old rules. But "finish under the old rules" is one of several legitimate outcomes, not the only one. The deeper value of pinning is that it lets you decide *per instance* rather than *per system*.
+
+At the moment a rule changes, your system holds three categories of process instances:
+
+| Category | What pinning gives you |
+|---|---|
+| **Completed** | A replay-stable record of which rules governed each historical run - so an audit five years from now produces the same outcome it did when the process finished |
+| **Running** | A per-instance choice: finish under the old rules, or deliberately migrate to the new ones - both are legitimate, but the decision is yours to make and to document |
+| **New** | An automatic pickup of the latest version, captured at the very first command |
+
+Not every rule change is as absolute as the disclosure example. A relaxed credit threshold, a renamed status, a new optional check - these can often be applied safely to running instances. Without pinning, this is a system-wide gamble: the moment you deploy the change, every running process suddenly behaves differently. With pinning, the same change becomes an instance-by-instance decision, informed by the version each instance is currently running under. Pinning does not pick between "freeze" and "migrate" - it gives you the information to make either choice deliberately, at the granularity that matters.
 
 ## Pinning the Version - The Event as Anchor
 
 The mechanism is straightforward. At the moment a process starts - typically the first meaningful command on a new instance - you emit a special event that records which version of the process applies to this particular run. From then on, that version is part of the instance's history, written into the **[event stream](../../../../concepts/events/index.md)** alongside the business events. When you replay the stream years later, the version is right there with the rest of the facts.
 
 Here is what the event and its emission look like for a loan application. The handler resolves which version applies right now, then writes both the pinning event and the business event in one step. The version becomes part of the stream from the very first write, indelible and replay-stable.
+
+??? note "About the code examples"
+    The snippets in this article are condensed for clarity, not for direct copy-paste. In real OpenCQRS code, events are published through the framework's **[command handler](../../../../reference/extension_points/command_handler/index.md)** API rather than returned as a `List<Event>` from a function. The mechanics - what the handler decides, what gets persisted, in what order - are the same; the syntactic ceremony is left out so the patterns stand on their own.
 
 ```kotlin
 data class LoanApplicationProcessVersionPinnedEvent(
@@ -110,22 +127,20 @@ Here is the loan approval process modeled this way. Version 1 represents the ori
 
 ```kotlin
 interface LoanApprovalProcess {
-    fun requiredSignatures(amount: Money): Int
     fun submissionSideEffects(application: LoanApplication): List<SideEffect>
+    fun isApprovalComplete(signatureCount: Int, amount: Money): Boolean
 }
 
 class LoanApprovalProcessV1 : LoanApprovalProcess {
 
-    override fun requiredSignatures(amount: Money): Int = 1
-
     override fun submissionSideEffects(application: LoanApplication): List<SideEffect> =
         listOf(SendStandardAcknowledgement(application.applicantId))
+
+    override fun isApprovalComplete(signatureCount: Int, amount: Money): Boolean =
+        signatureCount >= 1
 }
 
 class LoanApprovalProcessV2 : LoanApprovalProcess {
-
-    override fun requiredSignatures(amount: Money): Int =
-        if (amount > Money.of(100_000)) 2 else 1
 
     override fun submissionSideEffects(application: LoanApplication): List<SideEffect> {
         val ack = SendStandardAcknowledgement(application.applicantId)
@@ -135,10 +150,22 @@ class LoanApprovalProcessV2 : LoanApprovalProcess {
             listOf(ack)
         }
     }
+
+    override fun isApprovalComplete(signatureCount: Int, amount: Money): Boolean {
+        val required = if (amount > Money.of(100_000)) 2 else 1
+        return signatureCount >= required
+    }
 }
 ```
 
-Each implementation is a complete picture of what that version of the process expects. V1 knows nothing about thresholds, dual signatures, or regulatory disclosures - those concepts did not exist when V1 was written. V2 knows them, and applies them with its own logic. When a new version arrives, you add a new class; you do not edit the old ones, because the old ones are still in production. The bridge between the pinning event and the chosen strategy lives in the **[event sourcing handler](../../../../reference/extension_points/state_rebuilding_handler/index.md)**, which reconstructs both the version and the strategy when the instance is replayed.
+Each implementation is a complete picture of what that version of the process expects. V1 knows nothing about thresholds, dual signatures, or regulatory disclosures - those concepts did not exist when V1 was written. V2 knows them, and applies them with its own logic. When a new version arrives, you add a new class; you do not edit the old ones, because the old ones are still in production.
+
+??? tip "Keep the strategy interface narrow"
+    The interface is the part of this design that risks aging poorly. Every method on it must be implemented by every version - including V1, which knew nothing about the concepts later versions introduce. If V5 needs a new method that V1 has no meaningful answer for, V1 either grows a no-op default that misrepresents its semantics, or you end up with version-specific sub-interfaces that re-introduce the type checks the strategy was meant to eliminate.
+
+    The practical mitigation, seen in production codebases applying this pattern, is to keep the interface small and push complexity into the implementations themselves. A strategy with three or four cohesive methods absorbs evolution gracefully; one with a dozen rule-specific predicates becomes a maintenance burden after the third version. When a new version needs a genuinely new concept, prefer adding one well-chosen method over many narrow ones - and prefer defaults that honestly express "this version does not participate in this concept" over fabricated answers.
+
+The bridge between the pinning event and the chosen strategy lives in the **[event sourcing handler](../../../../reference/extension_points/state_rebuilding_handler/index.md)**, which reconstructs both the version and the strategy when the instance is replayed.
 
 ```kotlin
 data class ProcessingModel(
@@ -181,12 +208,12 @@ A reasonable question at this point: why not use a feature flag? Feature flags f
 
 ## Putting It Together - Commands Through a Pinned Process
 
-With pinning and strategies in place, the rest of the application becomes refreshingly boring. Business **[command handlers](../../../../reference/extension_points/command_handler/index.md)** simply consult the processing model (1) that the instance has already reconstructed for itself. They do not check versions, they do not branch on rule sets, they just call methods on the strategy. The polymorphism does the heavy lifting.
+With pinning and strategies in place, the rest of the application becomes refreshingly boring. Business **[command handlers](../../../../reference/extension_points/command_handler/index.md)** simply consult the processing model (1) that the instance has already reconstructed for itself. They do not check versions, they do not encode rule sets - they call methods on the strategy and let its answers drive what comes next. The polymorphism does the heavy lifting.
 { .annotate }
 
 1.  The processing model is the in-memory state representation built up by the event sourcing handlers during replay. In OpenCQRS, this is the typed object that the command handler receives as its current state argument - the result of feeding all prior events through the state-rebuilding handlers.
 
-Here is what an underwriter-decision handler looks like once the strategy is in place. It does not know or care which version applies - it only knows that the strategy will tell it how many signatures are needed. Everything version-specific lives behind the strategy interface.
+Here is what an underwriter-decision handler looks like once the strategy is in place. It does not know or care which version applies - it asks the strategy whether the approval is complete and dispatches its output events on the answer. Everything version-specific lives behind the strategy interface.
 
 ```kotlin
 class SubmitUnderwriterDecisionHandler {
@@ -198,14 +225,13 @@ class SubmitUnderwriterDecisionHandler {
         val strategy = instance.processingModel?.strategy
             ?: error("Process not initialized")
 
-        val collected = instance.signatures.size + 1
-        val required = strategy.requiredSignatures(instance.amount)
+        val totalSignatures = instance.signatures.size + 1
 
         val decision = UnderwriterDecisionRecordedEvent(
             applicationId = command.applicationId,
             underwriterId = command.underwriterId,
         )
-        return if (collected >= required) {
+        return if (strategy.isApprovalComplete(totalSignatures, instance.amount)) {
             listOf(decision, ApprovalCompletedEvent(command.applicationId))
         } else {
             listOf(decision)
@@ -214,16 +240,27 @@ class SubmitUnderwriterDecisionHandler {
 }
 ```
 
-No version check, no if-chain on a process version string, no conditional path through the handler. The handler reads from the instance, asks the strategy, and emits the appropriate events. Adding a new version - V3 with three underwriters, or some entirely different approval workflow - requires no change here. The handler is permanently insulated from process evolution, because the evolution happens behind the strategy interface.
+There is still a branch in the handler - the `if/else` that decides whether to emit `ApprovalCompletedEvent` alongside the decision. The point is what the branch dispatches on: not a version string, not a hand-rolled comparison of signature counts against version-specific thresholds, but the strategy's own answer to "is this approval complete now?". Adding V3 with three underwriters, V4 with a cooling-off window, or V5 with regional diversity requirements does not change this handler. The strategy interface is the boundary - the if/else lives on the dispatch side, not the rule side. The same insulation principle applies to the start of the process: the original `StartLoanApplicationHandler` would now consult `strategy.submissionSideEffects(...)` to translate version-specific side effects into events at submission time, without knowing which version it is operating under.
 
-??? note "Where the savings show up"
-    The payoff arrives slowly but compounds. Each new version adds one new class and one registry entry, and the existing command handlers stay untouched. After three or four versions, the cost of evolving the process is essentially the cost of writing a new strategy implementation - everything else is already wired.
+### The Layering That Makes It Work
+
+The cleaner way to state why this pattern holds up is a layering that CQRS already invites. Command handlers exist to enforce business invariants and to dispatch the right state-changing events. They ask **status-level questions**: "is this approval complete?", "is the applicant still eligible?", "is this antrag in a state that accepts new signatures?". Strategies exist to answer those questions with **versioned policy** - the mechanics that turn process facts into status answers. They own "how many signatures count as complete", "which side effects belong to a submission", "what disqualifies an applicant".
+
+When `collected >= required` lived directly in the handler, that layering was broken. The strategy returned a threshold, and the handler encoded the rule that compared against it - so the handler partly knew the policy. The line was fuzzy. With `isApprovalComplete` behind the strategy interface, the line is clean: the handler queries an invariant, the strategy supplies the answer that determines it. Two roles, two layers, no overlap.
+
+### Why Evolution Becomes Predictable
+
+From this layering, the practical payoff follows automatically. **Version-specific change concentrates in the policy layer.** New strategy classes, registry entries, occasional resolver wiring, sometimes a compatibility mapping between co-evolving models - these are the places where versioning lives. It stops leaking into handlers, projections, validators, and side-effect emitters that consume the strategy's answers without needing to know how they were produced.
+
+This is the real value proposition of the pattern, and it deserves stating directly: **the pattern does not make process evolution free - it makes the cost predictable and localized.** Adding a fifth version means writing one new strategy implementation and registering it. It does not mean auditing thirty command handlers for hidden version assumptions, hunting down stale thresholds in projections, or wondering which downstream piece of code silently depends on the old behavior. Versioning becomes a thing that happens in known places, not a smell that spreads.
 
 ## What You Have Learned
 
 Schema evolution and process evolution look similar from a distance, but they require different tools. The strategies in the first article - upcasting and lazy enrichment - bend stored data into the shape today's code expects. They work because the change is one of representation, not of behavior. When the change is behavioral, when the rules themselves shift, you need a mechanism that records which rules applied, not which fields existed.
 
-Pinning is that mechanism. You write the version into the event stream at process start, you let each instance carry its own pinned version forever, and you model each version as a complete strategy that knows its own rules. The event store remains immutable, the rules evolve freely in code, and instances finish under the rules they began with.
+Pinning is that mechanism. You write the version into the event stream at process start, you let each instance carry its own pinned version forever, and you model each version as a complete strategy that knows its own rules. The event store remains immutable, the rules evolve freely in code, and instances finish under the rules they began with - unless you deliberately migrate them.
+
+The deeper reason this works is a layering that CQRS already encourages but rarely makes explicit: command handlers enforce invariants and ask status-level questions, strategies encode the versioned policies that answer them. When that line is drawn cleanly, version-specific change concentrates in the policy layer and stops leaking into handlers, projections, and side-effect emitters. Evolution costs do not disappear, but they become predictable, localized, and bounded by the size of one new strategy implementation.
 
 There is one direction this article does not explore, and it deserves a brief mention. In real systems, more than one model often evolves at once - a process version might pair with a specific document model, a specific task structure, or a specific calculation policy. The pinning mechanism extends naturally to compatibility mappings between co-evolving models: when V2 of the process is pinned, V3 of the document set is what comes with it. That is a topic for a future article in this series.
 
