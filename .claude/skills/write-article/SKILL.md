@@ -9,21 +9,24 @@ allowed-tools: AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash
 
 Write a professional article based on the following input: $ARGUMENTS
 
+> **Layout reference:** the full artifact layout for the article pipeline is specified in `.claude/article-pipeline.md`. This skill reads `brief.md` (and optionally `dialogue.md`) from a session folder under `.article-work/{YYYY-MM-DD}-{slug}/`, writes the published article into `mkdocs/docs/blog/posts/`, and **appends** to the cumulative `enrichment-notes.md` in the same session folder.
+
 ## Workflow
 
 ### Step 1: Determine Input Type
 
 Examine the input carefully. It falls into one of three categories:
 
-**A) Reference to a Brief Artifact** — The input contains a path to a file at `.claude/article-briefs/`. This is the standard handoff from `brainstorm-article`. Do this:
+**A) Reference to a Brief Artifact** — The input contains a path to a file at `.article-work/{date}-{slug}/brief.md` (or, for legacy sessions, `.claude/article-briefs/`). This is the standard handoff from `brainstorm-article`. Do this:
 
 1. Read the brief file. Its frontmatter contains `title`, `slug`, `date`, optionally `dialogue_transcript`, and `status`. Its body is the full Article Brief as approved by the user.
-2. Check the frontmatter for a `dialogue_transcript` field. If present, the original dialogue is available at that path as a **secondary reference**. Do not read it eagerly — but reach for it when you need:
+2. Check the frontmatter for a `dialogue_transcript` field. If present, the original dialogue is available at that path (relative to the session folder, typically `dialogue.md`) as a **secondary reference**. Do not read it eagerly — but reach for it when you need:
    - the user's actual phrasing for a section that needs their voice
    - a specific example or argument they made in conversation that the brief may have compressed
    - clarification on a section where the brief is terse
 3. Treat the brief as the contract: structure, sections, key insights, technical details, audience — all of those are decided. The dialogue is a deepening source, not an override.
-4. Skip Step 2 entirely. Proceed directly to Step 3 (Writing).
+4. Note the session folder path — you will need it for the enrichment-notes append in Step 5.
+5. Skip Step 2 entirely. Proceed directly to Step 3 (Writing).
 
 **B) Inline Structured Article Brief** — The input string itself contains an Article Brief (with `**Title:**`, `**Slug:**`, `**Category:**`, sections, key insights, etc.) rather than a path. This is the older handoff style. Use the brief as-is. Skip Step 2 entirely. Proceed directly to Step 3.
 
@@ -52,7 +55,7 @@ Write the article following all the style and formatting rules defined below. If
 
 ### Step 4: MkDocs Integration
 
-Once the user approves the article, save it into the mkdocs blog structure:
+Once the user approves the article, save it into the mkdocs blog structure. The companion `enrichment-notes.md` lives under `.article-work/{date}-{slug}/` (not next to the article) — see Step 5.
 
 1. **Determine the next post number** by listing existing files in `mkdocs/docs/blog/posts/` and incrementing the highest number found.
 2. **Create the post file** at `mkdocs/docs/blog/posts/post-{N}-{slug}.md` with the following front matter format:
@@ -78,6 +81,55 @@ slug: <url-slug>
 4. **Update `mkdocs/mkdocs.yml`** — add the new post to the `nav` section under `Blog`. If the article belongs to a series, add it under the existing series heading. If it starts a new series or is a standalone article, add it as a direct entry under Blog.
 
 5. **Verify the author key** exists in `mkdocs/docs/blog/.authors.yml`. If the author is not yet listed, ask the user for the required information (name, description) and add the entry.
+
+### Step 5: Append to the cumulative `enrichment-notes.md`
+
+`enrichment-notes.md` is the **cumulative** companion that brainstorm seeds, the writer and grill append to, and `enrich-article` consumes. The full contract lives in `.claude/article-pipeline.md`.
+
+**File path:** in the same session folder as `brief.md`, e.g. `.article-work/2026-06-06-gateway-pattern/enrichment-notes.md`. **Do not** place it next to the published article in `mkdocs/docs/blog/posts/`.
+
+**Expected state on entry:** `brainstorm-article` should have already created this file and written a `## From brainstorm-article ({date})` section. If the file is missing (the user came straight to write without going through brainstorm), create it now with the header and frontmatter from the brainstorm contract; otherwise read it.
+
+**Your job:** append a new section `## From write-article ({YYYY-MM-DD})` to the **end** of the file. **Never overwrite the brainstorm section.** Use the same subsection vocabulary as brainstorm, omitting subsections that have nothing for them:
+
+```markdown
+## From write-article ({YYYY-MM-DD})
+
+### Collapsible Deep Dives (high priority)
+<one subsection per planned ??? tip / ??? info box that surfaced during writing — placement, why it matters, 3-6 sentences of content. Or omit.>
+
+### Cross-Link Targets (in addition to those already generated by the standard rules)
+<bulleted list of doc paths and the article phrases that should link to them. Or omit.>
+
+### Admonitions (recommended)
+<one bullet per planned admonition: type, title, suggested placement, content. Or omit.>
+
+### Abbreviation Tooltips (article-specific, do not duplicate from glossary.md)
+<*[Term]: definition lines. Or omit.>
+
+### Content Annotations ({ .annotate } markers)
+<concrete anchor phrases and the annotation content. Or omit.>
+
+### External References (for context)
+<books, specs, blog posts, papers referenced in writing-time discussions. Or omit.>
+
+### Open Questions / Future-Article Seeds
+<topics that came up while writing but do not fit this article and would warrant a separate piece. Or omit.>
+
+### Code Reference Hints (for content annotations or admonitions)
+<specific file paths and line numbers the enricher might want to point at. Or omit.>
+
+### Style/Voice Notes for the Enricher
+<article-specific style points that emerged from writing. Or omit.>
+```
+
+**Sourcing the content:**
+
+- Capture anything that surfaced *during* writing — design discussions, naming debates, comparisons to other frameworks, code-level details that would have derailed the main argument.
+- If brainstorm already named something in its section, do not duplicate it. Only add what is new.
+- Be generous. The cost of an over-rich notes file is low; the cost of a thin one is enrichment-time guessing.
+
+**Maintenance rule:** When the user has follow-up questions about the article and the conversation produces new material that would enrich it (a sidebar idea, a naming insight, a missing cross-reference, a clarifying example), **append it to the write-article section immediately**, with a brief note about where it should land. Do not wait for the enrichment step to remember things.
 
 ## Language and Tone
 
