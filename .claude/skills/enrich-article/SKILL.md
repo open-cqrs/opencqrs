@@ -9,20 +9,39 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 
 Enrich an existing blog article with documentation cross-links, tooltips, admonitions, and content annotations: $ARGUMENTS
 
+> **Layout reference:** the full artifact layout is specified in `.claude/article-pipeline.md`. This skill reads the published article and the **cumulative** `enrichment-notes.md` from the matching session folder under `.article-work/{date}-{slug}/`. The notes file holds contributions from brainstorm, write, and grill — treat it as the layered baseline.
+
 You are an **automatic article enricher**. Your job is to take a finished blog article and enhance it with mkdocs-material features that connect the article to the OpenCQRS documentation, provide readers with contextual explanations, and improve the reading experience. A key goal is to **break up the wall of text** — admonitions, annotations, and cross-links add visual variety and interactive elements that make the article more approachable and less monotonous. You do this **without changing the article's content, structure, or wording** — you only add enrichment on top.
 
 ## Workflow
 
-### Step 1: Read the Article and the Documentation Structure
+### Step 1: Read the Article, the Companion Notes, and the Documentation Structure
 
 1. Read the article file at the path provided in `$ARGUMENTS`. If no path is provided, list files in `mkdocs/docs/blog/posts/` and ask which article to enrich.
-2. Read `mkdocs/mkdocs.yml` to understand the full navigation structure and available documentation pages.
-3. Read `mkdocs/includes/glossary.md` to know which abbreviations already have global definitions.
-4. Scan the documentation pages under `mkdocs/docs/reference/`, `mkdocs/docs/concepts/`, `mkdocs/docs/tutorials/`, and `mkdocs/docs/howto/` to build a mental map of what documentation exists and what terms map to which pages.
+2. Extract the article's `slug` from its frontmatter. Locate the matching session folder under `.article-work/` by looking for a folder whose name ends in `-{slug}` (typical pattern `.article-work/{YYYY-MM-DD}-{slug}/`). If multiple match, pick the most recent date prefix.
+3. **Read `enrichment-notes.md` from that session folder** if it exists. The file is **cumulative**: it contains one `## From {skill} ({date})` section per upstream contributor (brainstorm, write, grill). Read all contributor sections — they layer on top of one another. Treat the **union** of all sections as the **starting baseline** for enrichment. Apply each item unless it violates the global rules in this skill. The `## From grill-article` section in particular contains `Open for Reflection` (sidebars / annotations that surface unresolved tensions the author wanted to acknowledge) and `Intentional / Defended` (companion admonitions for strong claims the author chose to defend) — both are first-class enrichment input. If the file is missing entirely, fall back to enriching the article on its own — do not fail.
+4. Read `mkdocs/mkdocs.yml` to understand the full navigation structure and available documentation pages.
+5. Read `mkdocs/includes/glossary.md` to know which abbreviations already have global definitions.
+6. Scan the documentation pages under `mkdocs/docs/reference/`, `mkdocs/docs/concepts/`, `mkdocs/docs/tutorials/`, and `mkdocs/docs/howto/` to build a mental map of what documentation exists and what terms map to which pages.
 
 ### Step 2: Identify Enrichment Opportunities
 
-Analyze the article for the following enrichment types:
+If an `enrichment-notes.md` exists, use **the union of all contributor sections** as your baseline. Iterate through each item and translate it into the corresponding enrichment type below:
+
+- Collapsible Deep Dives → collapsible `??? tip` / `??? info` admonitions
+- Cross-Link Targets → cross-links
+- Admonitions list → admonitions
+- Abbreviation Tooltips → abbreviation definitions at the file end
+- Content Annotations → `{ .annotate }` markers
+- Open for Reflection (grill section) → typically a `??? tip "Worth Considering"` collapsible admonition, occasionally an annotation
+- Intentional / Defended (grill section) → typically a `??? info "Why we chose this framing"` collapsible admonition that acknowledges the trade-off without weakening the article's voice
+- External References → grounding inside admonitions (do not invent links to external sites unless the URL is in the notes)
+- Code Reference Hints → anchor points for annotations or admonitions
+- Style/Voice Notes → constraints to respect throughout
+
+If two contributor sections name the same target (e.g. brainstorm and write both flagged the same cross-link), treat it as one enrichment but mention both in the coverage report. Brainstorm and write contributions reflect the author's pre-grill intent; grill contributions reflect what the article looked like under adversarial inspection — both are signal.
+
+In addition, analyze the article for further enrichment opportunities using the categories below. Good and sensible enrichments beyond what the notes contain are welcome — the notes are a foundation, not a ceiling.
 
 #### A) Cross-Links to Documentation
 
@@ -133,10 +152,10 @@ The `{ .annotate }` attribute must be placed on its own line directly after the 
 
 Apply all enrichments to the article. Work through the article section by section:
 
-1. First pass: Add cross-links (first occurrence per section).
-2. Second pass: Insert admonitions at appropriate positions.
-3. Third pass: Add content annotations with `{ .annotate }` on paragraphs that contain terms deserving expanded explanations.
-4. Final pass: Append abbreviation tooltip definitions at the end of the file.
+1. First pass: Add cross-links (first occurrence per section). Prioritize the cross-link targets named in `enrichment-notes.md`; then add any additional ones the standard rules surface.
+2. Second pass: Insert admonitions at appropriate positions. Place the admonitions named in `enrichment-notes.md` first; then add any additional ones if the article still benefits from them and you are within the recommended count.
+3. Third pass: Add content annotations with `{ .annotate }` on paragraphs that contain terms deserving expanded explanations — starting with the anchor phrases listed in `enrichment-notes.md`.
+4. Final pass: Append abbreviation tooltip definitions at the end of the file — including the ones from `enrichment-notes.md` plus any additional article-specific terms that warrant tooltips.
 
 **Critical rules while enriching:**
 - **Never use the term "aggregate"** when adding enrichment content (admonitions, annotations, abbreviations). OpenCQRS does not have aggregates — use **"instance"** or **"state"** instead. If the article's original text uses "aggregate," flag it in the summary but do not change the article's wording (that is an editing concern, not an enrichment concern).
@@ -155,6 +174,7 @@ After applying all enrichments, present a summary to the user listing:
 2. **Abbreviation tooltips added** — list of terms and their definitions
 3. **Admonitions added** — type, title, and placement (after which paragraph/section)
 4. **Content annotations added** — which paragraphs received `{ .annotate }`, what each annotation explains
+5. **Notes file coverage** — if an `enrichment-notes.md` was present, explicitly state, **per contributor section** (`## From brainstorm-article`, `## From write-article`, `## From grill-article`), which items were applied and which were intentionally skipped (and why). This lets the author see how each upstream layer landed.
 
 Then save the enriched article back to the original file path using the Edit tool.
 
@@ -175,3 +195,4 @@ Before finalizing, verify:
 - [ ] Collapsible admonitions (`???`) are preferred over static ones (`!!!`) except for critical warnings
 - [ ] No enrichment content uses the term "aggregate" — use "instance" or "state" instead
 - [ ] The article reads naturally — enrichments enhance, not clutter
+- [ ] If an `enrichment-notes.md` was present, every item it contained — across all contributor sections — was either applied or explicitly skipped with a stated reason

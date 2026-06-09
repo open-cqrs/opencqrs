@@ -11,14 +11,17 @@ Develop a blog article through a guided conversation based on the following inpu
 
 You are an **article interviewer and topic developer**. Your job is to help the user shape a raw topic idea into a well-defined article plan through a structured conversation. You ask focused questions, synthesize the user's answers, and produce a comprehensive Article Brief that the `write-article` skill can execute directly — without re-asking any questions.
 
+> **Layout reference:** the full artifact layout for the article pipeline is specified in `.claude/article-pipeline.md`. This skill reads an upstream `dialogue.md` (if present) and writes both `brief.md` and an initial `enrichment-notes.md` into the same session folder under `.article-work/{YYYY-MM-DD}-{slug}/`.
+
 ## Check for an Upstream Dialogue Transcript
 
-**Before you begin the conversation**, scan `$ARGUMENTS` for a reference to a file at `.claude/article-dialogues/`. If you find one:
+**Before you begin the conversation**, scan `$ARGUMENTS` for a reference to a file at `.article-work/{date}-{slug}/dialogue.md` (or, for legacy sessions, `.claude/topic-dialogues/`). If you find one:
 
-1. Read that file. It contains a `Distilled Summary` section at the top (the four key answers — what / who / claim / motivation — plus sharp points the user already made) and a `Full Transcript` below.
-2. Treat the distilled summary as **pre-answered** parts of the brainstorming. Do not re-ask those questions. Acknowledge what you already know from the dialogue, briefly, in your opening message — so the user knows you have read it.
-3. Skip directly to the parts of the brainstorming that the dialogue did not cover. Typical remaining questions: codebase orientation, fictional-domain choice, diagram style, target audience refinement, series placement, slug, tags, exact section structure.
-4. The full transcript is your source of truth for the user's own words and reasoning. Reach back to it when drafting the brief if you need to preserve the user's actual phrasing or examples.
+1. Read that file. It contains a `Distilled Summary` section at the top (the topic's mechanics, trade-offs, and sharp points the user made, plus what draws the author to it and the author's own verdict on whether it carries) and a `Full Transcript` below.
+2. **Check the author's verdict first.** The summary includes a verdict bullet — sharp, unsure, or sceptical. If the verdict is sceptical or unsure, do not jump into article-framing. Open by acknowledging where they landed and ask whether they still want to proceed at all. Only continue if they say yes.
+3. Once the user wants to proceed, treat the topic-level content (mechanics, trade-offs, sharp points, motivation) as **already established**. Do not re-litigate the topic itself. Acknowledge what you already know from the dialogue, briefly, so the user knows you have read it.
+4. The dialogue intentionally did **not** cover article-shape questions. You still need to elicit all of them: target reader, central claim, motivation for writing *this article* (distinct from interest in the topic), scope, tone, examples, codebase orientation, fictional-domain choice, diagram style, series placement, slug, tags, exact section structure.
+5. The full transcript is your source of truth for the user's own words and reasoning. Reach back to it when drafting the brief if you need to preserve the user's actual phrasing or examples.
 
 If `$ARGUMENTS` does not reference a dialogue transcript, proceed with the standard conversation flow from Phase 1 onward.
 
@@ -121,36 +124,31 @@ Once all phases are complete, produce a structured **Article Brief** in the foll
 <Numbered list of the most important, quotable insights the article should deliver>
 ```
 
-### Phase 6: Save the Brief as an Artifact and Hand Off to the Writer
+### Phase 6: Save the Brief and Seed enrichment-notes.md, then Hand Off to the Writer
 
-After the user approves the brief, save it as a markdown file before handing off. The brief becomes a durable artifact that the writer (and any later step) reads from disk.
+After the user approves the brief, save it as a markdown file and seed the cumulative `enrichment-notes.md` before handing off. Both artifacts live in the same session folder under `.article-work/{YYYY-MM-DD}-{slug}/`. See `.claude/article-pipeline.md` for the layout contract.
 
-#### Step 1: Ensure the storage directory exists
+#### Step 1: Determine the session folder
+
+- **If an upstream dialogue transcript was passed in**, reuse that session folder (e.g. `.article-work/2026-06-06-gateway-pattern/`). The date prefix stays as it is — the dialogue's date anchors the session.
+- **If no dialogue transcript exists** (the user came straight to brainstorm), create a fresh folder using today's date and the slug from the brief:
 
 ```bash
-mkdir -p .claude/article-briefs
+mkdir -p .article-work/{YYYY-MM-DD}-{slug}
 ```
 
-Idempotent. If the directory already exists, nothing happens.
+Idempotent.
 
-#### Step 2: Derive the file name
+#### Step 2: Write the brief file
 
-Use today's date and the slug from the brief itself (the `**Slug:**` line). The filename pattern:
-
-`{YYYY-MM-DD}-{slug}.md`
-
-If a dialogue transcript exists for this topic at `.claude/article-dialogues/{date}-{slug}.md`, reuse the **slug** from that filename so the brief and the dialogue line up visibly when listed.
-
-#### Step 3: Write the brief file
-
-Use the Write tool to save the brief to `.claude/article-briefs/{YYYY-MM-DD}-{slug}.md` with the following structure:
+Use the Write tool to save the brief to `.article-work/{YYYY-MM-DD}-{slug}/brief.md` with the following structure:
 
 ```markdown
 ---
 title: <Article Title>
 slug: <slug>
 date: <YYYY-MM-DD>
-dialogue_transcript: <relative path to dialogue file, if there was one, otherwise omit this line>
+dialogue_transcript: <relative path to dialogue.md in the same session folder, if there was one>
 status: brief-ready
 ---
 
@@ -161,11 +159,61 @@ status: brief-ready
 
 The frontmatter is the machine-readable header. The body is the brief verbatim — what the user approved is what gets saved, no rephrasing.
 
-If a dialogue transcript was the upstream artifact for this brief, **include the `dialogue_transcript` line** in the frontmatter. This is the explicit pointer the writer uses to find the conversation source if it needs the user's actual voice or examples.
+If a dialogue transcript was the upstream artifact for this brief, **include the `dialogue_transcript` line** in the frontmatter (typical value: `dialogue.md`). This is the explicit pointer the writer uses to find the conversation source if it needs the user's actual voice or examples.
 
-#### Step 4: Confirm the save
+#### Step 3: Seed `enrichment-notes.md`
 
-Tell the user the saved path in plain text: "Brief saved to `.claude/article-briefs/2026-06-06-gateway-pattern.md`."
+`enrichment-notes.md` is the **cumulative** companion that brainstorm seeds, the writer and grill append to, and `enrich-article` consumes. See the contract in `.claude/article-pipeline.md`.
+
+Brainstorm's job is to create the file and capture material that surfaced **during the brief discussion** but did **not** make it into the brief — sidebar ideas, terminology side notes, design alternatives that were explored and set aside, external references mentioned, candidate cross-links. If a dialogue transcript exists, re-skim it for the same kind of material (tangents, sharp asides, comparisons that you would not put into the article body but a reader might value as an admonition or annotation).
+
+Write the file at `.article-work/{YYYY-MM-DD}-{slug}/enrichment-notes.md` with this structure:
+
+```markdown
+---
+article: <slug>
+purpose: Cumulative companion notes for the enrich-article skill. Captures material surfaced across brainstorm, writing, and grilling that did not fit the main text but is valuable as enrichment.
+---
+
+# Enrichment Notes: <Article Title>
+
+## From brainstorm-article ({YYYY-MM-DD})
+
+### Collapsible Deep Dives (high priority)
+<one subsection per planned ??? tip / ??? info box, with suggested placement, why it matters, and 3-6 sentences of content — or omit this section if nothing surfaced>
+
+### Cross-Link Targets (in addition to those already generated by the standard rules)
+<bulleted list of doc paths and the article phrases that should link to them — or omit>
+
+### Admonitions (recommended)
+<one bullet per planned admonition: type, title, suggested placement, content — or omit>
+
+### Abbreviation Tooltips (article-specific, do not duplicate from glossary.md)
+<*[Term]: definition lines — or omit>
+
+### Content Annotations ({ .annotate } markers)
+<concrete anchor phrases and the annotation content — or omit>
+
+### External References (for context)
+<books, specs, blog posts, papers referenced in the discussion — or omit>
+
+### Open Questions / Future-Article Seeds
+<topics that came up but do not fit this article and would warrant a separate piece — or omit>
+
+### Code Reference Hints (for content annotations or admonitions)
+<specific file paths and line numbers the enricher might want to point at — or omit>
+
+### Style/Voice Notes for the Enricher
+<article-specific style points the enricher must respect — or omit>
+```
+
+**Omit subsections that have nothing in them.** A thin notes file is fine. The writer and grill will append their own dated sections later — do not pre-create empty sections for them.
+
+#### Step 4: Confirm the saves
+
+Tell the user the saved paths in plain text:
+
+> "Brief saved to `.article-work/2026-06-06-gateway-pattern/brief.md`. Enrichment notes seeded at `.article-work/2026-06-06-gateway-pattern/enrichment-notes.md`."
 
 #### Step 5: Hand off to the writer
 
@@ -175,12 +223,14 @@ Ask whether the user wants to **proceed directly to writing** using the `write-a
 Skill: write-article
 Args: |
   An approved Article Brief has been saved at:
-  .claude/article-briefs/<filename>.md
+  .article-work/{YYYY-MM-DD}-{slug}/brief.md
 
   Read that file first as the primary input. Its frontmatter may include a `dialogue_transcript` field — if so, the dialogue at that path is available as a secondary reference for the user's original voice and any examples that the brief may have compressed. Treat the brief as the contract; reach for the dialogue only when you need the user's actual phrasing or a specific example not fully captured in the brief.
+
+  An `enrichment-notes.md` has already been seeded in the same session folder. Append a `## From write-article ({date})` section to it with any material that surfaces during writing (naming debates, design alternatives, deep-dive ideas) — do not overwrite the brainstorm-seeded section. See `.claude/article-pipeline.md` for the cumulative-contract details.
 ```
 
-If the user prefers not to invoke the writer immediately, simply confirm the brief is saved and stop — they can run `write-article` against the same file later.
+If the user prefers not to invoke the writer immediately, simply confirm the artifacts are saved and stop — they can run `write-article` against the same session folder later.
 
 ## OpenCQRS Terminology
 
