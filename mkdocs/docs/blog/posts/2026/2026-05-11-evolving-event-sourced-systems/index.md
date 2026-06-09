@@ -6,6 +6,7 @@ authors:
   - kersten
 categories:
   - Event Sourcing
+  - System Evolution & Business Logic
 tags:
   - upcasting
   - schema evolution
@@ -24,6 +25,10 @@ Event sourcing introduces a different kind of challenge. Every state change in y
 This is the schema evolution problem, and it is one of the first real challenges teams encounter after adopting event sourcing. There is a clear set of strategies for handling it, and none of them require modifying the events in the store. This article - the first in the **System Evolution & Business Logic** series - walks through three approaches: calculating missing data, compensating with defaults, and enriching lazily. By the end, you will know exactly which strategy to reach for when your schema needs to change.
 
 <!-- more -->
+
+!!! abstract "System Evolution & Business Logic series"
+    - **Part 1: Evolving Event-Sourced Systems** — schema evolution *(you are here)*
+    - [Part 2: Dealing With Business Process Evolution](../2026-06-09-dealing-with-business-process-evolution/index.md) — versioning business logic
 
 ## The Immutability Contract
 

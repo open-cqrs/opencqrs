@@ -6,6 +6,7 @@ authors:
   - kersten
 categories:
   - Event Sourcing
+  - System Evolution & Business Logic
 tags:
   - event sourcing
   - process versioning
@@ -26,6 +27,10 @@ But what if the change is not about data, but about behavior? What if your loan 
 This is where process version pinning enters the picture. Instead of trying to bend old events into new shapes, you record which version of the rules each process started under, and let every instance run to completion under its own pinned version. The event store stays immutable, the rules can evolve freely, and in-flight work finishes the way it began. That is the mechanism this article unpacks.
 
 <!-- more -->
+
+!!! abstract "System Evolution & Business Logic series"
+    - [Part 1: Evolving Event-Sourced Systems](../2026-05-11-evolving-event-sourced-systems/index.md) — schema evolution
+    - **Part 2: Dealing With Business Process Evolution** — versioning business logic *(you are here)*
 
 ## Why Schema-Evolution Strategies Stop Here
 
