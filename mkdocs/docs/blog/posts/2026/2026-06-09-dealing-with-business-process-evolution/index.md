@@ -127,14 +127,14 @@ Here is the loan approval process modeled this way. Version 1 represents the ori
 
 ```kotlin
 interface LoanApprovalProcess {
-    fun submissionSideEffects(application: LoanApplication): List<SideEffect>
+    fun submissionEvents(application: LoanApplication): List<Event>
     fun isApprovalComplete(signatureCount: Int, amount: Money): Boolean
 }
 
 class LoanApprovalProcessV1 : LoanApprovalProcess {
 
-    override fun submissionSideEffects(application: LoanApplication): List<SideEffect> =
-        listOf(SendStandardAcknowledgement(application.applicantId))
+    override fun submissionEvents(application: LoanApplication): List<Event> =
+        listOf(StandardAcknowledgementRequestedEvent(application.applicantId))
 
     override fun isApprovalComplete(signatureCount: Int, amount: Money): Boolean =
         signatureCount >= 1
@@ -142,10 +142,10 @@ class LoanApprovalProcessV1 : LoanApprovalProcess {
 
 class LoanApprovalProcessV2 : LoanApprovalProcess {
 
-    override fun submissionSideEffects(application: LoanApplication): List<SideEffect> {
-        val ack = SendStandardAcknowledgement(application.applicantId)
+    override fun submissionEvents(application: LoanApplication): List<Event> {
+        val ack = StandardAcknowledgementRequestedEvent(application.applicantId)
         return if (application.amount > Money.of(100_000)) {
-            listOf(ack, SendRegulatoryDisclosure(application.applicantId))
+            listOf(ack, RegulatoryDisclosureRequestedEvent(application.applicantId))
         } else {
             listOf(ack)
         }
@@ -240,19 +240,59 @@ class SubmitUnderwriterDecisionHandler {
 }
 ```
 
-There is still a branch in the handler - the `if/else` that decides whether to emit `ApprovalCompletedEvent` alongside the decision. The point is what the branch dispatches on: not a version string, not a hand-rolled comparison of signature counts against version-specific thresholds, but the strategy's own answer to "is this approval complete now?". Adding V3 with three underwriters, V4 with a cooling-off window, or V5 with regional diversity requirements does not change this handler. The strategy interface is the boundary - the if/else lives on the dispatch side, not the rule side. The same insulation principle applies to the start of the process: the original `StartLoanApplicationHandler` would now consult `strategy.submissionSideEffects(...)` to translate version-specific side effects into events at submission time, without knowing which version it is operating under.
+There is still a branch in the handler - the `if/else` that decides whether to emit `ApprovalCompletedEvent` alongside the decision. The point is what the branch dispatches on: not a version string, not a hand-rolled comparison of signature counts against version-specific thresholds, but the strategy's own answer to "is this approval complete now?". Adding V3 with three underwriters, V4 with a cooling-off window, or V5 with regional diversity requirements does not change this handler. The strategy interface is the boundary - the if/else lives on the dispatch side, not the rule side.
+
+The same insulation principle applies at the start of the process. The original `StartLoanApplicationHandler` only wrote the pinning event and the submission event - but now that the strategy owns which events mark a submission under its version, the handler defers that decision to it. The version is resolved as before, the strategy is retrieved from the registry, and its `submissionEvents(...)` answer is appended directly to the event list.
+
+```kotlin
+class StartLoanApplicationHandler(
+    private val versionResolver: LoanProcessVersionResolver,
+    private val strategyRegistry: LoanApprovalProcessRegistry,
+) {
+
+    fun handle(command: StartLoanApplicationCommand): List<Event> {
+        val version = versionResolver.resolveLatest()
+        val strategy = strategyRegistry.forVersion(version)
+
+        val application = LoanApplication(
+            applicationId = command.applicationId,
+            amount = command.amount,
+            applicantId = command.applicantId,
+        )
+
+        return buildList {
+            add(LoanApplicationProcessVersionPinnedEvent(command.applicationId, version))
+            add(LoanApplicationSubmittedEvent(command.applicationId, command.amount, command.applicantId))
+            addAll(strategy.submissionEvents(application))
+        }
+    }
+}
+```
+
+Whether a submission emits one acknowledgement event or also a disclosure event is not a decision this handler makes - it is a decision encoded in whichever strategy the resolver picked. V1 returns one event, V2 returns one or two depending on the amount, and a future V3 might return something else entirely. The handler stays the same.
+
+??? info "Events are the boundary, not side effects"
+    A subtle but important point: the strategy returns *events*, not *side effects*. In OpenCQRS, **[command handlers](../../../../reference/extension_points/command_handler/index.md)** are expected to be free of side effects - they decide which events to write, and downstream **event handlers** react to those events to perform real-world actions like sending the disclosure email. By having the strategy speak in events, the versioned policy stays inside the command-handling layer where it belongs, and the side effects themselves remain a separate concern driven by whichever handlers subscribe to `RegulatoryDisclosureRequestedEvent`. The version determines which events get written; the events determine what eventually happens.
 
 ### The Layering That Makes It Work
 
-The cleaner way to state why this pattern holds up is a layering that CQRS already invites. Command handlers exist to enforce business invariants and to dispatch the right state-changing events. They ask **status-level questions**: "is this approval complete?", "is the applicant still eligible?", "is this antrag in a state that accepts new signatures?". Strategies exist to answer those questions with **versioned policy** - the mechanics that turn process facts into status answers. They own "how many signatures count as complete", "which side effects belong to a submission", "what disqualifies an applicant".
+The cleaner way to state why this pattern holds up is a layering that CQRS already invites. Command handlers exist to enforce business invariants and to dispatch the right state-changing events. They ask **status-level questions**: "is this approval complete?", "is the applicant still eligible?", "is this loan application in a state that accepts new signatures?". Strategies exist to answer those questions with **versioned policy** - the mechanics that turn process facts into status answers. They own "how many signatures count as complete", "which events mark a submission", "what disqualifies an applicant".
 
-When `collected >= required` lived directly in the handler, that layering was broken. The strategy returned a threshold, and the handler encoded the rule that compared against it - so the handler partly knew the policy. The line was fuzzy. With `isApprovalComplete` behind the strategy interface, the line is clean: the handler queries an invariant, the strategy supplies the answer that determines it. Two roles, two layers, no overlap.
+Consider the alternative: a strategy that exposes `requiredSignatures(amount)` and a handler that does `totalSignatures >= required` itself. That layering would be broken. The strategy would return a threshold, and the handler would encode the rule that compares against it - so the handler would partly know the policy. The line would be fuzzy, and every new version that changed *how* completeness is decided (a quorum rule, a cooling-off window, a regional diversity check) would force the handler to learn the new shape of the comparison. With `isApprovalComplete` behind the strategy interface, the line is clean: the handler queries an invariant, the strategy supplies the answer that determines it. Two roles, two layers, no overlap.
 
 ### Why Evolution Becomes Predictable
 
-From this layering, the practical payoff follows automatically. **Version-specific change concentrates in the policy layer.** New strategy classes, registry entries, occasional resolver wiring, sometimes a compatibility mapping between co-evolving models - these are the places where versioning lives. It stops leaking into handlers, projections, validators, and side-effect emitters that consume the strategy's answers without needing to know how they were produced.
+From this layering, the practical payoff follows automatically. **Version-specific change concentrates in the policy layer.** New strategy classes, registry entries, occasional resolver wiring - these are the places where versioning lives. It stops leaking into handlers, projections, validators, and side-effect emitters that consume the strategy's answers without needing to know how they were produced.
 
 This is the real value proposition of the pattern, and it deserves stating directly: **the pattern does not make process evolution free - it makes the cost predictable and localized.** Adding a fifth version means writing one new strategy implementation and registering it. It does not mean auditing thirty command handlers for hidden version assumptions, hunting down stale thresholds in projections, or wondering which downstream piece of code silently depends on the old behavior. Versioning becomes a thing that happens in known places, not a smell that spreads.
+
+## When More Than One Model Evolves at Once
+
+The pattern shown so far pins a single thing: the process version. Real systems rarely stay that simple. A loan approval process tends to coexist with a document model (the layout and content of the regulatory disclosure), a task structure (the work items underwriters see in their queue), and a calculation policy (how risk and effective interest are computed). Each of these evolves on its own schedule, driven by different teams and different external pressures. A compliance update to the disclosure form should not have to wait for the next process release; a new risk model should ship without re-versioning the workflow.
+
+The pinning mechanism extends to this without changing shape. Instead of pinning each model independently and risking inconsistent combinations, you pin the process version and let a small compatibility mapping translate it into a coherent bundle: process V2 implies document V3, task structure V2, calculation policy V5 - the numbers do not need to line up, because each axis evolves on its own. The event in the stream stays a single anchor. The mapping lives next to the strategy registry, and the event sourcing handler that hydrates the in-memory model on replay picks all the right pieces at once.
+
+The payoff is the same as for the single-model case, but compounding. An application started under process V2 keeps the entire world it began in - the rules it was decided by, the form it was disclosed with, the tasks it generated, the interest it was quoted - even years later, even as each model behind it has drifted independently. The pin freezes a coordinate in a multidimensional version space, not a single number.
 
 ## What You Have Learned
 
@@ -261,8 +301,6 @@ Schema evolution and process evolution look similar from a distance, but they re
 Pinning is that mechanism. You write the version into the event stream at process start, you let each instance carry its own pinned version forever, and you model each version as a complete strategy that knows its own rules. The event store remains immutable, the rules evolve freely in code, and instances finish under the rules they began with - unless you deliberately migrate them.
 
 The deeper reason this works is a layering that CQRS already encourages but rarely makes explicit: command handlers enforce invariants and ask status-level questions, strategies encode the versioned policies that answer them. When that line is drawn cleanly, version-specific change concentrates in the policy layer and stops leaking into handlers, projections, and side-effect emitters. Evolution costs do not disappear, but they become predictable, localized, and bounded by the size of one new strategy implementation.
-
-There is one direction this article does not explore, and it deserves a brief mention. In real systems, more than one model often evolves at once - a process version might pair with a specific document model, a specific task structure, or a specific calculation policy. The pinning mechanism extends naturally to compatibility mappings between co-evolving models: when V2 of the process is pinned, V3 of the document set is what comes with it. That is a topic for a future article in this series.
 
 The deeper lesson is the same across both articles in this series. The event store is the ground truth, and everything else - schemas, rules, strategies - adapts around it. You do not migrate the events; you give the application the tools to honor what the events recorded. Pinning is the tool when the rules are what changed.
 
