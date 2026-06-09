@@ -6,6 +6,7 @@ authors:
   - kersten
 categories:
   - Event Sourcing
+  - CQRS & Event Sourcing Essentials
 tags:
   - projections
   - read models
@@ -24,6 +25,10 @@ If you have spent any time building web applications, you are familiar with a pa
 This raises an immediate and practical question. Where does the data for your user interface come from? A bank employee needs a dashboard showing all pending applications with their risk categories. A customer needs a status page confirming that their application is under review.
 
 <!-- more -->
+
+!!! abstract "CQRS & Event Sourcing Essentials series"
+    - **Part 1: One Truth, Many Views** — read models *(you are here)*
+    - [Part 2: The Write Model](../2026-04-13-the-write-model/index.md) — where business logic lives
 
 An auditor needs a complete trail of every decision made on every application, while the tax office expects automated reports on approved loans. **The answer is read models - purpose-built data structures that transform your event stream into exactly the shape each consumer needs.** This is the first article in the **CQRS & Event Sourcing Essentials** series, and it will show you what read models are, why they exist, and how they change the way you think about data. The code examples throughout this article use **[OpenCQRS](https://github.com/open-cqrs/opencqrs)** 1.0.0, but the underlying concepts apply to any event-sourced system.
 

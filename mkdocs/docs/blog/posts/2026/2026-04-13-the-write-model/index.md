@@ -6,6 +6,7 @@ authors:
   - kersten
 categories:
   - Event Sourcing
+  - CQRS & Event Sourcing Essentials
 tags:
   - write model
   - CQRS
@@ -24,6 +25,10 @@ When you think about software from the domain's perspective - what the business 
 The write model is the single, self-contained unit that takes the current state of your system, applies your business rules, and produces a decision - nothing gets written without passing through it first. In the **[previous article in this series](../2026-03-19-one-truth-many-views/index.md)**, I explored read models - purpose-built data structures that transform your **[event stream](../../../../concepts/event_sourcing/index.md)** into exactly the shape each consumer needs. This article looks at the other side of the equation: where read models answer "what should the user see?", the write model answers "is this operation allowed, and what happens as a result?"
 
 <!-- more -->
+
+!!! abstract "CQRS & Event Sourcing Essentials series"
+    - [Part 1: One Truth, Many Views](../2026-03-19-one-truth-many-views/index.md) — read models
+    - **Part 2: The Write Model** — where business logic lives *(you are here)*
 
 ## What a Write Model Really Is
 
