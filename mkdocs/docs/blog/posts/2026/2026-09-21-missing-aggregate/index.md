@@ -21,9 +21,9 @@ slug: missing-aggregate
 
 A few weeks ago, a colleague new to OpenCQRS posted a question in our team Slack:
 
-> "I want to grant a user access to a shared bank account. Where does the `AccessGrantedEvent` go - under `/account/{id}` or under `/user/{id}`?"
+> "I want to write an `AccessGrantedEvent` under `/account/{id}/access/{userId}`. But I have to check rules on the account itself - does it exist? are we still under the regulatory signer limit? My command can only declare one subject for sourcing. Where do I dispatch it?"
 
-This question is familiar to anyone who has worked with Domain-Driven Design or with the Aggregate pattern. Any system built on those ideas eventually asks it: a change has to be recorded somewhere, several candidates could own it, you pick one. The conceptual core is small, and most of the time the answer is obvious within seconds. The case from the Slack thread above is the kind that does not resolve as quickly - and the reason it does not is worth unpacking, because it says something about the model underneath.
+This question is familiar to anyone who has worked with Domain-Driven Design or with the Aggregate pattern. Two shapes of the same confusion sit underneath: an event does not always belong cleanly to one entity, and even when it does, the state you need to decide and the path the event lands on are not necessarily the same subject. The Aggregate Root model collapses both questions into one - the event belongs to the Aggregate whose identifier sits in its key, and that Aggregate's state is what the handler sees. Most of the time the collapse works; the case above is one of the moments where it does not, and the reason is worth unpacking.
 
 The reason is not the framework. It is the mental shadow that an older idea casts on your thinking. The Aggregate Root was supposed to give you exactly one place to anchor a write: a single identity, a single boundary, a single coordinator. In OpenCQRS that anchor has been dissolved into three independent mechanisms - and once you see the three separately, the question from the Slack thread answers itself.
 
@@ -252,7 +252,7 @@ flowchart LR
 There is a broader framing for consistency boundaries that I will only gesture at here: **Dynamic Consistency Boundaries** (DCB), in the sense developed by Sara Pellegrini (1), treat the boundary as a predicate over events rather than as a set of subject identifiers. That is a fundamentally different model from the subject-id-based preconditions OpenCQRS uses today, with its own implications for how you express consistency, how you reason about boundaries, and how the read and write paths are shaped. OpenCQRS sits between the typed-Aggregate model and DCB - more flexible than the former, narrower than the latter. A serious treatment of DCB belongs in a dedicated article, not in a side note here.
 { .annotate }
 
-1.  Pellegrini introduced and developed the Dynamic Consistency Boundaries pattern in conference talks and writing as a generalization of event-sourced consistency. The defining shift: a consistency boundary becomes a predicate over events (a query) rather than a bounded type or a set of subject identifiers - which means events that satisfy the predicate participate in the boundary, regardless of where they physically live in the event store.
+1.  Pellegrini introduced and developed the Dynamic Consistency Boundaries pattern in conference talks and writing as a generalization of event-sourced consistency. The defining shift: a consistency boundary becomes a predicate over events (a query) rather than a bounded type or a set of subject identifiers - which means events that satisfy the predicate participate in the boundary, regardless of where they physically live in the event store. Most commands source from and write to the same subject and the question of an event's "owner" is settled by the path itself - this article is about the rarer cases where they diverge, and DCB is about the rarer-still cases where no single owner is natural at all.
 
 ??? info "The Phantom-Subject Limit"
 
