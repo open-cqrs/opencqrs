@@ -2,8 +2,8 @@ description = "OpenCQRS Library Example Application"
 
 plugins {
     id("java")
-    id("org.springframework.boot") version "4.0.1"
-    id("com.google.cloud.tools.jib") version "3.5.2"
+    id("org.springframework.boot") version "4.1.0"
+    id("com.google.cloud.tools.jib") version "3.5.3"
 }
 
 dependencies {
@@ -16,7 +16,7 @@ dependencies {
     implementation("org.springframework.integration:spring-integration-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     runtimeOnly("com.h2database:h2")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(project(":framework-test"))
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")

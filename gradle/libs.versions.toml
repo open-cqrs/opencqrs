@@ -1,6 +1,6 @@
 [versions]
-"nullaway" = "0.12.14"
-"errorprone" = "2.45.0"
+"nullaway" = "0.13.7"
+"errorprone" = "2.50.0"
 
 [libraries]
 errorprone = { group = "com.google.errorprone", name = "error_prone_core", version.ref = "errorprone" }

@@ -20,11 +20,11 @@ val memorySettings: Map<String, String> by extra
 plugins {
     id("maven-publish")
     id("signing")
-    id("org.cyclonedx.bom") version "3.1.0" apply false
+    id("org.cyclonedx.bom") version "3.2.4" apply false
     id("io.spring.dependency-management") version "1.1.7"
-    id("com.github.ben-manes.versions") version "0.53.0"
-    id("com.diffplug.spotless") version "8.1.0" apply false
-    id("net.ltgt.errorprone") version "4.4.0" apply false
+    id("com.github.ben-manes.versions") version "0.54.0"
+    id("com.diffplug.spotless") version "8.7.0" apply false
+    id("net.ltgt.errorprone") version "5.1.0" apply false
 }
 
 allprojects {
