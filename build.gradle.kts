@@ -45,7 +45,36 @@ tasks.register<Javadoc>("aggregateJavadoc") {
 
     dependsOn(javadocTasks)
 
-    source(javadocTasks.flatMap { it.source })
+    source(
+        javadocTasks.flatMap {
+            it.source.matching {
+                exclude { it.file == project(":esdb-client-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/esdb/client/package-info.java") }
+
+                exclude { it.file == project(":framework-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/framework/command/package-info.java") }
+                exclude { it.file == project(":framework-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/framework/command/cache/package-info.java") }
+                exclude { it.file == project(":framework-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/framework/eventhandler/package-info.java") }
+                exclude { it.file == project(":framework-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/framework/eventhandler/progress/package-info.java") }
+                exclude { it.file == project(":framework-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/framework/metadata/package-info.java") }
+                exclude { it.file == project(":framework-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/framework/persistence/package-info.java") }
+                exclude { it.file == project(":framework-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/framework/serialization/package-info.java") }
+                exclude { it.file == project(":framework-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/framework/types/package-info.java") }
+                exclude { it.file == project(":framework-spring-boot-autoconfigure")
+                    .file("src/main/java/com/opencqrs/framework/upcaster/package-info.java") }
+
+                exclude { it.file == project(":framework-test")
+                    .file("src/main/java/com/opencqrs/framework/command/package-info.java") }
+            }
+        }
+    )
     classpath = files(javadocTasks.flatMap { it.classpath })
 
     (options as StandardJavadocDocletOptions).run {
