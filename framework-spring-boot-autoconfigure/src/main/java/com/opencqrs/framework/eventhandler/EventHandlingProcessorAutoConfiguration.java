@@ -11,6 +11,7 @@ import com.opencqrs.framework.persistence.EventReader;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.logging.Logger;
 import org.springframework.beans.factory.BeanRegistrar;
@@ -360,8 +361,8 @@ public class EventHandlingProcessorAutoConfiguration {
             String sequenceResolver,
             EventHandlingProperties.ProcessorSettings.Retry retry) {}
 
-    @Bean(initMethod = "refresh")
-    public GenericApplicationContext openCqrsEventHandlingProcessorContext(
+    @Bean
+    public EventHandlingProcessorContext openCqrsEventHandlingProcessorContext(
             ApplicationContext applicationContext,
             EventHandlingProperties eventHandlingProperties,
             List<EventHandlerDefinition> eventHandlerDefinitions) {
@@ -369,7 +370,8 @@ public class EventHandlingProcessorAutoConfiguration {
 
         context.register(eventHandlingProcessorBeanRegistrar(
                 eventHandlingProperties, eventHandlerDefinitions, applicationContext));
-        return context;
+
+        return new EventHandlingProcessorContext(context, new AtomicBoolean(false));
     }
 
     @Bean

@@ -28,7 +28,6 @@ import org.springframework.boot.test.context.assertj.AssertableApplicationContex
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.integration.support.leader.LockRegistryLeaderInitiator;
@@ -68,8 +67,8 @@ class EventHandlingProcessorAutoConfigurationTest {
             ApplicationContextRunner runner, Consumer<AssertableApplicationContext> context) {
         runner.run(parent -> {
             parent.start();
-            context.accept(AssertableApplicationContext.get(() ->
-                    parent.getBean("openCqrsEventHandlingProcessorContext", ConfigurableApplicationContext.class)));
+            context.accept(AssertableApplicationContext.get(
+                    () -> parent.getBean(EventHandlingProcessorContext.class).context()));
         });
     }
 

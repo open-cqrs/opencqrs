@@ -10,12 +10,14 @@ import java.util.Collections;
 import java.util.List;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
 import org.springframework.integration.jdbc.lock.DefaultLockRepository;
@@ -30,6 +32,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(
         properties = {
+            "opencqrs.event-handling.groups.inactive.life-cycle.controller-registration=testLifecycleRegistration",
+            "opencqrs.event-handling.groups.inactive.life-cycle.partitions=1",
             "opencqrs.event-handling.groups.local.life-cycle.partitions=3",
             "opencqrs.event-handling.groups.local.life-cycle.controller=application-context",
             "opencqrs.event-handling.groups.distributed.life-cycle.partitions=2",
@@ -38,10 +42,41 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 public class EventHandlingProcessorAutoConfigurationIntegrationTest {
 
+    record FullyInitializedEvent(ApplicationContext context) {}
+
+    static class ApplicationContextSmartLifecycleInitializationEventPublisher
+            implements SmartLifecycle, ApplicationContextAware {
+
+        private ApplicationContext applicationContext;
+        private Boolean running = false;
+
+        @Override
+        public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+            this.applicationContext = applicationContext;
+        }
+
+        @Override
+        public void start() {
+            running = true;
+            applicationContext.publishEvent(new FullyInitializedEvent(applicationContext));
+        }
+
+        @Override
+        public void stop() {
+            running = false;
+        }
+
+        @Override
+        public boolean isRunning() {
+            return running;
+        }
+    }
+
     @TestConfiguration
     static class EventHandlingTestConfiguration {
 
         List<String> rolesLocked = Collections.synchronizedList(new ArrayList<>());
+        List<ApplicationContext> contextsFullyInitialized = Collections.synchronizedList(new ArrayList<>());
 
         @Bean
         public DefaultLockRepository defaultLockRepository(DataSource dataSource) {
@@ -53,6 +88,21 @@ public class EventHandlingProcessorAutoConfigurationIntegrationTest {
             return new JdbcLockRegistry(lockRepository);
         }
 
+        @Bean
+        public EventHandlingProcessorLifecycleRegistration testLifecycleRegistration() {
+            return (registry, eventHandlingProcessorBeanName, processorSettings) -> {
+                registry.registerBean(ApplicationContextSmartLifecycleInitializationEventPublisher.class);
+            };
+        }
+
+        @Bean
+        public ApplicationContextSmartLifecycleInitializationEventPublisher initializationTracker() {
+            return new ApplicationContextSmartLifecycleInitializationEventPublisher();
+        }
+
+        @EventHandling("inactive")
+        public void onInactive(Event event) {}
+
         @EventHandling("local")
         public void onLocal(Event event) {}
 
@@ -63,16 +113,32 @@ public class EventHandlingProcessorAutoConfigurationIntegrationTest {
         public void onGranted(OnGrantedEvent event) {
             rolesLocked.add(event.getRole());
         }
+
+        @EventListener
+        public void onFullyInitialized(FullyInitializedEvent event) {
+            contextsFullyInitialized.add(event.context());
+        }
     }
 
     @Test
-    public void eventHandlingProcessorsRunning(
-            @Autowired @Qualifier("openCqrsEventHandlingProcessorContext")
-                    ConfigurableApplicationContext eventHandlingContext) {
-        await().untilAsserted(() -> assertThat(AssertableApplicationContext.get(() -> eventHandlingContext))
+    public void eventHandlingProcessorContextInitializedAfterParentContext(
+            @Autowired EventHandlingTestConfiguration eventHandlingTestConfiguration,
+            @Autowired ApplicationContext applicationContext,
+            @Autowired EventHandlingProcessorContext eventHandlingContext) {
+        assertThat(eventHandlingTestConfiguration.contextsFullyInitialized)
+                .containsExactly(applicationContext, eventHandlingContext.context());
+    }
+
+    @Test
+    public void activeEventHandlingProcessorsRunning(@Autowired EventHandlingProcessorContext eventHandlingContext) {
+        await().untilAsserted(() -> assertThat(AssertableApplicationContext.get(eventHandlingContext::context))
                 .getBeans(EventHandlingProcessor.class)
-                .hasSize(3 + 2)
-                .allSatisfy((s, eh) -> assertThat(eh.isRunning()).isTrue()));
+                .hasSize(1 + 3 + 2)
+                .allSatisfy((s, eh) -> {
+                    if (!eh.getGroupId().equals("inactive")) {
+                        assertThat(eh.isRunning()).isTrue();
+                    }
+                }));
     }
 
     @Test

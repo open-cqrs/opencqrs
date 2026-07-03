@@ -13,6 +13,7 @@ import com.opencqrs.framework.*;
 import com.opencqrs.framework.client.ConcurrencyException;
 import com.opencqrs.framework.command.*;
 import com.opencqrs.framework.eventhandler.EventHandling;
+import com.opencqrs.framework.eventhandler.EventHandlingProcessorContext;
 import com.opencqrs.framework.eventhandler.EventHandlingProcessorLifecycleController;
 import com.opencqrs.framework.persistence.EventRepository;
 import com.opencqrs.framework.serialization.EventData;
@@ -261,8 +262,7 @@ public class CommandAndEventHandlingIntegrationTest {
     private ApplicationContext applicationContext;
 
     private ConfigurableApplicationContext getEventHandlerContext() {
-        return applicationContext.getBean(
-                "openCqrsEventHandlingProcessorContext", ConfigurableApplicationContext.class);
+        return applicationContext.getBean(EventHandlingProcessorContext.class).context();
     }
 
     @Test
