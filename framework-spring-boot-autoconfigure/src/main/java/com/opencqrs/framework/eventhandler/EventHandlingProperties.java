@@ -46,13 +46,13 @@ public record EventHandlingProperties(ProcessorSettings standard, Map<String, Pr
         public record Fetch(String subject, Boolean recursive) {}
 
         /**
-         * Configures {@linkplain EventHandlingProcessorLifecycleRegistration life-cycle registration}.
+         * Configures life-cycle registration management.
          *
          * @param autoStart Whether the event handling processor shall be started automatically.
-         * @param controller The built-in life-cycle controller to use, unless "controller-registration" is specified.
+         * @param controller The built-in life-cycle controller to use, unless "controller-factory" is specified.
          *     Defaults to "leader-election", if a unique "lock-registry" bean is available within the application
          *     context, "application-context" otherwise.
-         * @param controllerRegistration Custom {@link EventHandlingProcessorLifecycleRegistration} bean reference to
+         * @param controllerFactory Custom {@link EventHandlingProcessorLifecycleControllerFactory} bean reference to
          *     use.
          * @param lockRegistry Custom lock registry to use, if "leader-election" applies.
          * @param partitions The number of parallel instances (partitions) to start for this event processor. <strong>It
@@ -68,11 +68,11 @@ public record EventHandlingProperties(ProcessorSettings standard, Map<String, Pr
         public record LifeCycle(
                 Boolean autoStart,
                 Controller controller,
-                String controllerRegistration,
+                String controllerFactory,
                 String lockRegistry,
                 Long partitions) {
 
-            /** The built-in {@link EventHandlingProcessorLifecycleController} type. */
+            /** The built-in {@link EventHandlingProcessorLifecycleControllerFactory} type. */
             public enum Controller {
 
                 /**
