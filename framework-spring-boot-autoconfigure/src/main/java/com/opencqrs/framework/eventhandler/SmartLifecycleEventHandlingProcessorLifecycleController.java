@@ -4,11 +4,11 @@ package com.opencqrs.framework.eventhandler;
 import org.springframework.context.SmartLifecycle;
 
 /**
- * {@link EventHandlingProcessorLifecycleController} implementation that implements {@link SmartLifecycle} to delegate
- * life-cycle handling to the Spring application context.
+ * {@link SmartLifecycle} based implementation for the {@link EventHandlingProcessor}.
+ *
+ * @see EventHandlingProcessorAutoConfiguration#openCqrsSmartLifecycleEventHandlingProcessorLifecycleControllerFactory()
  */
-class SmartLifecycleEventHandlingProcessorLifecycleController
-        implements EventHandlingProcessorLifecycleController, SmartLifecycle {
+class SmartLifecycleEventHandlingProcessorLifecycleController implements SmartLifecycle {
 
     private boolean autoStartup = true;
     private boolean running = false;

@@ -13,7 +13,7 @@ import com.opencqrs.framework.*;
 import com.opencqrs.framework.client.ConcurrencyException;
 import com.opencqrs.framework.command.*;
 import com.opencqrs.framework.eventhandler.EventHandling;
-import com.opencqrs.framework.eventhandler.EventHandlingProcessorLifecycleController;
+import com.opencqrs.framework.eventhandler.EventHandlingProcessor;
 import com.opencqrs.framework.persistence.EventRepository;
 import com.opencqrs.framework.serialization.EventData;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
@@ -36,7 +36,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.annotation.DirtiesContext;
@@ -257,14 +256,6 @@ public class CommandAndEventHandlingIntegrationTest {
     @Autowired
     private EsdbClient client;
 
-    @Autowired
-    private ApplicationContext applicationContext;
-
-    private ConfigurableApplicationContext getEventHandlerContext() {
-        return applicationContext.getBean(
-                "openCqrsEventHandlingProcessorContext", ConfigurableApplicationContext.class);
-    }
-
     @Test
     public void commandsAndEventsSuccessfullyHandled(@Autowired SuccessfulCommandAndEventHandling configuration) {
         var id = UUID.randomUUID().toString();
@@ -434,21 +425,20 @@ public class CommandAndEventHandlingIntegrationTest {
     @Test
     @DirtiesContext
     public void eventHandlingProcessorsStoppedOnContextShutdown(
-            @Autowired InterruptableEventHandlerConfiguration config)
+            @Autowired ConfigurableApplicationContext applicationContext,
+            @Autowired InterruptableEventHandlerConfiguration config,
+            @Autowired List<EventHandlingProcessor> processors)
             throws BrokenBarrierException, InterruptedException {
         commandRouter.send(new AddBookCommand(UUID.randomUUID().toString()));
 
         config.barrier.await();
-
-        var processorLifecycleControllers =
-                getEventHandlerContext().getBeansOfType(EventHandlingProcessorLifecycleController.class);
-        getEventHandlerContext().close();
+        applicationContext.stop();
 
         await().untilAsserted(() -> {
             assertThat(config.exceptionRef)
                     .hasValueSatisfying(e -> assertThat(e).isInstanceOf(InterruptedException.class));
-            assertThat(processorLifecycleControllers.values())
-                    .allSatisfy(it -> assertThat(it.isRunning()).isFalse());
+            assertThat(processors).isNotEmpty().allSatisfy(it -> assertThat(it.isRunning())
+                    .isFalse());
         });
     }
 
