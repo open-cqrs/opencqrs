@@ -1,7 +1,7 @@
 ---
 draft: false
 title: "Test the Business Rule, Not the Helper: Why Black-Box Testing Shines in Event-Sourced Systems"
-date: 2026-08-03
+date: 2026-07-20
 authors:
   - kersten
 categories:
