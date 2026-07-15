@@ -107,13 +107,14 @@ The solution is to stop trying to transform the event and instead enrich the ent
 
 ## Lazy Enrichment - Supplying Missing Data
 
-**Lazy enrichment adds missing data to an entity's event stream by publishing a new event the first time the entity is touched after the schema change.** Instead of transforming old events at read time, it records the missing information as a new event in the entity's stream, on demand, rather than as a batch migration across every entity. The word "lazy" is the point: the enrichment happens when the entity is next processed, not ahead of time.
+**Lazy enrichment adds missing data to an entity's event stream by publishing a new event before the next command is processed.** Instead of transforming old events at read time, it intercepts the command processing pipeline (1) and ensures the entity is up to date before the actual business logic runs. The enrichment command is idempotent - if the entity already has the data, the command does nothing. This makes it safe to run on every command without worrying about duplicate effects.
+{ .annotate }
 
-Lazy enrichment is more involved than upcasting, and there are several ways to shape it. The rest of this section walks through them in ascending order of correctness: a tempting construction that turns out to be structurally broken, a naive first attempt that is correct but wasteful, and the pattern to reach for by default. It closes with a look at what changes when the enrichment cannot happen synchronously.
+1.  In OpenCQRS, the command processing pipeline starts at the **[Command Router](../../../../reference/core_components/command_router/index.md)**, which routes commands to their registered **[command handlers](../../../../reference/extension_points/command_handler/index.md)**. The gateway pattern shown later in this section wraps the Command Router to inject enrichment logic before the command reaches the handler.
 
-### Anti-Pattern - Two Commands, Two Commits
+The mechanism is straightforward. Before your system processes a command on an existing entity, it first sends an enrichment command to that entity. The enrichment handler checks whether the missing data has already been recorded - if not, it publishes an enrichment event that adds the data to the entity's event stream. From that point on, the entity's state includes the new field, and all subsequent state reconstructions see the complete schema. The word "lazy" is key: enrichment happens on demand, the first time the entity is touched after the schema change, not as a batch migration across all entities.
 
-The tempting idea is to make enrichment invisible. Wouldn't it be elegant if a gateway or an interceptor quietly dispatched an enrichment command before every business command, so the business logic never had to know? Frameworks like Axon offer command interceptors - hooks that run before a command reaches its handler - and it is easy to reach for one here:
+How you intercept the command pipeline depends on what your framework provides. Some frameworks offer built-in interceptors - hooks in the command handling chain that run before every command reaches its handler. The interceptor checks whether the incoming command targets an entity that might need enrichment, dispatches the enrichment command, and then proceeds with the original command. Here is what that looks like:
 
 ```kotlin
 class EnrichmentInterceptor(
@@ -140,7 +141,9 @@ class EnrichmentInterceptor(
 }
 ```
 
-The interceptor dispatches an enrichment command before calling `chain.proceed()`, and the type check excludes the enrichment command itself so it does not trigger another enrichment in an endless loop. Notice what this already does to the interceptor, though. Interceptors exist to inspect and enrich the command message as it passes - validation, metadata, correlation data - not to dispatch further commands. Firing a business command from inside one bends the hook out of shape; in production Axon codebases, command interceptors enrich metadata and nothing else, and dispatching a second command from an interceptor is simply not done. When a framework offers no such hook at all, the same two-command idea gets expressed by wrapping the command routing layer in a gateway instead:
+The interceptor dispatches an enrichment command before calling `chain.proceed()`, making the entire process transparent to the business logic downstream. The type check excludes the enrichment command itself to prevent infinite recursion - without that guard, the enrichment command would trigger another enrichment command, and so on. This pattern works well when your framework provides a command handling pipeline, but not every framework does.
+
+When built-in interceptors are not available, you achieve the same result by wrapping the command routing layer in a gateway component. The gateway sits between your application code and the command infrastructure, applying the enrichment logic at the application level instead of the framework level. The pattern is identical - only the integration point changes. Here is the gateway approach:
 
 ```kotlin
 class LoanCommandGateway(
@@ -158,8 +161,8 @@ class LoanCommandGateway(
                         command.applicationId
                     )
                 )
-            } catch (e: CommandSubjectDoesNotExistException) {
-                // The subject does not exist yet
+            } catch (e: SubjectDoesNotExistException) {
+                // Entity does not exist yet
             }
         }
         return commandRouter.send(command)
@@ -167,84 +170,10 @@ class LoanCommandGateway(
 }
 ```
 
-Both variants do the same thing: they dispatch **two separate commands** - two separate commits against the event store - with the business command running only after the enrichment command has already been committed. That construction carries three structural defects:
+The gateway adds one check that the interceptor does not need: `targetsExistingApplication()` skips enrichment for commands that create new entities, since there is nothing to enrich yet. The try-catch handles the edge case where the entity has been deleted between the check and the enrichment attempt. Both approaches - interceptor and gateway - produce the same outcome: transparent, idempotent enrichment before every business command, regardless of whether the framework provides built-in pipeline support.
 
-- **No shared transaction across the two sends.** If the second send fails - a business rule rejects it, an optimistic-locking precondition is violated, the store errors - the enrichment event is already committed on its own. The entity is stranded in an intermediate "enriched but not decided" state that no single step ever intended to produce.
-- **It invalidates client-side optimistic locking.** A client that reads the entity at a given stream version and sends its business command with a `SubjectIsOnEventId` precondition will see that precondition fail, because the enrichment write has moved the subject's tip in between. The wrapper silently breaks any optimistic-locking setup built on top of it.
-- **Idempotency is only half-solved.** The enrichment command is idempotent - a null-check guard means a repeated enrichment does nothing. The business command is not: on a retry it is dispatched again, and without its own state-based guard it emits the business event a second time.
-
-The lesson behind all three defects is the same: **two events that belong together belong in one step.** The enrichment event and the business event describe one indivisible decision, so they should be produced by one handler invocation and committed as one atomic append - not split across two commands that can diverge.
-
-??? info "This is not an eventual-consistency problem"
-    It is tempting to attack the two-command construction from the wrong angle - to worry that the follow-up business command "won't see the enrichment event yet because of eventual consistency". That intuition is wrong on the same subject. In OpenCQRS, sourcing reads an entity's full event stream from the store, and writes are committed before `commandRouter.send(...)` returns; within a single subject this is strongly consistent, so the next sourcing sees the just-written events. Eventual consistency in OpenCQRS applies to projections and to cross-subject reads, not to follow-up command sourcing on the same subject. The three defects above exist even under perfect strong consistency, because they are about atomicity, optimistic-locking semantics, and retry behavior - not about visibility.
-
-### Stage 1 - Inline Fetch Without Persistence
-
-If two separate commands are the wrong tool, the natural next thought is to do the enrichment inside the command handler itself. When the handler runs and finds the field missing, it fetches the value from the external system and uses it directly - without recording anything:
-
-```kotlin
-@CommandHandling
-fun handle(
-    request: LoanRequest,
-    command: ApproveLoanCommand,
-    publisher: CommandEventPublisher<LoanRequest>,
-    @Autowired manualReviewService: ManualReviewService,
-) {
-    val reviewResult = request.manualReviewResult
-        ?: manualReviewService.fetchReviewResult(command.applicationId)   // fetched, not persisted
-
-    if (reviewResult != "COMPLIANT") {
-        throw IllegalStateException("Loan cannot be approved, review result: $reviewResult")
-    }
-    publisher.publish(LoanApplicationApprovedEvent(command.applicationId))
-}
-```
-
-This is a step in the right direction: there is no second command and no separate commit, and the business decision is made with the data it needs. But it does not go far enough. The fetched value is never written back, so every subsequent sourcing of the entity has to fetch it again - the external call is paid on every command, indefinitely. Worse, nothing pins the value down: the third-party system may return a different answer next time, so the entity's reconstructed state is no longer a deterministic function of its event stream. Two reads can legitimately disagree.
-
-The fix for both problems is to write the fetched value into the stream exactly once.
-
-### Stage 2 - Fetch and Persist as Event (recommended)
-
-The correct default keeps the enrichment inside the command handler but persists it. On first touch - when the field is still null - the handler fetches the value, publishes an enrichment event, and then publishes the business event. Both events are produced in a single handler invocation:
-
-```kotlin
-@CommandHandling
-fun handle(
-    request: LoanRequest,
-    command: ApproveLoanCommand,
-    publisher: CommandEventPublisher<LoanRequest>,
-    @Autowired manualReviewService: ManualReviewService,
-) {
-    var reviewResult = request.manualReviewResult
-    if (reviewResult == null) {
-        reviewResult = manualReviewService.fetchReviewResult(command.applicationId)
-        publisher.publish(LoanApplicationEnrichedEvent(command.applicationId, reviewResult))
-    }
-    if (reviewResult != "COMPLIANT") {
-        throw IllegalStateException("Loan cannot be approved, review result: $reviewResult")
-    }
-    publisher.publish(LoanApplicationApprovedEvent(command.applicationId))
-}
-```
-
-This single handler gives you four properties at once:
-
-- **Atomic** - the enrichment event and the business event are appended together or not at all. If the approval is rejected, nothing is committed, and the entity is never stranded in a half-enriched state.
-- **Idempotent** - the `if (reviewResult == null)` guard means the fetch and the enrichment event happen only the first time. Every later sourcing sees the persisted value and goes straight to the business logic.
-- **No re-fetch** - the external value is written into history once. Subsequent commands read it from the stream, not from the third party.
-- **No inconsistency** - a value that lives in the event stream cannot silently change under a replay. The entity's state is once again a deterministic function of its events.
-
-This is the pattern to reach for. It uses only standard OpenCQRS primitives: a single sourced `@CommandHandling` method that calls `publisher.publish(...)` twice. No gateway, no interceptor, no additional framework machinery.
-
-??? info "One handler invocation, one atomic append"
-    In OpenCQRS, both `publisher.publish(...)` calls inside one handler invocation are appended to the subject's stream in a single ESDB transaction - either both events land or neither does. Axon works the same way: multiple `AggregateLifecycle.apply(...)` calls inside one handler share a single unit of work. `publisher.publish(...)` corresponds to Axon's `apply(...)`, and OpenCQRS `@StateRebuilding` corresponds to Axon's `@EventSourcingHandler`. The atomic-append property is what makes this pattern correct, and it is not an OpenCQRS-only capability.
-
-### Stage 3 - Long-Running Enrichment (Outlook)
-
-The single-handler pattern works because the external call is short enough to sit inside a synchronous command handler. That assumption breaks when acquiring the data takes seconds, needs retries, waits on a human, or spans several aggregates. At that point you can no longer block the handler until the answer arrives.
-
-The shape then changes from one handler into a small process with intermediate state. The handler publishes a `LoanEnrichmentQueuedEvent` immediately and returns; the actual acquisition runs out of band via a task or a transactional outbox; and when the result comes back, a `LoanEnrichmentResolvedEvent` catches the entity up. This pulls in its own set of topics - outbox delivery, sagas or process managers, retries, and compensation - each with its own solution. Those are beyond the scope of this article; the `implementing-sagas` sample shows how OpenCQRS handles the coordinated, long-running case.
+??? info "The gateway pattern and OpenCQRS"
+    OpenCQRS does not provide built-in command interceptors, making the gateway pattern the natural fit for lazy enrichment. By wrapping the **[Command Router](../../../../reference/core_components/command_router/index.md)** in a gateway component, you gain full control over the command pipeline without modifying framework internals. The same pattern works for any cross-cutting concern that needs to run before command handling - not just enrichment.
 
 ## What You Have Learned
 
@@ -269,13 +198,13 @@ flowchart TD
 
 The common thread across all three strategies is that the event store remains untouched. Upcasters transform at read time, producing representations that match the current schema without modifying stored events. Lazy enrichment adds new events to the stream rather than rewriting old ones. The immutability contract - the foundation that makes audit trails, replay, and temporal queries possible - stays intact no matter which strategy you choose.
 
-There is a clear hierarchy to these approaches. Start with the simplest option: can you calculate? If not, can you compensate? Only when both fail do you reach for lazy enrichment. This progression is not just a guideline - it reflects the increasing complexity each strategy introduces. An upcaster is a pure function with no side effects, while lazy enrichment reaches outside the system to fetch data, records it as an extra event, and depends on a state-based guard for idempotency - and, once the acquisition stops being short, grows into a process with intermediate state. Use the lightest tool that solves the problem.
+There is a clear hierarchy to these approaches. Start with the simplest option: can you calculate? If not, can you compensate? Only when both fail do you reach for lazy enrichment. This progression is not just a guideline - it reflects the increasing complexity each strategy introduces. An upcaster is a pure function with no side effects, while lazy enrichment requires command pipeline integration, idempotency guarantees, and awareness of entity lifecycle. Use the lightest tool that solves the problem.
 
 *[event store]: The append-only persistence layer storing all domain events as the single source of truth
 *[upcaster]: A component that transforms events from an older schema to the current one at read time, without modifying the stored event
 *[event sourcing]: A persistence pattern that stores all state changes as an immutable sequence of events rather than overwriting current state
 *[schema evolution]: The process of adapting an event-sourced system to changes in the event data model while preserving historical events
-*[lazy enrichment]: A strategy that adds missing data to an entity's event stream on demand, inside the command handler the first time the entity is touched after the schema change
+*[lazy enrichment]: A strategy that adds missing data to an entity's event stream on demand, before the next command is processed
 *[command handler]: A function that receives a command, loads the current state, applies business rules, and publishes new events
 *[idempotent]: An operation that produces the same result regardless of how many times it is executed
 *[instance]: A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events
