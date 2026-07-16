@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS EVENTHANDLER_LOCK (
         REGION VARCHAR(100) NOT NULL,
         CLIENT_ID CHAR(36),
         CREATED_DATE TIMESTAMP NOT NULL,
+        EXPIRED_AFTER TIMESTAMP NOT NULL,
         constraint INT_LOCK_PK primary key(LOCK_KEY, REGION)
     );
 ```
@@ -282,7 +283,7 @@ and is available to all instances.
 public class CqrsConfiguration {
 
     @Bean
-    public ProgressTracker jdbcProgressTracker(
+    public JdbcProgressTracker jdbcProgressTracker(
             DataSource dataSource, PlatformTransactionManager transactionManager) {
         var result = new JdbcProgressTracker(dataSource, transactionManager);
         result.setProceedTransactionally(true); /* (1)! */
@@ -293,6 +294,18 @@ public class CqrsConfiguration {
 
 1. Enables EventHandlers to participate in the same transaction as the progress tracker. This means that read model
    updates and the progress will be committed atomically, effectively guaranteeing exactly-once-delivery semantics.
+
+Make sure to create the table for storing the progress using the following SQL script:
+<!-- @formatter:off -->
+```sql
+CREATE TABLE IF NOT EXISTS EVENTHANDLER_PROGRESS (
+        GROUP_KEY VARCHAR(100) NOT NULL,
+        PARTITION_ID BIGINT NOT NULL,
+        EVENT_ID VARCHAR(100) NOT NULL,
+        constraint EVENTHANDLER_PROGRESS_PK primary key (GROUP_KEY, PARTITION_ID)
+);
+```
+<!-- @formatter:on -->
 
 ### Implementing a custom Progress Tracker
 
