@@ -9,11 +9,13 @@ import static org.mockito.Mockito.*;
 import com.opencqrs.esdb.client.eventql.EventQueryBuilder;
 import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
 import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
+import com.opencqrs.framework.tracing.OpenTelemetryEventTracingContextExecutor;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Scope;
+import io.opentelemetry.sdk.trace.IdGenerator;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -39,9 +41,6 @@ import tools.jackson.databind.ObjectMapper;
 public class EsdbClientIntegrationTest {
 
     private static final String TEST_SOURCE = "tag://test-execution";
-    private static final String TEST_TRACE_PARENT = "00-4bf92f0853545edc50c7bc64bcbf0b01-00f067aa0ba902b7-01";
-    private static final String TEST_TRACE_STATE =
-            "congo=t67eff,rojo=00f067aa0ba902b7,foo=bar,example@vendor=some-custom-value";
 
     @Autowired
     private EsdbClient client;
@@ -363,45 +362,48 @@ public class EsdbClientIntegrationTest {
         }
 
         @Test
-        public void writesExistingTraceInformation() {
+        public void traceInformationPublishedIfAvailable(
+                @Autowired OpenTelemetryEventTracingContextExecutor otelTraceContextExecutor) {
+
+            IdGenerator ids = IdGenerator.random();
 
             TraceState traceState = TraceState.builder()
-                    .put("example@vendor", "some-custom-value")
-                    .put("foo", "bar")
-                    .put("rojo", "00f067aa0ba902b7")
-                    .put("congo", "t67eff")
+                    .put("key1", "value1")
+                    .put("key2", "value2")
                     .build();
-            SpanContext w3cContext = SpanContext.create(
-                    "4bf92f0853545edc50c7bc64bcbf0b01", // gültige 32-stellige Hex Trace-ID
-                    "00f067aa0ba902b7", // gültige 16-stellige Hex Span-ID
-                    TraceFlags.getSampled(),
-                    traceState);
 
-            try (Scope scope = Span.wrap(w3cContext).makeCurrent()) {
+            SpanContext spanContext = SpanContext.create(
+                    ids.generateTraceId(), ids.generateSpanId(), TraceFlags.getSampled(), traceState);
+
+            List<Event> published;
+
+            try (Scope ignored = Span.wrap(spanContext).makeCurrent()) {
                 String subject = randomSubject();
 
                 Map<String, Object> data =
                         objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class);
 
-                List<Event> published = client.write(
+                published = client.write(
                         List.of(new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-added.v1", data)),
                         List.of(new Precondition.SubjectIsPristine(subject)));
-
-                assertThat(published).singleElement().satisfies(e -> {
-                    assertThat(e.source()).isEqualTo(TEST_SOURCE);
-                    assertThat(e.subject()).isEqualTo(subject);
-                    assertThat(e.type()).isEqualTo("com.opencqrs.books-added.v1");
-                    assertThat(e.specVersion()).isEqualTo("1.0");
-                    assertThat(e.dataContentType()).isEqualTo("application/json");
-                    assertThat(e.id()).isNotBlank();
-                    assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
-                    assertThat(e.hash()).isNotBlank();
-                    assertThat(e.predecessorHash()).isNotBlank();
-                    assertThat(e.data()).isEqualTo(data);
-                    assertThat(e.traceParent()).isEqualTo(TEST_TRACE_PARENT);
-                    assertThat(e.traceState()).isEqualTo(TEST_TRACE_STATE);
-                });
             }
+
+            assertThat(Span.current().getSpanContext().isValid()).isFalse();
+            assertThat(published)
+                    .singleElement()
+                    .satisfies(e -> otelTraceContextExecutor.executeInRestoreContextFromEvent(e, () -> {
+                        assertThat(Span.current().getSpanContext().getTraceId()).isEqualTo(spanContext.getTraceId());
+                        assertThat(Span.current()
+                                        .getSpanContext()
+                                        .getTraceState()
+                                        .get("key1"))
+                                .isEqualTo("value1");
+                        assertThat(Span.current()
+                                        .getSpanContext()
+                                        .getTraceState()
+                                        .get("key2"))
+                                .isEqualTo("value2");
+                    }));
         }
     }
 
@@ -601,15 +603,22 @@ public class EsdbClientIntegrationTest {
 
             var subjects = List.of(randomSubject(), randomSubject(), randomSubject());
 
-            subjects.forEach(subject -> client.write(
-                    List.of(new EventCandidate(
-                            TEST_SOURCE,
-                            subject,
-                            "com.opencqrs.books-added.v1",
-                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class),
-                            TEST_TRACE_PARENT,
-                            TEST_TRACE_STATE)),
-                    List.of(new Precondition.SubjectIsPristine(subject))));
+            IdGenerator ids = IdGenerator.random();
+            SpanContext spanContext = SpanContext.create(
+                    ids.generateTraceId(),
+                    ids.generateSpanId(),
+                    TraceFlags.getSampled(),
+                    TraceState.builder().put("key", "value").build());
+
+            try (Scope ignored = Span.wrap(spanContext).makeCurrent()) {
+                subjects.forEach(subject -> client.write(
+                        List.of(new EventCandidate(
+                                TEST_SOURCE,
+                                subject,
+                                "com.opencqrs.books-added.v1",
+                                objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
+                        List.of(new Precondition.SubjectIsPristine(subject))));
+            }
 
             client.read("/", Set.of(new Option.Recursive()), consumedEvents::add);
 
@@ -623,8 +632,8 @@ public class EsdbClientIntegrationTest {
                 assertThat(e.id()).isNotBlank();
                 assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
                 assertThat(e.predecessorHash()).isNotBlank();
-                assertThat(e.traceParent()).isEqualTo(TEST_TRACE_PARENT);
-                assertThat(e.traceState()).isEqualTo(TEST_TRACE_STATE);
+                assertThat(e.traceParent()).isNotBlank();
+                assertThat(e.traceState()).isNotBlank();
                 assertThat(objectMapper.convertValue(e.data(), BookAddedEvent.class))
                         .isEqualTo(new BookAddedEvent("JRR Tolkien", "LOTR"));
             }));

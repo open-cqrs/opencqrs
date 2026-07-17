@@ -9,8 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * OpenTelemetry-based implementation of the {@link TracingEventEnricher} interface which works in conjunction with
- * OTel's official java instrumentation
+ * OpenTelemetry-based {@link TracingEventEnricher} implementation.
  *
  * @see <a href="https://opentelemetry.io/docs/zero-code/java/">Official documentation for OpenTelemetry Java
  *     instrumentation</a>
@@ -24,26 +23,24 @@ public class OpenTelemetryTracingEventEnricher implements TracingEventEnricher {
     }
 
     /**
-     * Retrieves 'traceparent' and 'tracestate' headers from current context and enriches a given {@link EventCandidate}
-     * with them
+     * Retrieves {@code traceparent} and {@code tracestate} headers from current context and enriches a given
+     * {@link EventCandidate} accordingly. This method <strong>does not</strong> overwrite any existing trace
+     * information, already present on the {@link EventCandidate}.
      *
      * @param candidate the {@link EventCandidate} to be enriched with tracing data
-     * @return the enriched {@link EventCandidate}
+     * @return the enriched {@link EventCandidate}.
      */
     @Override
     public EventCandidate enrichWithTracingData(EventCandidate candidate) {
         var tracingHeaders = getTracingHeaders();
+        var hasTraceInformation = candidate.traceParent() != null || candidate.traceState() != null;
         return new EventCandidate(
                 candidate.source(),
                 candidate.subject(),
                 candidate.type(),
                 candidate.data(),
-                candidate.traceParent() != null
-                        ? candidate.traceParent()
-                        : tracingHeaders.getOrDefault("traceparent", null),
-                candidate.traceState() != null
-                        ? candidate.traceState()
-                        : tracingHeaders.getOrDefault("tracestate", null));
+                hasTraceInformation ? candidate.traceParent() : tracingHeaders.getOrDefault("traceparent", null),
+                hasTraceInformation ? candidate.traceState() : tracingHeaders.getOrDefault("tracestate", null));
     }
 
     protected Map<String, String> getTracingHeaders() {

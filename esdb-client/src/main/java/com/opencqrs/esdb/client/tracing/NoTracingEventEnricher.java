@@ -10,7 +10,7 @@ public class NoTracingEventEnricher implements TracingEventEnricher {
      * Identity method returning the original {@link EventCandidate} without altering or enriching any tracing headers.
      *
      * @param candidate the given {@link EventCandidate}
-     * @return the given {@link EventCandidate}
+     * @return the given {@link EventCandidate}.
      */
     @Override
     public EventCandidate enrichWithTracingData(EventCandidate candidate) {
