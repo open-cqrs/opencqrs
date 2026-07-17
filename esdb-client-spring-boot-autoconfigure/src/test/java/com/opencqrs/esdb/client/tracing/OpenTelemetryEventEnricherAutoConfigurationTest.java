@@ -12,29 +12,23 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 public class OpenTelemetryEventEnricherAutoConfigurationTest {
 
-    private final ApplicationContextRunner runner = new ApplicationContextRunner();
+    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(OpenTelemetryEventEnricherAutoConfiguration.class));
 
     @Test
     public void noOtelInClasspathFound() {
-        runner.withConfiguration(AutoConfigurations.of(OpenTelemetryEventEnricherAutoConfiguration.class))
-                .withClassLoader(new FilteredClassLoader(OpenTelemetry.class))
-                .run(context -> {
-                    assertThat(context).hasNotFailed().doesNotHaveBean(OpenTelemetryTracingEventEnricher.class);
-                });
+        runner.withClassLoader(new FilteredClassLoader(OpenTelemetry.class))
+                .run(context -> assertThat(context).hasNotFailed().doesNotHaveBean(TracingEventEnricher.class));
     }
 
     @Test
     void noOtelBeanInApplicationContextFound() {
-        runner.withConfiguration(AutoConfigurations.of(OpenTelemetryEventEnricherAutoConfiguration.class))
-                .run(context -> {
-                    assertThat(context).hasNotFailed().doesNotHaveBean(OpenTelemetryTracingEventEnricher.class);
-                });
+        runner.run(context -> assertThat(context).hasNotFailed().doesNotHaveBean(TracingEventEnricher.class));
     }
 
     @Test
     public void otherTracingEventEnricherFoundAndUsed() {
-        runner.withConfiguration(AutoConfigurations.of(OpenTelemetryEventEnricherAutoConfiguration.class))
-                .withBean(OpenTelemetry.class, Mockito::mock)
+        runner.withBean(OpenTelemetry.class, Mockito::mock)
                 .withBean(TracingEventEnricher.class, Mockito::mock)
                 .run(context -> {
                     assertThat(context).hasNotFailed().doesNotHaveBean(OpenTelemetryTracingEventEnricher.class);
@@ -43,13 +37,10 @@ public class OpenTelemetryEventEnricherAutoConfigurationTest {
     }
 
     @Test
-    public void otelTracingEventEnricherUsedOverDefaultNoTracingEnricher() {
-        runner.withConfiguration(AutoConfigurations.of(
-                        OpenTelemetryEventEnricherAutoConfiguration.class,
-                        NoTracingEventEnricherAutoConfiguration.class))
+    public void otelTracingEventEnricherPreferredOverNoTracingEnricher() {
+        runner.withConfiguration(AutoConfigurations.of(NoTracingEventEnricherAutoConfiguration.class))
                 .withBean(OpenTelemetry.class, () -> Mockito.mock(OpenTelemetry.class, Mockito.RETURNS_DEEP_STUBS))
-                .run(context -> {
-                    assertThat(context).hasNotFailed().hasSingleBean(OpenTelemetryTracingEventEnricher.class);
-                });
+                .run(context ->
+                        assertThat(context).hasNotFailed().hasSingleBean(OpenTelemetryTracingEventEnricher.class));
     }
 }

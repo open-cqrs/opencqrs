@@ -10,22 +10,17 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 public class NoTracingEventEnricherAutoConfigurationTest {
 
-    private final ApplicationContextRunner runner = new ApplicationContextRunner();
+    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(NoTracingEventEnricherAutoConfiguration.class));
 
     @Test
     public void noTracingEventEnricherUsed() {
-        runner.withConfiguration(AutoConfigurations.of(NoTracingEventEnricherAutoConfiguration.class))
-                .run(context -> {
-                    assertThat(context).hasNotFailed().hasSingleBean(NoTracingEventEnricher.class);
-                });
+        runner.run(context -> assertThat(context).hasNotFailed().hasSingleBean(NoTracingEventEnricher.class));
     }
 
     @Test
     public void otherTracingEventEnricherFoundAndUsed() {
-        runner.withConfiguration(AutoConfigurations.of(NoTracingEventEnricherAutoConfiguration.class))
-                .withBean(TracingEventEnricher.class, Mockito::mock)
-                .run(context -> {
-                    assertThat(context).hasNotFailed().doesNotHaveBean(NoTracingEventEnricher.class);
-                });
+        runner.withBean(TracingEventEnricher.class, Mockito::mock)
+                .run(context -> assertThat(context).hasNotFailed().doesNotHaveBean(NoTracingEventEnricher.class));
     }
 }
