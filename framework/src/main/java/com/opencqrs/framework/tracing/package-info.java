@@ -1,3 +1,4 @@
+/** Contains tracing specific classes. */
 @NullMarked
 package com.opencqrs.framework.tracing;
 

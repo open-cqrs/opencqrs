@@ -2,6 +2,7 @@
 package com.opencqrs.framework.tracing;
 
 /** Mixin for Command/Event/State Rebuilding Handlers to provide additional information for tracing */
+@Deprecated
 public interface TracingSpanInformationSource {
 
     /** @return simple name of the handler's enclosing class */

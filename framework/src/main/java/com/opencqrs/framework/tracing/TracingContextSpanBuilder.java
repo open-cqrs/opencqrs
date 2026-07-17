@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 /** Interface for creating new trace spans to run logic in */
+@Deprecated
 public interface TracingContextSpanBuilder {
 
     /**

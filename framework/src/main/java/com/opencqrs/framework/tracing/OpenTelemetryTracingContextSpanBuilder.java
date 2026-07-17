@@ -98,6 +98,7 @@ public class OpenTelemetryTracingContextSpanBuilder implements TracingContextSpa
             span.setAttribute(entry.getKey(), entry.getValue());
         }
 
+        // TODO: span.setStatus()
         span.setAttribute("handler.success", success);
 
         span.end();
