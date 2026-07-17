@@ -7,10 +7,12 @@ on:
   pull_request:
     branches:
       - main
+    types: 
+      - opened
+      - synchronize
   workflow_dispatch:
 
 jobs:
-
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -35,8 +37,8 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
-  test:
-    name: Run All Tests
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -50,15 +52,36 @@ jobs:
       - name: Lint
         run: nix develop --impure --command ./gradlew --no-daemon clean spotlessCheck
 
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run Tests
         run: nix develop --impure --command ./gradlew --no-daemon clean test
 
       - name: Archive build reports
         uses: actions/upload-artifact@v4
+        if: always() # always run even if the previous step fails
         with:
           name: buildreports
           path: |
             **/build/reports
+          include-hidden-files: true
+          if-no-files-found: error
+      - name: Archive test reports
+        uses: actions/upload-artifact@v4
+        if: always() # always run even if the previous step fails
+        with:
+          name: testreports
+          path: |
             **/build/test-results
           include-hidden-files: true
           if-no-files-found: error
