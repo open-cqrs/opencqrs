@@ -139,3 +139,4 @@ nav:
     - Event Upcasting: concepts/upcasting/index.md
   - Blog:
     - What's New: blog/index.md
+    - Null-Safety, Now Included: blog/posts/2026/2026-07-17-jspecify-null-safety/index.md
