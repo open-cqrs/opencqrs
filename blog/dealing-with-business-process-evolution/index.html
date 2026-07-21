@@ -1,0 +1,2382 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://docs.opencqrs.com/blog/dealing-with-business-process-evolution/">
+      
+      
+        <link rel="prev" href="../evolving-event-sourced-systems/">
+      
+      
+        <link rel="next" href="../jspecify-null-safety/">
+      
+      
+      <link rel="icon" href="../../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.4">
+    
+    
+      
+        <title>Dealing With Business Process Evolution - Versioning Business Logic in Event-Sourced Systems - OpenCQRS</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.8608ea7d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+      
+        <meta  property="og:type"  content="website" >
+      
+        <meta  property="og:title"  content="Dealing With Business Process Evolution - Versioning Business Logic in Event-Sourced Systems - OpenCQRS" >
+      
+        <meta  property="og:description"  content="None" >
+      
+        <meta  property="og:image"  content="https://docs.opencqrs.com/assets/images/social/blog/posts/2026/2026-06-09-dealing-with-business-process-evolution/index.png" >
+      
+        <meta  property="og:image:type"  content="image/png" >
+      
+        <meta  property="og:image:width"  content="1200" >
+      
+        <meta  property="og:image:height"  content="630" >
+      
+        <meta  property="og:url"  content="https://docs.opencqrs.com/blog/dealing-with-business-process-evolution/" >
+      
+        <meta  name="twitter:card"  content="summary_large_image" >
+      
+        <meta  name="twitter:title"  content="Dealing With Business Process Evolution - Versioning Business Logic in Event-Sourced Systems - OpenCQRS" >
+      
+        <meta  name="twitter:description"  content="None" >
+      
+        <meta  name="twitter:image"  content="https://docs.opencqrs.com/assets/images/social/blog/posts/2026/2026-06-09-dealing-with-business-process-evolution/index.png" >
+      
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#dealing-with-business-process-evolution-versioning-business-logic-in-event-sourced-systems" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://www.opencqrs.com" title="OpenCQRS" class="md-header__button md-logo" aria-label="OpenCQRS" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OpenCQRS
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Dealing With Business Process Evolution - Versioning Business Logic in Event-Sourced Systems
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/open-cqrs/opencqrs" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../howto/" class="md-tabs__link">
+          
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/" class="md-tabs__link">
+          
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../concepts/" class="md-tabs__link">
+          
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Blog
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://www.opencqrs.com" title="OpenCQRS" class="md-nav__button md-logo" aria-label="OpenCQRS" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    OpenCQRS
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/open-cqrs/opencqrs" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../tutorials/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/01_setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setting up the Environment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/02_command_handling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Handling Commands
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/03_domain_logic/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Developing the Domain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/04_book_reminder/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Handling Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/05_catalog_projection/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Building Read Models from Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/06_testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing the Domain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../howto/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../howto/explicit_type_registration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Registering explicit Event Types
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../howto/upcasting_events/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upcasting Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../howto/running_in_parallel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Reliable Event Handling in a Distributed Environment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/modules/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Modules
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/events/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Representations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Exception Handling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/core_components/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Core Components
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            Core Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/core_components/esdb_client/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ESDB Client
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/core_components/event_repository/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Repository
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/core_components/command_router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Command Router
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/core_components/event_handling_processor/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Handling Processor
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/extension_points/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Extension Points
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            Extension Points
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/extension_points/command_handler/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Defining Command Handlers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/extension_points/state_rebuilding_handler/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Defining State Rebuilding Handlers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/extension_points/event_handler/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Defining Event Handlers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/test_support/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Test Support
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            Test Support
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/test_support/command_handling_test_fixture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Command Handling Tests
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../concepts/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Concepts
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Concepts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/events/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/event_sourcing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Sourcing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/upcasting/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Upcasting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Blog
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Blog
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Archive
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
+            <span class="md-nav__icon md-icon"></span>
+            Archive
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../archive/2026/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2026
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Categories
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_3">
+            <span class="md-nav__icon md-icon"></span>
+            Categories
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/cqrs--event-sourcing-essentials/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CQRS & Event Sourcing Essentials
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/engineering/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Engineering
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/event-sourcing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Sourcing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/system-evolution--business-logic/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    System Evolution & Business Logic
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-schema-evolution-strategies-stop-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Schema-Evolution Strategies Stop Here
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-pinning-actually-buys-you-per-instance-choice" class="md-nav__link">
+    <span class="md-ellipsis">
+      What Pinning Actually Buys You - Per-Instance Choice
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pinning-the-version-the-event-as-anchor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pinning the Version - The Event as Anchor
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#strategy-per-version-a-complete-ruleset-per-variant" class="md-nav__link">
+    <span class="md-ellipsis">
+      Strategy-per-Version - A Complete Ruleset Per Variant
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#putting-it-together-commands-through-a-pinned-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      Putting It Together - Commands Through a Pinned Process
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Putting It Together - Commands Through a Pinned Process">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-layering-that-makes-it-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Layering That Makes It Work
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-evolution-becomes-predictable" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Evolution Becomes Predictable
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-more-than-one-model-evolves-at-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      When More Than One Model Evolves at Once
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-you-have-learned" class="md-nav__link">
+    <span class="md-ellipsis">
+      What You Have Learned
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+  <div class="md-content md-content--post" data-md-component="content">
+    <div class="md-sidebar md-sidebar--post" data-md-component="sidebar" data-md-type="navigation">
+      <div class="md-sidebar__scrollwrap">
+        <div class="md-sidebar__inner md-post">
+          <nav class="md-nav md-nav--primary">
+            <div class="md-post__back">
+              <div class="md-nav__title md-nav__container">
+                <a href="../" class="md-nav__link">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+                  <span class="md-ellipsis">
+                    Back to index
+                  </span>
+                </a>
+              </div>
+            </div>
+            
+              <div class="md-post__authors md-typeset">
+                
+                  <div class="md-profile md-post__profile">
+                    <span class="md-author md-author--long">
+                      <img src="../authors/kersten.jpg" alt="Kersten Kriegbaum">
+                    </span>
+                    <span class="md-profile__description">
+                      <strong>
+                        
+                          Kersten Kriegbaum
+                        
+                      </strong>
+                      <br>
+                      Consultant @ Digital Frontiers
+                    </span>
+                  </div>
+                
+              </div>
+            
+            <ul class="md-post__meta md-nav__list">
+              <li class="md-nav__item md-nav__item--section">
+                <div class="md-post__title">
+                  <span class="md-ellipsis">
+                    Metadata
+                  </span>
+                </div>
+                <nav class="md-nav">
+                  <ul class="md-nav__list">
+                    <li class="md-nav__item">
+                      <div class="md-nav__link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V8h14m-3-7v2H8V1H6v2H5c-1.11 0-2 .89-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1m-1 11h-5v5h5z"/></svg>
+                        <time datetime="2026-06-09 00:00:00+00:00" class="md-ellipsis">June 9, 2026</time>
+                      </div>
+                    </li>
+                    
+                    
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 3v15h3V3zm3 2 4 13 3-1-4-13zM5 5v13h3V5zM3 19v2h18v-2z"/></svg>
+                          <span class="md-ellipsis">
+                            in
+                            
+                              <a href="../category/event-sourcing/">Event Sourcing</a>, 
+                              <a href="../category/system-evolution--business-logic/">System Evolution & Business Logic</a></span>
+                        </div>
+                      </li>
+                    
+                    
+                      
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8 8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8m0-18a10 10 0 0 1 10 10 10 10 0 0 1-10 10C6.47 22 2 17.5 2 12A10 10 0 0 1 12 2m.5 5v5.25l4.5 2.67-.75 1.23L11 13V7z"/></svg>
+                          <span class="md-ellipsis">
+                            
+                              15 min read
+                            
+                          </span>
+                        </div>
+                      </li>
+                    
+                  </ul>
+                </nav>
+              </li>
+            </ul>
+            
+          </nav>
+          
+        </div>
+      </div>
+    </div>
+    <article class="md-content__inner md-typeset">
+      
+        
+  
+
+
+
+  
+  
+
+
+<h1 id="dealing-with-business-process-evolution-versioning-business-logic-in-event-sourced-systems">Dealing With Business Process Evolution - Versioning Business Logic in Event-Sourced Systems</h1>
+<p>Modern software does not just store data. It orchestrates business processes - approvals, fulfillments, onboarding flows - and these processes evolve. Regulations change, policies tighten, new approval steps appear, old thresholds shift. The code you wrote six months ago no longer represents the rules your business operates under today.</p>
+<p>In the first article of this series, <strong><a href="../evolving-event-sourced-systems/">Evolving Event-Sourced Systems</a></strong>, I covered three strategies for dealing with schema evolution - calculating missing data through upcasting, compensating with sensible defaults, and enriching lazily. These approaches share a common assumption: the change is about data shape. New field appears, old events do not carry it, you bridge the gap at read time.</p>
+<p>But what if the change is not about data, but about behavior? What if your loan approval process used to need one underwriter and now needs two? What if a regulatory body added a disclosure step that must happen at the moment an application is submitted? You cannot upcast your way out of this. The events from last month are still factually correct - they just happened under different rules.</p>
+<p>This is where <abbr title="An identified snapshot of business rules and process logic, pinned to a specific instance for the duration of its lifecycle">process version</abbr> <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> enters the picture. Instead of trying to bend old events into new shapes, you record which version of the rules each process started under, and let every <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> run to completion under its own pinned version. The <abbr title="The append-only persistence layer storing all domain events as the single source of truth">event store</abbr> stays immutable, the rules can evolve freely, and in-flight work finishes the way it began. That is the mechanism this article unpacks.</p>
+<!-- more -->
+
+<div class="admonition abstract">
+<p class="admonition-title">System Evolution &amp; Business Logic series</p>
+<ul>
+<li><a href="../evolving-event-sourced-systems/">Part 1: Evolving Event-Sourced Systems</a> — schema evolution</li>
+<li><strong>Part 2: Dealing With Business Process Evolution</strong> — versioning business logic <em>(you are here)</em></li>
+</ul>
+</div>
+<h2 id="why-schema-evolution-strategies-stop-here">Why Schema-Evolution Strategies Stop Here</h2>
+<p><strong><a href="../../concepts/upcasting/">Upcasting</a></strong> is a data transformation. It takes an event written under an older schema and produces a representation that matches the current code's expectations - new fields appear, optional ones get populated, structures get reshaped. What upcasting cannot do is change which code runs when the transformed event is replayed. The behavior on top of the data is determined by the application logic, not by the events themselves.</p>
+<p>Lazy enrichment goes one step further by writing new events to the stream when something is missing. But even there, the missing piece is data. The enrichment fills in what was never recorded, so that the next command can find the field it needs. If the rule itself has changed - if the very logic of "what counts as an approved loan" has shifted - enrichment does not help, because there is no field to add. There is a new decision policy to apply, and that policy lives in code, not in events.</p>
+<p>Consider a concrete case. Your loan approval process required a single underwriter signature regardless of loan volume. Six months later, regulation tightens: loans above 100,000 euros now require two independent underwriters and a regulatory disclosure sent to the applicant at the moment of submission. An application of 200,000 euros submitted three weeks ago is still in flight.</p>
+<p>The team's instinct is "let us just collect a second signature and continue" - but the disclosure that should have been sent at submission was never sent, because at that time the rule did not exist. You cannot pretend it happened. The version a process started under is not just a label - it is the contract under which the process must complete.</p>
+<details class="warning">
+<summary>Why missed process steps cannot be backfilled</summary>
+<p>A skipped notification, an unrecorded approval, or a missing audit entry is not "data that needs to be added later" - it is a step in a regulated process that should have happened at a specific moment. Sending the disclosure today does not satisfy a rule that required it at submission time. The clean path here is to honor the version the process started under - because the disclosure cannot be reconstructed retroactively. Not every rule change is this strict, and the mechanism that lets you make this judgment per <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> is the topic of the next section.</p>
+</details>
+<h2 id="what-pinning-actually-buys-you-per-instance-choice">What Pinning Actually Buys You - Per-Instance Choice</h2>
+<p>The disclosure example illustrates the strictest case: a missing step that cannot be reconstructed, so the running <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> must finish under the old rules. But "finish under the old rules" is one of several legitimate outcomes, not the only one. The deeper value of <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> is that it lets you decide <em>per <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr></em> rather than <em>per system</em>.</p>
+<p>At the moment a rule changes, your system holds three categories of process instances:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>What <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> gives you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Completed</strong></td>
+<td>A replay-stable record of which rules governed each historical run - so an audit five years from now produces the same outcome it did when the process finished</td>
+</tr>
+<tr>
+<td><strong>Running</strong></td>
+<td>A per-<abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> choice: finish under the old rules, or deliberately migrate to the new ones - both are legitimate, but the decision is yours to make and to document</td>
+</tr>
+<tr>
+<td><strong>New</strong></td>
+<td>An automatic pickup of the latest version, captured at the very first command</td>
+</tr>
+</tbody>
+</table>
+<p>Not every rule change is as absolute as the disclosure example. A relaxed credit threshold, a renamed status, a new optional check - these can often be applied safely to running instances. Without <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr>, this is a system-wide gamble: the moment you deploy the change, every running process suddenly behaves differently. With <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr>, the same change becomes an <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr>-by-<abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> decision, informed by the version each <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> is currently running under. Pinning does not pick between "freeze" and "migrate" - it gives you the information to make either choice deliberately, at the granularity that matters.</p>
+<h2 id="pinning-the-version-the-event-as-anchor">Pinning the Version - The Event as Anchor</h2>
+<p>The mechanism is straightforward. At the moment a process starts - typically the first meaningful command on a new <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> - you emit a special event that records which version of the process applies to this particular run. From then on, that version is part of the <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr>'s history, written into the <strong><a href="../../concepts/events/">event stream</a></strong> alongside the business events. When you replay the stream years later, the version is right there with the rest of the facts.</p>
+<p>Here is what the event and its emission look like for a loan application. The handler resolves which version applies right now, then writes both the <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> event and the business event in one step. The version becomes part of the stream from the very first write, indelible and replay-stable.</p>
+<details class="note">
+<summary>About the code examples</summary>
+<p>The snippets in this article are condensed for clarity, not for direct copy-paste. In real OpenCQRS code, events are published through the framework's <strong><a href="../../reference/extension_points/command_handler/"><abbr title="A function that receives a command, loads the current state, applies business rules, and publishes new events">command handler</abbr></a></strong> API rather than returned as a <code>List&lt;Event&gt;</code> from a function. The mechanics - what the handler decides, what gets persisted, in what order - are the same; the syntactic ceremony is left out so the patterns stand on their own.</p>
+</details>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">data</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">LoanApplicationProcessVersionPinnedEvent</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">applicationId</span><span class="p">:</span><span class="w"> </span><span class="n">ApplicationId</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">processVersion</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="kd">class</span><span class="w"> </span><span class="nc">StartLoanApplicationHandler</span><span class="p">(</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">versionResolver</span><span class="p">:</span><span class="w"> </span><span class="n">LoanProcessVersionResolver</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="n">command</span><span class="p">:</span><span class="w"> </span><span class="n">StartLoanApplicationCommand</span><span class="p">):</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Event</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">        </span><span class="kd">val</span><span class="w"> </span><span class="nv">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">versionResolver</span><span class="p">.</span><span class="na">resolveLatest</span><span class="p">()</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">listOf</span><span class="p">(</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">            </span><span class="n">LoanApplicationProcessVersionPinnedEvent</span><span class="p">(</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">                </span><span class="n">applicationId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">applicationId</span><span class="p">,</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">                </span><span class="n">processVersion</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">version</span><span class="p">,</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">            </span><span class="p">),</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">            </span><span class="n">LoanApplicationSubmittedEvent</span><span class="p">(</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">                </span><span class="n">applicationId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">applicationId</span><span class="p">,</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">                </span><span class="n">amount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">amount</span><span class="p">,</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">                </span><span class="n">applicantId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">applicantId</span><span class="p">,</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">            </span><span class="p">),</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">        </span><span class="p">)</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Notice what is and is not specified here. The resolver decides which version applies - but how it decides is intentionally left open. It might query a configuration value, look up the latest supported version, or accept a version from external input. The mechanism does not care. What matters is that the decision happens once, at the start, and the result is persisted as an event.</p>
+<p>The sequence below illustrates how the <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> event anchors every subsequent command. Once the version is in the stream, every later command sees the same value when the <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> is loaded. The replay rebuilds the same context, no matter when it runs.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant C as Client
+    participant H as Command Handler
+    participant ES as Event Store
+
+    C-&gt;&gt;H: StartLoanApplicationCommand
+    H-&gt;&gt;ES: LoanApplicationProcessVersionPinnedEvent (V2)
+    H-&gt;&gt;ES: LoanApplicationSubmittedEvent
+    Note over ES: Version V2 anchored in stream
+
+    C-&gt;&gt;H: SubmitUnderwriterDecisionCommand
+    H-&gt;&gt;ES: Load stream
+    Note over H: Sees V2, applies V2 rules
+    H-&gt;&gt;ES: UnderwriterDecisionRecordedEvent</code></pre>
+<p>The <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> event acts like an anchor at the start of the stream. Every command that follows, no matter how much time has passed, picks up the same version when the <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> is loaded. The application running under version 2 today will still run under version 2 in five years - even if the system has long moved on to version 5.</p>
+<details class="info">
+<summary>What makes this work mechanically</summary>
+<p>The <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> event is just an event - same persistence, same ordering, same replay behavior as any other domain event. There is no special storage, no separate "version table", no out-of-band lookup at runtime. The version travels with the <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> because it is part of the <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr>'s history.</p>
+</details>
+<h2 id="strategy-per-version-a-complete-ruleset-per-variant">Strategy-per-Version - A Complete Ruleset Per Variant</h2>
+<p class="annotate">Knowing which version applies is only half the picture. The other half is what each version actually does. The cleanest way to model this is as a <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> (1) - one interface, one implementation per version, each implementation a complete statement of how this version behaves. No conditionals scattered across business handlers, no feature flags toggling individual rules. The version is the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr>.</p>
+<ol>
+<li>The classic Strategy design pattern from Gang of Four - a family of algorithms encapsulated behind a single interface, selected at runtime. The familiar use case is swappable sorting or compression algorithms; here the selection happens once at process start and stays fixed for the <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr>'s lifetime.</li>
+</ol>
+<p>Here is the loan approval process modeled this way. Version 1 represents the original single-underwriter rule across all loan volumes. Version 2 enforces the new dual-underwriter requirement and the regulatory disclosure step for high-value loans.</p>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">interface</span><span class="w"> </span><span class="nc">LoanApprovalProcess</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">submissionEvents</span><span class="p">(</span><span class="n">application</span><span class="p">:</span><span class="w"> </span><span class="n">LoanApplication</span><span class="p">):</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Event</span><span class="o">&gt;</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">isApprovalComplete</span><span class="p">(</span><span class="n">signatureCount</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">,</span><span class="w"> </span><span class="n">amount</span><span class="p">:</span><span class="w"> </span><span class="n">Money</span><span class="p">):</span><span class="w"> </span><span class="kt">Boolean</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p">}</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="kd">class</span><span class="w"> </span><span class="nc">LoanApprovalProcessV1</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">LoanApprovalProcess</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">submissionEvents</span><span class="p">(</span><span class="n">application</span><span class="p">:</span><span class="w"> </span><span class="n">LoanApplication</span><span class="p">):</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Event</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">        </span><span class="n">listOf</span><span class="p">(</span><span class="n">StandardAcknowledgementRequestedEvent</span><span class="p">(</span><span class="n">application</span><span class="p">.</span><span class="na">applicantId</span><span class="p">))</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">isApprovalComplete</span><span class="p">(</span><span class="n">signatureCount</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">,</span><span class="w"> </span><span class="n">amount</span><span class="p">:</span><span class="w"> </span><span class="n">Money</span><span class="p">):</span><span class="w"> </span><span class="kt">Boolean</span><span class="w"> </span><span class="o">=</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">        </span><span class="n">signatureCount</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="m">1</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="p">}</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="kd">class</span><span class="w"> </span><span class="nc">LoanApprovalProcessV2</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">LoanApprovalProcess</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">    </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">submissionEvents</span><span class="p">(</span><span class="n">application</span><span class="p">:</span><span class="w"> </span><span class="n">LoanApplication</span><span class="p">):</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Event</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">        </span><span class="kd">val</span><span class="w"> </span><span class="nv">ack</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">StandardAcknowledgementRequestedEvent</span><span class="p">(</span><span class="n">application</span><span class="p">.</span><span class="na">applicantId</span><span class="p">)</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">application</span><span class="p">.</span><span class="na">amount</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">Money</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="m">100</span><span class="n">_000</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">            </span><span class="n">listOf</span><span class="p">(</span><span class="n">ack</span><span class="p">,</span><span class="w"> </span><span class="n">RegulatoryDisclosureRequestedEvent</span><span class="p">(</span><span class="n">application</span><span class="p">.</span><span class="na">applicantId</span><span class="p">))</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">            </span><span class="n">listOf</span><span class="p">(</span><span class="n">ack</span><span class="p">)</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">    </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">isApprovalComplete</span><span class="p">(</span><span class="n">signatureCount</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">,</span><span class="w"> </span><span class="n">amount</span><span class="p">:</span><span class="w"> </span><span class="n">Money</span><span class="p">):</span><span class="w"> </span><span class="kt">Boolean</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">        </span><span class="kd">val</span><span class="w"> </span><span class="nv">required</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">amount</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">Money</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="m">100</span><span class="n">_000</span><span class="p">))</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="m">1</span>
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">signatureCount</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">required</span>
+</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Each implementation is a complete picture of what that version of the process expects. V1 knows nothing about thresholds, dual signatures, or regulatory disclosures - those concepts did not exist when V1 was written. V2 knows them, and applies them with its own logic. When a new version arrives, you add a new class; you do not edit the old ones, because the old ones are still in production.</p>
+<details class="tip">
+<summary>Keep the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> interface narrow</summary>
+<p>The interface is the part of this design that risks aging poorly. Every method on it must be implemented by every version - including V1, which knew nothing about the concepts later versions introduce. If V5 needs a new method that V1 has no meaningful answer for, V1 either grows a no-op default that misrepresents its semantics, or you end up with version-specific sub-interfaces that re-introduce the type checks the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> was meant to eliminate.</p>
+<p>The practical mitigation, seen in production codebases applying this pattern, is to keep the interface small and push complexity into the implementations themselves. A <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> with three or four cohesive methods absorbs evolution gracefully; one with a dozen rule-specific predicates becomes a maintenance burden after the third version. When a new version needs a genuinely new concept, prefer adding one well-chosen method over many narrow ones - and prefer defaults that honestly express "this version does not participate in this concept" over fabricated answers.</p>
+</details>
+<p>The bridge between the <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> event and the chosen <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> lives in the <strong><a href="../../reference/extension_points/state_rebuilding_handler/"><abbr title="A function invoked during event replay that updates the in-memory state of an instance based on a specific event type">event sourcing handler</abbr></a></strong>, which reconstructs both the version and the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> when the <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> is replayed.</p>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">data</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">ProcessingModel</span><span class="p">(</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">processVersion</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">strategy</span><span class="p">:</span><span class="w"> </span><span class="n">LoanApprovalProcess</span><span class="p">,</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="p">)</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="kd">class</span><span class="w"> </span><span class="nc">LoanApplicationInstance</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">processingModel</span><span class="p">:</span><span class="w"> </span><span class="n">ProcessingModel? </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">on</span><span class="p">(</span><span class="n">event</span><span class="p">:</span><span class="w"> </span><span class="n">LoanApplicationProcessVersionPinnedEvent</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">        </span><span class="n">processingModel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ProcessingModel</span><span class="p">(</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">            </span><span class="n">processVersion</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">event</span><span class="p">.</span><span class="na">processVersion</span><span class="p">,</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">            </span><span class="n">strategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LoanApprovalProcessRegistry</span><span class="p">.</span><span class="na">forVersion</span><span class="p">(</span><span class="n">event</span><span class="p">.</span><span class="na">processVersion</span><span class="p">),</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">        </span><span class="p">)</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The handler runs during replay, so every time the <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> is loaded, it picks the right <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> automatically. The registry maps a version string to the corresponding <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr>. New versions extend the registry; old ones never disappear from it, because old applications still depend on them. The <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> never has to know how to choose - the event told it which one to use long ago.</p>
+<pre class="mermaid"><code>flowchart LR
+    ES[(Event Stream)] --&gt;|replay| EH[Event Sourcing Handler]
+    EH --&gt;|reads pinning event| R{Strategy Registry}
+    R --&gt;|V1| S1[V1 Strategy]
+    R --&gt;|V2| S2[V2 Strategy]
+    S1 --&gt; PM[ProcessingModel]
+    S2 --&gt; PM
+    PM --&gt;|consulted by| CH[Command Handlers]
+
+    style PM fill:#c8e6c9,stroke:#2e7d32,color:#000</code></pre>
+<p>A reasonable question at this point: why not use a <abbr title="A configuration switch that toggles behavior across the entire system, in contrast to per-instance version pinning">feature flag</abbr>? Feature flags flip the behavior of the entire system at once - the moment you switch the flag, every running process suddenly behaves under the new rules. That is precisely what you want to avoid. Pinning is per <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr>. Each loan application carries its own version through to completion, regardless of what newer applications use.</p>
+<details class="tip">
+<summary>When to add a new <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> version</summary>
+<p>A new version is justified when the rule change is observable at the process boundary - a new required step, a different threshold, a new required side effect. Internal refactorings of existing logic do not need a new version; they just modify the existing <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> class. The rule of thumb: if existing instances must finish under the old behavior, you need a new version. If they should pick up the change immediately, you do not.</p>
+</details>
+<h2 id="putting-it-together-commands-through-a-pinned-process">Putting It Together - Commands Through a Pinned Process</h2>
+<p class="annotate">With <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> and strategies in place, the rest of the application becomes refreshingly boring. Business <strong><a href="../../reference/extension_points/command_handler/">command handlers</a></strong> simply consult the processing model (1) that the <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> has already reconstructed for itself. They do not check versions, they do not encode rule sets - they call methods on the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> and let its answers drive what comes next. The polymorphism does the heavy lifting.</p>
+<ol>
+<li>The processing model is the in-memory state representation built up by the <abbr title="A persistence pattern that stores all state changes as an immutable sequence of events rather than overwriting current state">event sourcing</abbr> handlers during replay. In OpenCQRS, this is the typed object that the <abbr title="A function that receives a command, loads the current state, applies business rules, and publishes new events">command handler</abbr> receives as its current state argument - the result of feeding all prior events through the state-rebuilding handlers.</li>
+</ol>
+<p>Here is what an underwriter-decision handler looks like once the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> is in place. It does not know or care which version applies - it asks the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> whether the approval is complete and dispatches its output events on the answer. Everything version-specific lives behind the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> interface.</p>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kd">class</span><span class="w"> </span><span class="nc">SubmitUnderwriterDecisionHandler</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">        </span><span class="n">command</span><span class="p">:</span><span class="w"> </span><span class="n">SubmitUnderwriterDecisionCommand</span><span class="p">,</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">        </span><span class="n">instance</span><span class="p">:</span><span class="w"> </span><span class="n">LoanApplicationInstance</span><span class="p">,</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="p">):</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Event</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">        </span><span class="kd">val</span><span class="w"> </span><span class="nv">strategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">instance</span><span class="p">.</span><span class="na">processingModel</span><span class="o">?.</span><span class="na">strategy</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">            </span><span class="o">?:</span><span class="w"> </span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Process not initialized&quot;</span><span class="p">)</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">        </span><span class="kd">val</span><span class="w"> </span><span class="nv">totalSignatures</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">instance</span><span class="p">.</span><span class="na">signatures</span><span class="p">.</span><span class="na">size</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">        </span><span class="kd">val</span><span class="w"> </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">UnderwriterDecisionRecordedEvent</span><span class="p">(</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">            </span><span class="n">applicationId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">applicationId</span><span class="p">,</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">            </span><span class="n">underwriterId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">underwriterId</span><span class="p">,</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">        </span><span class="p">)</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">strategy</span><span class="p">.</span><span class="na">isApprovalComplete</span><span class="p">(</span><span class="n">totalSignatures</span><span class="p">,</span><span class="w"> </span><span class="n">instance</span><span class="p">.</span><span class="na">amount</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">            </span><span class="n">listOf</span><span class="p">(</span><span class="n">decision</span><span class="p">,</span><span class="w"> </span><span class="n">ApprovalCompletedEvent</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">applicationId</span><span class="p">))</span>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="w">            </span><span class="n">listOf</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>There is still a branch in the handler - the <code>if/else</code> that decides whether to emit <code>ApprovalCompletedEvent</code> alongside the decision. The point is what the branch dispatches on: not a version string, not a hand-rolled comparison of signature counts against version-specific thresholds, but the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr>'s own answer to "is this approval complete now?". Adding V3 with three underwriters, V4 with a cooling-off window, or V5 with regional diversity requirements does not change this handler. The <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> interface is the boundary - the if/else lives on the dispatch side, not the rule side.</p>
+<p>The same insulation principle applies at the start of the process. The original <code>StartLoanApplicationHandler</code> only wrote the <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> event and the submission event - but now that the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> owns which events mark a submission under its version, the handler defers that decision to it. The version is resolved as before, the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> is retrieved from the registry, and its <code>submissionEvents(...)</code> answer is appended directly to the event list.</p>
+<div class="language-kotlin highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">class</span><span class="w"> </span><span class="nc">StartLoanApplicationHandler</span><span class="p">(</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">versionResolver</span><span class="p">:</span><span class="w"> </span><span class="n">LoanProcessVersionResolver</span><span class="p">,</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">strategyRegistry</span><span class="p">:</span><span class="w"> </span><span class="n">LoanApprovalProcessRegistry</span><span class="p">,</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="n">command</span><span class="p">:</span><span class="w"> </span><span class="n">StartLoanApplicationCommand</span><span class="p">):</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Event</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="kd">val</span><span class="w"> </span><span class="nv">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">versionResolver</span><span class="p">.</span><span class="na">resolveLatest</span><span class="p">()</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="kd">val</span><span class="w"> </span><span class="nv">strategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">strategyRegistry</span><span class="p">.</span><span class="na">forVersion</span><span class="p">(</span><span class="n">version</span><span class="p">)</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">        </span><span class="kd">val</span><span class="w"> </span><span class="nv">application</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LoanApplication</span><span class="p">(</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">            </span><span class="n">applicationId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">applicationId</span><span class="p">,</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">            </span><span class="n">amount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">amount</span><span class="p">,</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">            </span><span class="n">applicantId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">applicantId</span><span class="p">,</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">        </span><span class="p">)</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">buildList</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">            </span><span class="n">add</span><span class="p">(</span><span class="n">LoanApplicationProcessVersionPinnedEvent</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">applicationId</span><span class="p">,</span><span class="w"> </span><span class="n">version</span><span class="p">))</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">            </span><span class="n">add</span><span class="p">(</span><span class="n">LoanApplicationSubmittedEvent</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">applicationId</span><span class="p">,</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">amount</span><span class="p">,</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">applicantId</span><span class="p">))</span>
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">            </span><span class="n">addAll</span><span class="p">(</span><span class="n">strategy</span><span class="p">.</span><span class="na">submissionEvents</span><span class="p">(</span><span class="n">application</span><span class="p">))</span>
+</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Whether a submission emits one acknowledgement event or also a disclosure event is not a decision this handler makes - it is a decision encoded in whichever <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> the resolver picked. V1 returns one event, V2 returns one or two depending on the amount, and a future V3 might return something else entirely. The handler stays the same.</p>
+<details class="info">
+<summary>Events are the boundary, not side effects</summary>
+<p>A subtle but important point: the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> returns <em>events</em>, not <em>side effects</em>. In OpenCQRS, <strong><a href="../../reference/extension_points/command_handler/">command handlers</a></strong> are expected to be free of side effects - they decide which events to write, and downstream <strong>event handlers</strong> react to those events to perform real-world actions like sending the disclosure email. By having the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> speak in events, the versioned policy stays inside the command-handling layer where it belongs, and the side effects themselves remain a separate concern driven by whichever handlers subscribe to <code>RegulatoryDisclosureRequestedEvent</code>. The version determines which events get written; the events determine what eventually happens.</p>
+</details>
+<h3 id="the-layering-that-makes-it-work">The Layering That Makes It Work</h3>
+<p>The cleaner way to state why this pattern holds up is a layering that <abbr title="Command Query Responsibility Segregation">CQRS</abbr> already invites. Command handlers exist to enforce business invariants and to dispatch the right state-changing events. They ask <strong>status-level questions</strong>: "is this approval complete?", "is the applicant still eligible?", "is this loan application in a state that accepts new signatures?". Strategies exist to answer those questions with <strong>versioned policy</strong> - the mechanics that turn process facts into status answers. They own "how many signatures count as complete", "which events mark a submission", "what disqualifies an applicant".</p>
+<p>Consider the alternative: a <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> that exposes <code>requiredSignatures(amount)</code> and a handler that does <code>totalSignatures &gt;= required</code> itself. That layering would be broken. The <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> would return a threshold, and the handler would encode the rule that compares against it - so the handler would partly know the policy. The line would be fuzzy, and every new version that changed <em>how</em> completeness is decided (a quorum rule, a cooling-off window, a regional diversity check) would force the handler to learn the new shape of the comparison. With <code>isApprovalComplete</code> behind the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> interface, the line is clean: the handler queries an invariant, the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> supplies the answer that determines it. Two roles, two layers, no overlap.</p>
+<h3 id="why-evolution-becomes-predictable">Why Evolution Becomes Predictable</h3>
+<p>From this layering, the practical payoff follows automatically. <strong>Version-specific change concentrates in the policy layer.</strong> New <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> classes, registry entries, occasional resolver wiring - these are the places where versioning lives. It stops leaking into handlers, projections, validators, and side-effect emitters that consume the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr>'s answers without needing to know how they were produced.</p>
+<p>This is the real value proposition of the pattern, and it deserves stating directly: <strong>the pattern does not make process evolution free - it makes the cost predictable and localized.</strong> Adding a fifth version means writing one new <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> implementation and registering it. It does not mean auditing thirty command handlers for hidden version assumptions, hunting down stale thresholds in projections, or wondering which downstream piece of code silently depends on the old behavior. Versioning becomes a thing that happens in known places, not a smell that spreads.</p>
+<h2 id="when-more-than-one-model-evolves-at-once">When More Than One Model Evolves at Once</h2>
+<p>The pattern shown so far pins a single thing: the <abbr title="An identified snapshot of business rules and process logic, pinned to a specific instance for the duration of its lifecycle">process version</abbr>. Real systems rarely stay that simple. A loan approval process tends to coexist with a document model (the layout and content of the regulatory disclosure), a task structure (the work items underwriters see in their queue), and a calculation policy (how risk and effective interest are computed). Each of these evolves on its own schedule, driven by different teams and different external pressures. A compliance update to the disclosure form should not have to wait for the next process release; a new risk model should ship without re-versioning the workflow.</p>
+<p>The <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> mechanism extends to this without changing shape. Instead of <abbr title="Recording a process version as an event at the start of an instance's lifecycle, freezing the rules that apply to that instance">pinning</abbr> each model independently and risking inconsistent combinations, you pin the <abbr title="An identified snapshot of business rules and process logic, pinned to a specific instance for the duration of its lifecycle">process version</abbr> and let a small compatibility mapping translate it into a coherent bundle: process V2 implies document V3, task structure V2, calculation policy V5 - the numbers do not need to line up, because each axis evolves on its own. The event in the stream stays a single anchor. The mapping lives next to the <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> registry, and the <abbr title="A function invoked during event replay that updates the in-memory state of an instance based on a specific event type">event sourcing handler</abbr> that hydrates the in-memory model on replay picks all the right pieces at once.</p>
+<p>The payoff is the same as for the single-model case, but compounding. An application started under process V2 keeps the entire world it began in - the rules it was decided by, the form it was disclosed with, the tasks it generated, the interest it was quoted - even years later, even as each model behind it has drifted independently. The pin freezes a coordinate in a multidimensional version space, not a single number.</p>
+<h2 id="what-you-have-learned">What You Have Learned</h2>
+<p>Schema evolution and process evolution look similar from a distance, but they require different tools. The strategies in the first article - upcasting and lazy enrichment - bend stored data into the shape today's code expects. They work because the change is one of representation, not of behavior. When the change is behavioral, when the rules themselves shift, you need a mechanism that records which rules applied, not which fields existed.</p>
+<p>Pinning is that mechanism. You write the version into the event stream at process start, you let each <abbr title="A stateful entity in OpenCQRS whose current state is reconstructed by replaying its events">instance</abbr> carry its own pinned version forever, and you model each version as a complete <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> that knows its own rules. The <abbr title="The append-only persistence layer storing all domain events as the single source of truth">event store</abbr> remains immutable, the rules evolve freely in code, and instances finish under the rules they began with - unless you deliberately migrate them.</p>
+<p>The deeper reason this works is a layering that <abbr title="Command Query Responsibility Segregation">CQRS</abbr> already encourages but rarely makes explicit: command handlers enforce invariants and ask status-level questions, strategies encode the versioned policies that answer them. When that line is drawn cleanly, version-specific change concentrates in the policy layer and stops leaking into handlers, projections, and side-effect emitters. Evolution costs do not disappear, but they become predictable, localized, and bounded by the size of one new <abbr title="A polymorphic implementation of version-specific behavior, with one implementation per version sharing a common interface">strategy</abbr> implementation.</p>
+<p>The deeper lesson is the same across both articles in this series. The <abbr title="The append-only persistence layer storing all domain events as the single source of truth">event store</abbr> is the ground truth, and everything else - schemas, rules, strategies - adapts around it. You do not migrate the events; you give the application the tools to honor what the events recorded. Pinning is the tool when the rules are what changed.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+      
+    </article>
+  </div>
+
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+        
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../evolving-event-sourced-systems/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Evolving Event-Sourced Systems">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Evolving Event-Sourced Systems
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../jspecify-null-safety/" class="md-footer__link md-footer__link--next" aria-label="Next: Null-Safety, Now Included: JSpecify in OpenCQRS">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Null-Safety, Now Included: JSpecify in OpenCQRS
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+    <a href="mailto:opencqrs@digitalfrontiers.de" target="_blank" rel="noopener" title="" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4l217.6 163.2c11.4 8.5 27 8.5 38.4 0l217.6-163.2c12.1-9.1 19.2-23.3 19.2-38.4 0-26.5-21.5-48-48-48zM0 176v208c0 35.3 28.7 64 64 64h384c35.3 0 64-28.7 64-64V176L294.4 339.2a63.9 63.9 0 0 1-76.8 0z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://blog.digitalfrontiers.de" target="_blank" rel="noopener" title="blog.digitalfrontiers.de" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M192 32c0 17.7 14.3 32 32 32 123.7 0 224 100.3 224 224 0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32 70.7 0 128 57.3 128 128 0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48-48-21.5-48-48z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/company/digital-frontiers-gmbh-co-kg" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5m282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.digitalfrontiers.de" target="_blank" rel="noopener" title="www.digitalfrontiers.de" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M352 256c0 22.2-1.2 43.6-3.3 64H163.4c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64h185.3c2.2 20.4 3.3 41.8 3.3 64m28.8-64h123.1c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64m112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6 78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7 10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5 11.6 26 20.9 58.2 27 94.7m-209 0H18.6c30-74.1 93.6-130.9 172-151.6-25.5 34.2-45.3 87.7-55.3 151.6M8.1 192h123.1c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64m186.6 254.6c-11.6-26-20.9-58.2-27-94.6h176.6c-6.1 36.4-15.5 68.6-27 94.6-10.5 23.6-22.2 40.7-33.5 51.5-11.2 10.7-20.5 13.9-27.8 13.9s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6-78.4-20.7-142-77.5-172-151.6zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6 25.5-34.2 45.2-87.7 55.3-151.6h116.7z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.footer", "navigation.tabs", "navigation.indexes", "content.code.copy", "content.code.annotate", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f1b6f286.min.js"></script>
+      
+        <script src="../../js/open_external_in_new_tab.js"></script>
+      
+    
+  </body>
+</html>
