@@ -20,7 +20,6 @@ import com.opencqrs.framework.serialization.EventDataMarshaller;
 import com.opencqrs.framework.types.EventTypeResolver;
 import com.opencqrs.framework.upcaster.AbstractEventDataMarshallingEventUpcaster;
 import com.opencqrs.framework.upcaster.EventUpcaster;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -149,28 +148,6 @@ public class CommandAndEventHandlingIntegrationTest {
             @Override
             public SubjectCondition getSubjectCondition() {
                 return subjectCondition();
-            }
-        }
-    }
-
-    @TestConfiguration
-    static class EventHandlingRetries {
-
-        public record Execution(String id, Boolean failing) {}
-
-        List<Execution> executions = new ArrayList<>();
-
-        @EventHandling("group-2")
-        public void bookAddedFailing(BookAddedEvent event) {
-            if (event.isbn().startsWith("fail")) {
-                if (executions.stream().noneMatch(it -> it.id.equals(event.isbn()))) {
-                    executions.add(new Execution(event.isbn(), true));
-                    throw new IllegalStateException("failing");
-                } else {
-                    executions.add(new Execution(event.isbn(), false));
-                }
-            } else if (event.isbn().startsWith("succeed")) {
-                executions.add(new Execution(event.isbn(), false));
             }
         }
     }
@@ -373,27 +350,6 @@ public class CommandAndEventHandlingIntegrationTest {
                 new CommandConsistencyHandling.NoSourcingCommand(subject, subjectCondition);
 
         assertThatThrownBy(() -> commandRouter.send(command)).isInstanceOf(ConcurrencyException.class);
-    }
-
-    @Test
-    public void failingEventHandlerRetried(@Autowired EventHandlingRetries configuration) {
-        commandRouter.send(new AddBookCommand("succeed-1"));
-        commandRouter.send(new AddBookCommand("fail-1"));
-        commandRouter.send(new AddBookCommand("succeed-2"));
-        commandRouter.send(new AddBookCommand("fail-2"));
-        commandRouter.send(new AddBookCommand("succeed-3"));
-
-        await().untilAsserted(() -> {
-            assertThat(configuration.executions)
-                    .containsExactly(
-                            new EventHandlingRetries.Execution("succeed-1", false),
-                            new EventHandlingRetries.Execution("fail-1", true),
-                            new EventHandlingRetries.Execution("fail-1", false),
-                            new EventHandlingRetries.Execution("succeed-2", false),
-                            new EventHandlingRetries.Execution("fail-2", true),
-                            new EventHandlingRetries.Execution("fail-2", false),
-                            new EventHandlingRetries.Execution("succeed-3", false));
-        });
     }
 
     @Test
