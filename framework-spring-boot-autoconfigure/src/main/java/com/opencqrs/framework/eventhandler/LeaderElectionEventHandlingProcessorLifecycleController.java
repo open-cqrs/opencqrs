@@ -1,7 +1,6 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.eventhandler;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
@@ -34,7 +33,7 @@ class LeaderElectionEventHandlingProcessorLifecycleController extends AbstractCa
     @Override
     public void onGranted(Context ctx) {
         log.info(() -> "leadership granted for " + eventHandlingProcessor.eventProcessorForLogs() + ": " + ctx);
-        CompletableFuture.runAsync(() -> {
+        Thread.ofVirtual().start(() -> {
             try {
                 Future<?> started = eventHandlingProcessor.start();
                 started.get();
