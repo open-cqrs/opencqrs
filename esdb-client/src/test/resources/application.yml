@@ -2,3 +2,13 @@ esdb:
   server:
     uri: http://unknown
     api-token: not-used
+
+management:
+  opentelemetry:
+    tracing:
+      export:
+        enabled: false
+  otlp:
+    metrics:
+      export:
+        enabled: false

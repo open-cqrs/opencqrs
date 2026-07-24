@@ -4,12 +4,16 @@ package com.opencqrs.framework.eventhandler;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.reflection.AutowiredParameter;
 import com.opencqrs.framework.reflection.AutowiredParameterResolver;
+import com.opencqrs.framework.tracing.SpanInformationProvider;
+import com.opencqrs.framework.tracing.TracingSpanInformationSource;
 import com.opencqrs.framework.transaction.NoTransactionOperationsAdapter;
 import com.opencqrs.framework.transaction.SpringTransactionOperationsAdapter;
 import com.opencqrs.framework.transaction.TransactionOperationsAdapter;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -200,7 +204,7 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
     }
 
     static class ReflectiveMethodInvocationEventHandler extends AutowiredParameterResolver
-            implements EventHandler.ForObjectAndMetaDataAndRawEvent<Object> {
+            implements EventHandler.ForObjectAndMetaDataAndRawEvent<Object>, SpanInformationProvider.Customizer {
 
         private final Object target;
         private final ParameterPositions parameterPositions;
@@ -224,6 +228,35 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
                     resolveIncludingAutowiredParameters(parameterPositions.mapArguments(event, metaData, rawEvent));
 
             txAdapter.execute(() -> ReflectionUtils.invokeMethod(method, target, params));
+        }
+
+        //@Override
+        public String getHandlingClassSimpleName() {
+            return ClassUtils.getUserClass(target.getClass()).getSimpleName();
+        }
+
+        //@Override
+        public String getHandlingClassFullName() {
+            return ClassUtils.getUserClass(target.getClass()).getName();
+        }
+
+        //@Override
+        public String getHandlingMethodSignature() {
+            String params = Arrays.stream(method.getParameters())
+                    .map(p -> p.getType().getSimpleName())
+                    .collect(Collectors.joining(", "));
+
+            return method.getName() + "(" + params + ")";
+        }
+
+        @Override
+        public Map<String, String> apply(Map<String, String> input) {
+            var handlerDefinitionClass = ClassUtils.getUserClass(target.getClass());
+            var hdcSimpleName = handlerDefinitionClass.getSimpleName();
+            var hdcFullName = handlerDefinitionClass.getName();
+
+            // TODO
+            return Map.of();
         }
 
         record ParameterPositions(int object, int metaData, int raw) {

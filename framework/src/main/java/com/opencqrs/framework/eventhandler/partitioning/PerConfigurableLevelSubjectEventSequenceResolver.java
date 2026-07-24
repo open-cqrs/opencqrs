@@ -24,7 +24,7 @@ public class PerConfigurableLevelSubjectEventSequenceResolver implements EventSe
     }
 
     private static String shortenSubject(String subject, int level) {
-        var result = new StringBuffer();
+        var result = new StringBuilder();
         Arrays.stream(subject.splitWithDelimiters("/", -1))
                 // subject is assumed to start with "/", so we skip the empty string
                 .skip(1)
