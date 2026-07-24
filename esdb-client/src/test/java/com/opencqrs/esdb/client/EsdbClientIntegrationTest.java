@@ -428,11 +428,16 @@ public class EsdbClientIntegrationTest {
         }
 
         @Test
-        public void eventsProperlyObservedRecursivelyBlocking() {
+        public void eventsProperlyObservedRecursivelyUsingBlockedCallerThread() {
             var observedEvents = new ConcurrentLinkedDeque<Event>();
 
-            CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(
-                    () -> client.observe("/", Set.of(new Option.Recursive()), observedEvents::add));
+            CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(() -> {
+                var currentThread = Thread.currentThread();
+                client.observe("/", Set.of(new Option.Recursive()), event -> {
+                    assertThat(Thread.currentThread()).isSameAs(currentThread);
+                    observedEvents.add(event);
+                });
+            });
 
             for (int i = 0; i < 5; i++) {
                 String subject = randomSubject();
@@ -461,45 +466,6 @@ public class EsdbClientIntegrationTest {
             }
 
             assertThat(completableFuture.isDone()).isFalse();
-        }
-
-        @ParameterizedTest
-        @ValueSource(ints = 8)
-        @Timeout(60)
-        public void eventsProperlyObservedWithoutHttpThreadPoolStarvation(int threadCount) {
-            String subject = randomSubject();
-
-            client.write(
-                    List.of(new EventCandidate(
-                            TEST_SOURCE,
-                            subject,
-                            "com.opencqrs.books-added.v1",
-                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
-                    List.of(new Precondition.SubjectIsPristine(subject)));
-
-            final CyclicBarrier cyclicBarrier = new CyclicBarrier(threadCount + 1);
-            ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-
-            for (int i = 0; i < threadCount; i++) {
-                executorService.submit(() -> {
-                    awaitWrappingCheckedExceptions(cyclicBarrier);
-
-                    client.observe("/", Set.of(new Option.Recursive()), event -> {
-                        awaitWrappingCheckedExceptions(cyclicBarrier);
-                    });
-                });
-            }
-
-            awaitWrappingCheckedExceptions(cyclicBarrier);
-            awaitWrappingCheckedExceptions(cyclicBarrier);
-        }
-
-        private void awaitWrappingCheckedExceptions(CyclicBarrier barrier) {
-            try {
-                barrier.await();
-            } catch (InterruptedException | BrokenBarrierException e) {
-                throw new RuntimeException(e);
-            }
         }
     }
 
