@@ -54,7 +54,10 @@ all registered {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.EventHa
 !!! warning "Event Handling Constraints"
     Class inheritance may be leveraged to assign events to {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.EventHandlerDefinition") }}s
     defined using a more generic Java event type, even `java.lang.Object`. If multiple {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.EventHandlerDefinition") }}s 
-    are capable of handling the event, all of them are used to project the read model, however, __with no specific order__.
+    are capable of handling the event, all of them are used to project the read model. Unless an order is specified, they are
+    invoked in __no specific order__. The invocation order (within a processing group) may be controlled by annotating the event
+    handling methods (or `@Bean` definitions) with Spring's `@Order` annotation, which is honored uniformly for annotation- and
+    `@Bean`-based {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.EventHandlerDefinition") }}s.
 
 ## Event Handlers
 
@@ -190,6 +193,7 @@ context initialization:
     * a raw {{ javadoc_class_ref("com.opencqrs.esdb.client.Event") }}
 * Any number of `@Autowired` annotated parameters may be defined for injection of dependent Spring beans.
 * The method may optionally be annotated with Spring's `@Transactional` annotation to enforce transaction semantics for the method execution.
+* The method may optionally be annotated with Spring's `@Order` annotation to control its invocation order relative to other event handlers within the same processing group. It is honored uniformly for annotation- and `@Bean`-based definitions; handlers without an explicit order have no guaranteed position.
 
 !!! warning "Lazy Resolution of Dependencies"
     Method parameters annotated with `@Autowired` are lazily injected upon state reconstruction or event publication. Accordingly, failures to resolve

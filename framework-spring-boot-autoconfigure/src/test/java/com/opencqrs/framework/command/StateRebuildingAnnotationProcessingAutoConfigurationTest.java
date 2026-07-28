@@ -9,21 +9,23 @@ import com.opencqrs.framework.CqrsFrameworkException;
 import java.io.IOException;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Scope;
+import org.springframework.core.annotation.Order;
 
 public class StateRebuildingAnnotationProcessingAutoConfigurationTest {
 
@@ -123,6 +125,34 @@ public class StateRebuildingAnnotationProcessingAutoConfigurationTest {
             public Book on(@Autowired List<Callable<String>> beans, BookAddedEvent event, Book book) throws Exception {
                 return book.with("event.id", event.id())
                         .with("callable", beans.getFirst().call());
+            }
+        }
+
+        static class Ordering {
+
+            @StateRebuilding
+            public Book unordered(Book book, BookAddedEvent event) {
+                return book;
+            }
+
+            @StateRebuilding
+            @Order(10)
+            public Book low(Book book, LowEvent event) {
+                return book;
+            }
+
+            @StateRebuilding
+            @Order(20)
+            public Book high(Book book, HighEvent event) {
+                return book;
+            }
+
+            @Bean
+            @Order(15)
+            public StateRebuildingHandlerDefinition<Book, MidEvent> mid() {
+                return new StateRebuildingHandlerDefinition<>(
+                        Book.class, MidEvent.class, (StateRebuildingHandler.FromObject<Book, MidEvent>)
+                                (instance, event) -> instance);
             }
         }
     }
@@ -367,6 +397,38 @@ public class StateRebuildingAnnotationProcessingAutoConfigurationTest {
                 .run(context -> assertThat(context).hasFailed());
     }
 
+    @Test
+    public void annotatedStateRebuildingHandlersAnnotatedWithOrderCapturedInBeanDefinition() {
+        runner.withUserConfiguration(ValidStateRebuildingHandlerDefinitions.Ordering.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+
+                    var annotatedSrhds = Arrays.stream(
+                                    context.getBeanNamesForType(StateRebuildingHandlerDefinition.class))
+                            .filter(beanName -> context.getBean(beanName, StateRebuildingHandlerDefinition.class)
+                                            .handler()
+                                    instanceof
+                                    StateRebuildingAnnotationProcessingAutoConfiguration
+                                            .ReflectiveMethodInvocationStateRebuildingHandler)
+                            .map(s -> context.getBeanFactory().getBeanDefinition(s))
+                            .map(beanDefinition -> beanDefinition.getAttribute(AbstractBeanDefinition.ORDER_ATTRIBUTE))
+                            .filter(Objects::nonNull);
+                    assertThat(annotatedSrhds).containsExactlyInAnyOrder(10, 20);
+                });
+    }
+
+    @Test
+    public void stateRebuildingHandlerBeanDefinitionsProperlyOrdered() {
+        runner.withUserConfiguration(ValidStateRebuildingHandlerDefinitions.Ordering.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBeanProvider(StateRebuildingHandlerDefinition.class)
+                                    .orderedStream()
+                                    .map(StateRebuildingHandlerDefinition::eventClass))
+                            .containsExactly(LowEvent.class, MidEvent.class, HighEvent.class, BookAddedEvent.class);
+                });
+    }
+
     record Book(Map<String, Object> contents) {
         public Book with(String key, Object value) {
             Map<String, Object> map = new HashMap<>(contents);
@@ -376,4 +438,10 @@ public class StateRebuildingAnnotationProcessingAutoConfigurationTest {
     }
 
     record BookAddedEvent(String id) {}
+
+    record HighEvent() {}
+
+    record MidEvent() {}
+
+    record LowEvent() {}
 }
