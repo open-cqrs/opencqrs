@@ -17,12 +17,14 @@ import org.springframework.beans.factory.annotation.ParameterResolutionDelegate;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.ResolvableType;
+import org.springframework.core.annotation.OrderUtils;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.MethodMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
@@ -189,6 +191,10 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
                                 values.addGenericArgumentValue(eventHandler);
 
                                 eventHandlerDefinition.setConstructorArgumentValues(values);
+                                Integer order = OrderUtils.getOrder(introspectedMethod);
+                                if (order != null) {
+                                    eventHandlerDefinition.setAttribute(AbstractBeanDefinition.ORDER_ATTRIBUTE, order);
+                                }
                                 registry.registerBeanDefinition(
                                         introspectedMethod.toGenericString(), eventHandlerDefinition);
                             }

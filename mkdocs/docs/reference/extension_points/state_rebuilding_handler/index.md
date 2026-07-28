@@ -80,7 +80,10 @@ __and__ the assignable event type.
 !!! warning "State Reconstruction Constraints"
     Class inheritance may be leveraged to assign sourced events to {{ javadoc_class_ref("com.opencqrs.framework.command.StateRebuildingHandlerDefinition") }}s
     defined using a more generic Java event type, even `java.lang.Object`. If multiple {{ javadoc_class_ref("com.opencqrs.framework.command.StateRebuildingHandlerDefinition") }}s 
-    are capable of handling the sourced event, all of them are used to reconstruct the write model state, however, __with no specific order__.
+    are capable of handling the sourced event, all of them are used to reconstruct the write model state. Unless an order is
+    specified, they are applied in __no specific order__. The invocation order may be controlled by annotating the state rebuilding
+    methods (or `@Bean` definitions) with Spring's `@Order` annotation, which is honored uniformly for annotation- and `@Bean`-based
+    {{ javadoc_class_ref("com.opencqrs.framework.command.StateRebuildingHandlerDefinition") }}s.
 
 ## State Rebuilding Handlers
 
@@ -243,6 +246,7 @@ context initialization:
 * An optional parameter of type `java.lang.String` may be defined to access the event subject.
 * An optional nullable parameter of type {{ javadoc_class_ref("com.opencqrs.esdb.client.Event") }} may be defined to access the raw event. 
 * Any number of `@Autowired` annotated parameters may be defined for injection of dependent Spring beans.
+* The method may optionally be annotated with Spring's `@Order` annotation to control its invocation order relative to other state rebuilding handlers for the same write model. It is honored uniformly for annotation- and `@Bean`-based definitions; handlers without an explicit order have no guaranteed position.
 
 !!! warning "Lazy Resolution of Dependencies"
     Method parameters annotated with `@Autowired` are lazily injected upon state reconstruction or event publication. Accordingly, failures to resolve

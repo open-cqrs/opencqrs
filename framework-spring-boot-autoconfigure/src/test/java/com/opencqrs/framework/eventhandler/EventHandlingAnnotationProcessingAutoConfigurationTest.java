@@ -9,22 +9,24 @@ import com.opencqrs.framework.CqrsFrameworkException;
 import java.io.IOException;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Scope;
+import org.springframework.core.annotation.Order;
 
 public class EventHandlingAnnotationProcessingAutoConfigurationTest {
 
@@ -121,6 +123,27 @@ public class EventHandlingAnnotationProcessingAutoConfigurationTest {
             public void handle(BookAddedEvent event, @Autowired List<Callable<String>> beans) throws Exception {
                 putInResponse("event.id", event.id());
                 putInResponse("callable", beans.getFirst().call());
+            }
+        }
+
+        static class Ordering {
+
+            @EventHandling("group-order")
+            public void unordered(BookAddedEvent event) {}
+
+            @EventHandling("group-order")
+            @Order(10)
+            public void low(LowEvent event) {}
+
+            @EventHandling("group-order")
+            @Order(20)
+            public void high(HighEvent event) {}
+
+            @Bean
+            @Order(15)
+            public EventHandlerDefinition<MidEvent> mid() {
+                return new EventHandlerDefinition<>(
+                        "group-order", MidEvent.class, (EventHandler.ForObject<MidEvent>) event -> {});
             }
         }
     }
@@ -322,5 +345,42 @@ public class EventHandlingAnnotationProcessingAutoConfigurationTest {
                 .run(context -> assertThat(context).hasFailed());
     }
 
+    @Test
+    public void annotatedEventHandlersAnnotatedWithOrderCapturedInBeanDefinition() {
+        runner.withUserConfiguration(ValidEventHandlerDefinitions.Ordering.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+
+                    var annotatedEhds = Arrays.stream(context.getBeanNamesForType(EventHandlerDefinition.class))
+                            .filter(beanName -> context.getBean(beanName, EventHandlerDefinition.class)
+                                            .handler()
+                                    instanceof
+                                    EventHandlingAnnotationProcessingAutoConfiguration
+                                            .ReflectiveMethodInvocationEventHandler)
+                            .map(s -> context.getBeanFactory().getBeanDefinition(s))
+                            .map(beanDefinition -> beanDefinition.getAttribute(AbstractBeanDefinition.ORDER_ATTRIBUTE))
+                            .filter(Objects::nonNull);
+                    assertThat(annotatedEhds).containsExactlyInAnyOrder(10, 20);
+                });
+    }
+
+    @Test
+    public void eventHandlerBeanDefinitionsProperlyOrdered() {
+        runner.withUserConfiguration(ValidEventHandlerDefinitions.Ordering.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBeanProvider(EventHandlerDefinition.class)
+                                    .orderedStream()
+                                    .map(EventHandlerDefinition::eventClass))
+                            .containsExactly(LowEvent.class, MidEvent.class, HighEvent.class, BookAddedEvent.class);
+                });
+    }
+
     record BookAddedEvent(String id) {}
+
+    record HighEvent() {}
+
+    record MidEvent() {}
+
+    record LowEvent() {}
 }
