@@ -40,6 +40,7 @@ public sealed interface CommandHandler<I, C extends Command, R>
          * @param commandEventPublisher a callback to publish new events
          * @return a generic command execution result, may be {@code null}
          */
+        @Nullable
         R handle(C command, CommandEventPublisher<I> commandEventPublisher);
     }
 
