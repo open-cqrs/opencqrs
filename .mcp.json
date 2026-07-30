@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "sh",
+      "args": [
+        "-c",
+        "GITHUB_PERSONAL_ACCESS_TOKEN=\"$(gh auth token)\" exec github-mcp-server stdio --toolsets pull_requests,repos"
+      ]
+    }
+  }
+}
