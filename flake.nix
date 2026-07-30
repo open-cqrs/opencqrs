@@ -13,6 +13,8 @@
             pkgs.jdk21
             pkgs.gnupg
             pkgs.jreleaser-cli
+            pkgs.gh
+            pkgs.github-mcp-server
             pkgs.python3Packages.mkdocs-material
             pkgs.python3Packages.cairosvg
             pkgs.python3Packages.pillow
