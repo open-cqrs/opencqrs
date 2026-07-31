@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockserver.client.MockServerClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -50,6 +51,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.mockserver.MockServerContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
 @Testcontainers
@@ -260,6 +263,8 @@ public class CommandAndEventHandlingIntegrationTest {
     @Autowired
     private ApplicationContext applicationContext;
 
+    private final MockServerClient mockClient = new MockServerClient(mockServer.getHost(), mockServer.getServerPort());
+
     private ConfigurableApplicationContext getEventHandlerContext() {
         return applicationContext.getBean(
                 "openCqrsEventHandlingProcessorContext", ConfigurableApplicationContext.class);
@@ -468,5 +473,17 @@ public class CommandAndEventHandlingIntegrationTest {
     static void esdbProperties(DynamicPropertyRegistry registry) {
         registry.add("esdb.server.uri", () -> "http://" + esdb.getHost() + ":" + esdb.getFirstMappedPort());
         registry.add("esdb.server.api-token", () -> "secret");
+    }
+
+    @Container
+    static MockServerContainer mockServer =
+            new MockServerContainer(DockerImageName.parse("mockserver/mockserver:5.15.0"));
+
+    @DynamicPropertySource
+    static void otelProperties(DynamicPropertyRegistry registry) {
+        String endpoint = "http://" + mockServer.getHost() + ":" + mockServer.getServerPort() + "/v1/traces";
+        registry.add("management.opentelemetry.tracing.export.otlp.endpoint", () -> endpoint);
+        registry.add("management.tracing.sampling.probability", () -> "1.0");
+        registry.add("management.otlp.metrics.export.enabled", () -> "false");
     }
 }

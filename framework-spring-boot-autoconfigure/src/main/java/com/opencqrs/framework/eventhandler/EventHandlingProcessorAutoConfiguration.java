@@ -8,6 +8,8 @@ import com.opencqrs.framework.eventhandler.progress.InMemoryProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.JdbcProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
+import com.opencqrs.framework.tracing.*;
+import io.opentelemetry.api.OpenTelemetry;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -316,9 +318,11 @@ public class EventHandlingProcessorAutoConfiguration {
 
                     DefaultPartitionKeyResolver partitionKeyResolver = new DefaultPartitionKeyResolver(
                             processorSettings.lifeCycle().partitions());
+
                     for (int partition = 0;
                             partition < processorSettings.lifeCycle().partitions();
                             partition++) {
+
                         var beanName = "openCqrsEventHandlingProcessor_" + group + "_" + partition;
                         final int finalPartition = partition;
                         registry.registerBean(
@@ -328,7 +332,7 @@ public class EventHandlingProcessorAutoConfiguration {
                                         finalPartition,
                                         processorSettings.fetch().subject(),
                                         processorSettings.fetch().recursive(),
-                                        ctx.bean(EventReader.class),
+                                        ctx.bean(TracingAwareEventReader.class),
                                         progressTracker,
                                         sequenceResolver,
                                         partitionKeyResolver,
@@ -463,5 +467,18 @@ public class EventHandlingProcessorAutoConfiguration {
     @Bean
     public NoEventSequenceResolver openCqrsNoEventSequenceResolver() {
         return new NoEventSequenceResolver();
+    }
+
+    @Bean
+    @ConditionalOnBean(OpenTelemetry.class)
+    public TracingAwareEventReader openCqrsOpenTelemetryTracingAwareEventReader(
+            EventReader eventReader, OpenTelemetry otel) {
+        return new OpenTelemetryTracingAwareEventReader(eventReader, otel, new EventTracingContextGetter());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(OpenTelemetry.class)
+    public TracingAwareEventReader openCqrsNoTracingAwareEventReader(EventReader eventReader) {
+        return new NoTracingAwareEventReader(eventReader);
     }
 }

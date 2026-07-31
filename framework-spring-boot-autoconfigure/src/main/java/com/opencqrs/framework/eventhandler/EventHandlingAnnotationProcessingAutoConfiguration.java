@@ -10,6 +10,7 @@ import com.opencqrs.framework.transaction.TransactionOperationsAdapter;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -224,6 +225,25 @@ public class EventHandlingAnnotationProcessingAutoConfiguration {
                     resolveIncludingAutowiredParameters(parameterPositions.mapArguments(event, metaData, rawEvent));
 
             txAdapter.execute(() -> ReflectionUtils.invokeMethod(method, target, params));
+        }
+
+        // @Override
+        public String getHandlingClassSimpleName() {
+            return ClassUtils.getUserClass(target.getClass()).getSimpleName();
+        }
+
+        // @Override
+        public String getHandlingClassFullName() {
+            return ClassUtils.getUserClass(target.getClass()).getName();
+        }
+
+        // @Override
+        public String getHandlingMethodSignature() {
+            String params = Arrays.stream(method.getParameters())
+                    .map(p -> p.getType().getSimpleName())
+                    .collect(Collectors.joining(", "));
+
+            return method.getName() + "(" + params + ")";
         }
 
         record ParameterPositions(int object, int metaData, int raw) {

@@ -1,10 +1,11 @@
-/* Copyright (C) 2025 OpenCQRS and contributors */
+/* Copyright (C) 2026 OpenCQRS and contributors */
 package com.opencqrs.esdb.client;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Event data structure retrieved from an event store, conforming to the <a
@@ -20,6 +21,8 @@ import java.util.function.Consumer;
  * @param dataContentType the data content-type, always {@code application/json}
  * @param hash the hash of this event
  * @param predecessorHash the hash of the preceding event in the event store
+ * @param traceParent the event's 'traceparent' header, according to the W3C Trace Context standard
+ * @param traceState the event's 'tracestate' header, according to the W3C Trace Context standard
  * @see EventCandidate
  * @see EsdbClient#read(String, Set)
  * @see EsdbClient#read(String, Set, Consumer)
@@ -35,5 +38,7 @@ public record Event(
         Instant time,
         String dataContentType,
         String hash,
-        String predecessorHash)
+        String predecessorHash,
+        @Nullable String traceParent,
+        @Nullable String traceState)
         implements Marshaller.ResponseElement {}
