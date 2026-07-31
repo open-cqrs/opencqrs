@@ -1,0 +1,11 @@
+spring.application.name: test-app
+
+management:
+  opentelemetry:
+    tracing:
+      export:
+        enabled: false
+  otlp:
+    metrics:
+      export:
+        enabled: false
