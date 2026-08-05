@@ -243,7 +243,9 @@ public class StateRebuildingAnnotationProcessingAutoConfigurationTest {
                                 Instant.now(),
                                 "application/json",
                                 "hash",
-                                "predecessor"));
+                                "predecessor",
+                                null,
+                                null));
     }
 
     @FunctionalInterface

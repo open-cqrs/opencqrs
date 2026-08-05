@@ -3,6 +3,9 @@ package com.opencqrs.framework.command;
 
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.framework.persistence.CapturedEvent;
+import com.opencqrs.framework.tracing.NoTracingContextSpanBuilder;
+import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
+import java.lang.annotation.*;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -112,6 +115,7 @@ public class CommandHandlingTestFixture<C extends Command> {
 
     private final Class<?> instanceClass;
     private final List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions;
+    private final TracingContextSpanBuilder spanBuilder;
     final CommandHandler<?, C, ?> commandHandler;
 
     private CommandHandlingTestFixture(
@@ -120,6 +124,7 @@ public class CommandHandlingTestFixture<C extends Command> {
             CommandHandler<?, C, ?> commandHandler) {
         this.instanceClass = instanceClass;
         this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
+        this.spanBuilder = new NoTracingContextSpanBuilder();
         this.commandHandler = commandHandler;
     }
 
@@ -267,7 +272,9 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 event.time() != null ? event.time() : time(),
                                 "application/test",
                                 UUID.randomUUID().toString(),
-                                UUID.randomUUID().toString());
+                                UUID.randomUUID().toString(),
+                                null,
+                                null);
 
                         AtomicReference reference = new AtomicReference<@Nullable Object>(state());
                         if (!Util.applyUsingHandlers(
@@ -278,7 +285,8 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 rawEvent.subject(),
                                 event.payload(),
                                 event.metaData() != null ? event.metaData() : Map.of(),
-                                rawEvent)) {
+                                rawEvent,
+                                new NoTracingContextSpanBuilder())) { // TODO: Find better solution (?)
                             throw new IllegalArgumentException(
                                     "No suitable state rebuilding handler definition found for event type: "
                                             + event.payload().getClass().getSimpleName());
@@ -450,7 +458,8 @@ public class CommandHandlingTestFixture<C extends Command> {
                     command.getSubject(),
                     stateRebuildingHandlerDefinitions.stream()
                             .filter(it -> it.instanceClass().equals(instanceClass))
-                            .toList());
+                            .toList(),
+                    spanBuilder);
 
             var stateStubbed = stubs.stream().anyMatch(s -> s instanceof Stub.State);
 
