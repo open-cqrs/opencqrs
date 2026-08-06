@@ -12,8 +12,12 @@ import com.opencqrs.esdb.client.Precondition;
 import com.opencqrs.framework.*;
 import com.opencqrs.framework.client.ConcurrencyException;
 import com.opencqrs.framework.command.*;
+import com.opencqrs.framework.command.interceptor.CommandInterceptor;
+import com.opencqrs.framework.command.interceptor.CommandInvocation;
+import com.opencqrs.framework.command.interceptor.CommandLifecycle;
 import com.opencqrs.framework.eventhandler.EventHandling;
 import com.opencqrs.framework.eventhandler.EventHandlingProcessor;
+import com.opencqrs.framework.interceptor.ValueContinuation;
 import com.opencqrs.framework.persistence.EventRepository;
 import com.opencqrs.framework.serialization.EventData;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
@@ -37,6 +41,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.annotation.Order;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -227,6 +232,57 @@ public class CommandAndEventHandlingIntegrationTest {
         }
     }
 
+    @TestConfiguration
+    static class InterceptedCommandHandling {
+
+        final List<String> trace = new CopyOnWriteArrayList<>();
+
+        record InterceptedCommand(String isbn) implements Command {
+            @Override
+            public String getSubject() {
+                return "/intercepted/" + isbn;
+            }
+        }
+
+        @CommandHandling
+        public void handle(InterceptedCommand command, CommandEventPublisher<Void> publisher) {
+            publisher.publish(new BookAddedEvent(command.isbn()));
+        }
+
+        @Bean
+        @Order(1)
+        CommandInterceptor<InterceptedCommand> outerInterceptor() {
+            return recording("outer", trace);
+        }
+
+        @Bean
+        @Order(2)
+        CommandInterceptor<InterceptedCommand> innerInterceptor() {
+            return recording("inner", trace);
+        }
+
+        private static CommandInterceptor<InterceptedCommand> recording(String name, List<String> trace) {
+            return new CommandInterceptor<>() {
+                @Override
+                public Class<InterceptedCommand> commandClass() {
+                    return InterceptedCommand.class;
+                }
+
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<InterceptedCommand> invocation,
+                        CommandLifecycle<R> lifecycle,
+                        ValueContinuation<R> continuation)
+                        throws Exception {
+                    trace.add(name + ":before");
+                    R result = continuation.proceed();
+                    trace.add(name + ":after");
+                    return result;
+                }
+            };
+        }
+    }
+
     @Autowired
     private CommandRouter commandRouter;
 
@@ -396,6 +452,15 @@ public class CommandAndEventHandlingIntegrationTest {
             assertThat(processors).isNotEmpty().allSatisfy(it -> assertThat(it.isRunning())
                     .isFalse());
         });
+    }
+
+    @Test
+    public void commandInterceptorsAreAutoWiredAndOrderedAroundCommandExecution(
+            @Autowired InterceptedCommandHandling configuration) {
+        commandRouter.send(new InterceptedCommandHandling.InterceptedCommand(
+                UUID.randomUUID().toString()));
+
+        assertThat(configuration.trace).containsExactly("outer:before", "inner:before", "inner:after", "outer:after");
     }
 
     @Container

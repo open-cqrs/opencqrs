@@ -5,6 +5,7 @@ import com.opencqrs.framework.command.cache.CommandHandlingCacheProperties;
 import com.opencqrs.framework.command.cache.LruInMemoryStateRebuildingCache;
 import com.opencqrs.framework.command.cache.NoStateRebuildingCache;
 import com.opencqrs.framework.command.cache.StateRebuildingCache;
+import com.opencqrs.framework.command.interceptor.CommandInterceptor;
 import com.opencqrs.framework.metadata.MetaDataPropagationProperties;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.persistence.ImmediateEventPublisher;
@@ -33,6 +34,7 @@ public class CommandRouterAutoConfiguration {
             ImmediateEventPublisher immediateEventPublisher,
             @SuppressWarnings("rawtypes") List<CommandHandlerDefinition> commandHandlerDefinitions,
             @SuppressWarnings("rawtypes") List<StateRebuildingHandlerDefinition> stateRebuildingHandlerDefinitions,
+            @SuppressWarnings("rawtypes") List<CommandInterceptor> commandInterceptors,
             CommandHandlingCacheProperties cacheProperties,
             MetaDataPropagationProperties metaDataPropagationProperties,
             ApplicationContext applicationContext) {
@@ -51,6 +53,7 @@ public class CommandRouterAutoConfiguration {
                 immediateEventPublisher,
                 commandHandlerDefinitions,
                 stateRebuildingHandlerDefinitions,
+                commandInterceptors,
                 applicationContext.getBean(cacheBeanRef, StateRebuildingCache.class),
                 metaDataPropagationProperties.mode(),
                 metaDataPropagationProperties.keys());

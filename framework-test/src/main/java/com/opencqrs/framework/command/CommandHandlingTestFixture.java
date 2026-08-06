@@ -2,6 +2,8 @@
 package com.opencqrs.framework.command;
 
 import com.opencqrs.esdb.client.Event;
+import com.opencqrs.framework.command.interceptor.*;
+import com.opencqrs.framework.interceptor.InterceptorExecutionException;
 import com.opencqrs.framework.persistence.CapturedEvent;
 import java.time.Duration;
 import java.time.Instant;
@@ -15,8 +17,17 @@ import org.jspecify.annotations.Nullable;
 /**
  * Test support for {@link CommandHandler} or {@link CommandHandlerDefinition}. This class can be used in favor of the
  * {@link CommandRouter} to test command handling logic without interacting with the event store, solely relying on a
- * set of {@link StateRebuildingHandlerDefinition}s. No event upcasting, event type resolution, or meta-data propagation
- * is involved during test execution.
+ * set of {@link StateRebuildingHandlerDefinition}s and optionally a set of {@link CommandInterceptor}s. No event
+ * upcasting, event type resolution, meta-data propagation, or store-based event sourcing is involved during test
+ * execution &mdash; {@linkplain Given given} events are replayed directly.
+ *
+ * <p>Command execution runs through the configured {@link CommandInterceptor}s exactly as in production &mdash; they
+ * may transform, short-circuit, or veto the command. Layer or clear them via {@link #withAdditionalInterceptors} /
+ * {@link #withoutInterceptors}; a {@link CommandHandlingTest} slice contributes its interceptors as the base set.
+ * Because the fixture performs no store-based sourcing, the {@link SourcingMode} surfaced to interceptors (via the
+ * {@code Sourcing} and {@code CommandHandlerInvocation} join points) is always {@link SourcingMode#NONE} and does
+ * <em>not</em> reflect the handler's configured mode. Event assertions reflect the events <em>as finally appended</em>
+ * &mdash; that is, after any {@code publish}-stage transformation (e.g. meta-data propagation).
  *
  * <p>This class follows the <a href="https://martinfowler.com/bliki/GivenWhenThen.html">Given When Then</a> style of
  * representing tests with a fluent API supporting:
@@ -113,14 +124,17 @@ public class CommandHandlingTestFixture<C extends Command> {
     private final Class<?> instanceClass;
     private final List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions;
     final CommandHandler<?, C, ?> commandHandler;
+    private final List<CommandInterceptor> interceptors;
 
     private CommandHandlingTestFixture(
             Class<?> instanceClass,
             List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions,
-            CommandHandler<?, C, ?> commandHandler) {
+            CommandHandler<?, C, ?> commandHandler,
+            List<CommandInterceptor> interceptors) {
         this.instanceClass = instanceClass;
         this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
         this.commandHandler = commandHandler;
+        this.interceptors = interceptors;
     }
 
     /**
@@ -147,8 +161,23 @@ public class CommandHandlingTestFixture<C extends Command> {
     public static class Builder<I> {
         final List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions;
 
+        List<CommandInterceptor> interceptors = List.of();
+
         private Builder(List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions) {
             this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
+        }
+
+        /**
+         * Configures the base {@link CommandInterceptor}s applied to every fixture created by this builder (index 0 =
+         * outermost). Used by {@link CommandHandlingTestAutoConfiguration} to wire the interceptors found in a
+         * {@link CommandHandlingTest} slice.
+         *
+         * @param interceptors the ordered base interceptors
+         * @return {@code this}
+         */
+        Builder<I> withInterceptors(List<CommandInterceptor> interceptors) {
+            this.interceptors = interceptors;
+            return this;
         }
 
         /**
@@ -159,7 +188,8 @@ public class CommandHandlingTestFixture<C extends Command> {
          * @param <C> the command type
          */
         public <C extends Command> CommandHandlingTestFixture<C> using(CommandHandlerDefinition<I, C, ?> definition) {
-            return using(definition.instanceClass(), definition.handler());
+            return new CommandHandlingTestFixture<>(
+                    definition.instanceClass(), stateRebuildingHandlerDefinitions, definition.handler(), interceptors);
         }
 
         /**
@@ -172,8 +202,35 @@ public class CommandHandlingTestFixture<C extends Command> {
          */
         public <C extends Command> CommandHandlingTestFixture<C> using(
                 Class<I> instanceClass, CommandHandler<I, C, ?> handler) {
-            return new CommandHandlingTestFixture<>(instanceClass, stateRebuildingHandlerDefinitions, handler);
+            return new CommandHandlingTestFixture<>(
+                    instanceClass, stateRebuildingHandlerDefinitions, handler, interceptors);
         }
+    }
+
+    /**
+     * Derives a new fixture with the given {@link CommandInterceptor}s appended (inner-most, in argument order) to the
+     * current ones. The fixture is immutable, so the current instance is unaffected; the derived fixture runs the
+     * command execution through the applicable interceptors.
+     *
+     * @param additionalInterceptors the interceptors to add
+     * @return a new fixture including the additional interceptors
+     */
+    public CommandHandlingTestFixture<C> withAdditionalInterceptors(
+            CommandInterceptor<? super C>... additionalInterceptors) {
+        List<CommandInterceptor> combined = new ArrayList<>(interceptors);
+        combined.addAll(Arrays.asList(additionalInterceptors));
+        return new CommandHandlingTestFixture<>(
+                instanceClass, stateRebuildingHandlerDefinitions, commandHandler, List.copyOf(combined));
+    }
+
+    /**
+     * Derives a new fixture with no {@link CommandInterceptor}s.
+     *
+     * @return a new fixture without any interceptors
+     */
+    public CommandHandlingTestFixture<C> withoutInterceptors() {
+        return new CommandHandlingTestFixture<>(
+                instanceClass, stateRebuildingHandlerDefinitions, commandHandler, List.of());
     }
 
     /**
@@ -225,26 +282,56 @@ public class CommandHandlingTestFixture<C extends Command> {
                 Instant time,
                 Command command,
                 List<StateRebuildingHandlerDefinition<Object, Object>> stateRebuildingHandlerDefinitions,
-                Set<String> subjects) {
+                Set<String> subjects,
+                @Nullable String latestSourcedEventId) {
 
             public StubResult withState(@Nullable Object newState) {
                 return new StubResult(
-                        instanceClass(), newState, time(), command(), stateRebuildingHandlerDefinitions(), subjects());
+                        instanceClass(),
+                        newState,
+                        time(),
+                        command(),
+                        stateRebuildingHandlerDefinitions(),
+                        subjects(),
+                        latestSourcedEventId());
             }
 
             public StubResult withTime(Instant newTime) {
                 return new StubResult(
-                        instanceClass(), state(), newTime, command(), stateRebuildingHandlerDefinitions(), subjects());
+                        instanceClass(),
+                        state(),
+                        newTime,
+                        command(),
+                        stateRebuildingHandlerDefinitions(),
+                        subjects(),
+                        latestSourcedEventId());
             }
 
             public StubResult withSubject(String newSubject) {
                 var newSubjects = new HashSet<>(subjects());
                 newSubjects.add(newSubject);
                 return new StubResult(
-                        instanceClass(), state(), time(), command(), stateRebuildingHandlerDefinitions(), newSubjects);
+                        instanceClass(),
+                        state(),
+                        time(),
+                        command(),
+                        stateRebuildingHandlerDefinitions(),
+                        newSubjects,
+                        latestSourcedEventId());
             }
 
-            public StubResult merge(Stub stub) {
+            public StubResult withLatestSourcedEventId(@Nullable String newLatestSourcedEventId) {
+                return new StubResult(
+                        instanceClass(),
+                        state(),
+                        time(),
+                        command(),
+                        stateRebuildingHandlerDefinitions(),
+                        subjects(),
+                        newLatestSourcedEventId);
+            }
+
+            public StubResult merge(Stub stub, CommandInterceptorChain<?> chain) {
                 return switch (stub) {
                     case Stub.State state -> {
                         if (state() != null) throw new IllegalArgumentException("givenState() must only be used once");
@@ -270,20 +357,32 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 UUID.randomUUID().toString());
 
                         AtomicReference reference = new AtomicReference<@Nullable Object>(state());
-                        if (!Util.applyUsingHandlers(
-                                stateRebuildingHandlerDefinitions.stream()
-                                        .filter(srhd -> srhd.instanceClass().equals(instanceClass()))
-                                        .toList(),
-                                reference,
-                                rawEvent.subject(),
-                                event.payload(),
-                                event.metaData() != null ? event.metaData() : Map.of(),
-                                rawEvent)) {
+                        boolean applied;
+                        try {
+                            applied = Util.applyUsingHandlers(
+                                    stateRebuildingHandlerDefinitions.stream()
+                                            .filter(srhd -> srhd.instanceClass().equals(instanceClass()))
+                                            .toList(),
+                                    reference,
+                                    rawEvent.subject(),
+                                    event.payload(),
+                                    event.metaData() != null ? event.metaData() : Map.of(),
+                                    rawEvent,
+                                    chain);
+                        } catch (RuntimeException e) {
+                            throw e;
+                        } catch (Exception e) {
+                            throw new InterceptorExecutionException(
+                                    "command interceptor raised a checked exception while applying a given event", e);
+                        }
+                        if (!applied) {
                             throw new IllegalArgumentException(
                                     "No suitable state rebuilding handler definition found for event type: "
                                             + event.payload().getClass().getSimpleName());
                         }
-                        yield withSubject(rawEvent.subject()).withState(reference.get());
+                        yield withSubject(rawEvent.subject())
+                                .withState(reference.get())
+                                .withLatestSourcedEventId(rawEvent.id());
                     }
                 };
             }
@@ -439,63 +538,109 @@ public class CommandHandlingTestFixture<C extends Command> {
         @Override
         @SuppressWarnings("unchecked")
         public ExpectDsl.Outcome when(C command, Map<String, ?> metaData) {
-            AtomicReference<StubResult> stubResult = new AtomicReference<>(new StubResult(
-                    instanceClass, null, Instant.now(), command, stateRebuildingHandlerDefinitions, Set.of()));
-            stubs.forEach(stub -> stubResult.updateAndGet(result -> result.merge(stub)));
+            var applicableInterceptors = interceptors.stream()
+                    .filter(interceptor -> interceptor.commandClass().isAssignableFrom(command.getClass()))
+                    .toList();
+            CommandInterceptorChain<Object> chain = new CommandInterceptorChain<>(applicableInterceptors);
 
-            Object currentState = stubResult.get().state();
+            CommandHandler<Object, C, Object> typedHandler = (CommandHandler<Object, C, Object>) commandHandler;
+            CommandHandlerDefinition<Object, C, Object> definition = new CommandHandlerDefinition<>(
+                    (Class<Object>) instanceClass, (Class<C>) command.getClass(), typedHandler, SourcingMode.NONE);
+            boolean stateStubbed = stubs.stream().anyMatch(s -> s instanceof Stub.State);
 
-            CommandEventCapturer<Object> eventCapturer = new CommandEventCapturer<>(
-                    currentState,
-                    command.getSubject(),
-                    stateRebuildingHandlerDefinitions.stream()
-                            .filter(it -> it.instanceClass().equals(instanceClass))
-                            .toList());
-
-            var stateStubbed = stubs.stream().anyMatch(s -> s instanceof Stub.State);
-
-            if (!stateStubbed) {
-                switch (command.getSubjectCondition()) {
-                    case PRISTINE -> {
-                        if (stubResult.get().subjects().contains(command.getSubject())) {
-                            return new Expect(
-                                    command,
-                                    currentState,
-                                    List.of(),
-                                    null,
-                                    new CommandSubjectAlreadyExistsException("subject already exists", command));
+            /*
+             * premature check that all given events have their corresponding state-rebuilding handler, since
+             * postponing that check into the interceptor chain would manifest as a failing command handler execution
+             * only.
+             */
+            stubs.stream()
+                    .filter(Stub.Event.class::isInstance)
+                    .map(Stub.Event.class::cast)
+                    .forEach(event -> {
+                        if (stateRebuildingHandlerDefinitions.stream()
+                                .filter(srhd -> srhd.instanceClass().equals(instanceClass))
+                                .noneMatch(srhd -> srhd.eventClass()
+                                        .isAssignableFrom(event.payload().getClass()))) {
+                            throw new IllegalArgumentException(
+                                    "No suitable state rebuilding handler definition found for event type: "
+                                            + event.payload().getClass().getSimpleName());
                         }
-                    }
-                    case EXISTS -> {
-                        if (!stubResult.get().subjects().contains(command.getSubject())) {
-                            return new Expect(
-                                    command,
-                                    currentState,
-                                    List.of(),
-                                    null,
-                                    new CommandSubjectDoesNotExistException("subject does not exist", command));
-                        }
-                    }
-                    case NONE -> {}
-                }
-            }
+                    });
+
+            AtomicReference<@Nullable Object> currentStateHolder = new AtomicReference<>();
+            AtomicReference<@Nullable String> sourcedEventIdHolder = new AtomicReference<>();
+            AtomicReference<@Nullable CommandEventCapturer<Object>> capturerHolder = new AtomicReference<>();
+            AtomicReference<List<CapturedEvent>> appendedEventsHolder = new AtomicReference<>(List.of());
 
             try {
-                CommandHandler<Object, C, Object> typedHandler = (CommandHandler<Object, C, Object>) commandHandler;
-                Object result =
-                        switch (typedHandler) {
-                            case CommandHandler.ForCommand<Object, C, Object> handler ->
-                                handler.handle(command, eventCapturer);
-                            case CommandHandler.ForInstanceAndCommand<Object, C, Object> handler ->
-                                handler.handle(currentState, command, eventCapturer);
-                            case CommandHandler.ForInstanceAndCommandAndMetaData<Object, C, Object> handler ->
-                                handler.handle(currentState, command, metaData, eventCapturer);
-                        };
+                Object result = chain.execute(new CommandInvocation<>(command, metaData), c -> {
+                    c.sourcing(new Sourcing(instanceClass, SourcingMode.NONE), () -> {
+                        AtomicReference<StubResult> stubResult = new AtomicReference<>(new StubResult(
+                                instanceClass,
+                                null,
+                                Instant.now(),
+                                command,
+                                stateRebuildingHandlerDefinitions,
+                                Set.of(),
+                                null));
+                        stubs.forEach(stub -> stubResult.updateAndGet(acc -> acc.merge(stub, c)));
+                        currentStateHolder.set(stubResult.get().state());
+                        sourcedEventIdHolder.set(stubResult.get().latestSourcedEventId());
 
-                return new Expect(
-                        command, eventCapturer.previousInstance.get(), eventCapturer.getEvents(), result, null);
+                        if (!stateStubbed) {
+                            switch (command.getSubjectCondition()) {
+                                case PRISTINE -> {
+                                    if (stubResult.get().subjects().contains(command.getSubject())) {
+                                        throw new CommandSubjectAlreadyExistsException(
+                                                "subject already exists", command);
+                                    }
+                                }
+                                case EXISTS -> {
+                                    if (!stubResult.get().subjects().contains(command.getSubject())) {
+                                        throw new CommandSubjectDoesNotExistException(
+                                                "subject does not exist", command);
+                                    }
+                                }
+                                case NONE -> {}
+                            }
+                        }
+                    });
+
+                    Object currentState = currentStateHolder.get();
+                    CommandEventCapturer<Object> eventCapturer = new CommandEventCapturer<>(
+                            currentState,
+                            command.getSubject(),
+                            stateRebuildingHandlerDefinitions.stream()
+                                    .filter(it -> it.instanceClass().equals(instanceClass))
+                                    .toList(),
+                            c);
+                    capturerHolder.set(eventCapturer);
+
+                    Object handlerResult = c.handler(
+                            new CommandHandlerInvocation(definition, currentState, sourcedEventIdHolder.get()),
+                            () -> switch (typedHandler) {
+                                case CommandHandler.ForCommand<Object, C, Object> handler ->
+                                    handler.handle(command, eventCapturer);
+                                case CommandHandler.ForInstanceAndCommand<Object, C, Object> handler ->
+                                    handler.handle(currentState, command, eventCapturer);
+                                case CommandHandler.ForInstanceAndCommandAndMetaData<Object, C, Object> handler ->
+                                    handler.handle(currentState, command, metaData, eventCapturer);
+                            });
+
+                    if (!eventCapturer.getEvents().isEmpty()) {
+                        Publish publishRequest = new Publish(List.copyOf(eventCapturer.getEvents()), List.of());
+                        // reflect what actually gets appended: interceptors may rewrite the events at the publish stage
+                        // (e.g. meta-data propagation), so expose the transformed events, not the raw captured ones
+                        appendedEventsHolder.set(
+                                c.publish(publishRequest, () -> publishRequest).events());
+                    }
+                    return handlerResult;
+                });
+
+                CommandEventCapturer<Object> capturer = Objects.requireNonNull(capturerHolder.get());
+                return new Expect(command, capturer.previousInstance.get(), appendedEventsHolder.get(), result, null);
             } catch (Throwable t) {
-                return new Expect(command, currentState, List.of(), null, t);
+                return new Expect(command, currentStateHolder.get(), List.of(), null, t);
             }
         }
     }
