@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.opencqrs.esdb.client.Event;
+import com.opencqrs.framework.eventhandler.interceptor.EventInterceptor;
 import com.opencqrs.framework.eventhandler.partitioning.EventSequenceResolver;
 import com.opencqrs.framework.eventhandler.partitioning.NoEventSequenceResolver;
 import com.opencqrs.framework.eventhandler.partitioning.PerConfigurableLevelSubjectEventSequenceResolver;
@@ -29,6 +30,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.integration.support.leader.LockRegistryLeaderInitiator;
 import org.springframework.integration.support.locks.LockRegistry;
 import org.springframework.util.backoff.ExponentialBackOff;
@@ -53,6 +55,18 @@ class EventHandlingProcessorAutoConfigurationTest {
         @Profile("deactivated")
         public EventHandlerDefinition<Object> ehdC() {
             return new EventHandlerDefinition<>("c", Object.class, (EventHandler.ForObject<Object>) e -> {});
+        }
+
+        @Bean
+        @Order(10)
+        public EventInterceptor highPriorityEventInterceptor() {
+            return (invocation, lifecycle, continuation) -> continuation.proceed();
+        }
+
+        @Bean
+        @Order(20)
+        public EventInterceptor lowPriorityEventInterceptor() {
+            return (invocation, lifecycle, continuation) -> continuation.proceed();
         }
     }
 
@@ -356,5 +370,21 @@ class EventHandlingProcessorAutoConfigurationTest {
                             .getBeans(LockRegistryLeaderInitiator.class)
                             .hasSize(2);
                 });
+    }
+
+    @Test
+    public void eventInterceptorsInjectedIntoEveryProcessorInOrder() {
+        runner.withUserConfiguration(MyConfiguration.class).run(context -> {
+            var interceptors = context.getBeanProvider(EventInterceptor.class)
+                    .orderedStream()
+                    .toList();
+            assertThat(interceptors).hasSize(2);
+            assertThat(context)
+                    .getBeans(EventHandlingProcessor.class)
+                    .isNotEmpty()
+                    .allSatisfy((beanName, bean) -> assertThat(bean.eventInterceptors)
+                            .as("interceptors are global across processors and @Order-sorted (outermost first)")
+                            .containsExactlyElementsOf(interceptors));
+        });
     }
 }

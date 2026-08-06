@@ -3,6 +3,7 @@ package com.opencqrs.framework.eventhandler;
 
 import static java.util.stream.Collectors.groupingBy;
 
+import com.opencqrs.framework.eventhandler.interceptor.EventInterceptor;
 import com.opencqrs.framework.eventhandler.partitioning.*;
 import com.opencqrs.framework.eventhandler.progress.InMemoryProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.JdbcProgressTracker;
@@ -164,14 +165,16 @@ public class EventHandlingProcessorAutoConfiguration {
     public EventHandlingProcessorRegistrar eventHandlingProcessorRegistrar(
             EventHandlingProperties eventHandlingProperties,
             List<EventHandlerDefinition<?>> eventHandlerDefinitions,
+            List<EventInterceptor> eventInterceptors,
             Map<String, EventHandlingProcessorLifecycleControllerFactory> lifecycleControllerFactories) {
         return new EventHandlingProcessorRegistrar(
-                eventHandlingProperties, eventHandlerDefinitions, lifecycleControllerFactories);
+                eventHandlingProperties, eventHandlerDefinitions, eventInterceptors, lifecycleControllerFactories);
     }
 
     static class EventHandlingProcessorRegistrar implements BeanFactoryAware, SmartInitializingSingleton {
         private final EventHandlingProperties eventHandlingProperties;
         private final List<EventHandlerDefinition<?>> eventHandlerDefinitions;
+        private final List<EventInterceptor> eventInterceptors;
         private final Map<String, EventHandlingProcessorLifecycleControllerFactory> lifecycleControllerFactories;
         private BeanFactory beanFactory;
         private BeanDefinitionRegistry beanRegistry;
@@ -179,9 +182,11 @@ public class EventHandlingProcessorAutoConfiguration {
         EventHandlingProcessorRegistrar(
                 EventHandlingProperties eventHandlingProperties,
                 List<EventHandlerDefinition<?>> eventHandlerDefinitions,
+                List<EventInterceptor> eventInterceptors,
                 Map<String, EventHandlingProcessorLifecycleControllerFactory> lifecycleControllerFactories) {
             this.eventHandlingProperties = eventHandlingProperties;
             this.eventHandlerDefinitions = eventHandlerDefinitions;
+            this.eventInterceptors = eventInterceptors;
             this.lifecycleControllerFactories = lifecycleControllerFactories;
         }
 
@@ -310,6 +315,7 @@ public class EventHandlingProcessorAutoConfiguration {
                                     .addConstructorArgValue(sequenceResolver)
                                     .addConstructorArgValue(partitionKeyResolver)
                                     .addConstructorArgValue(ehds)
+                                    .addConstructorArgValue(eventInterceptors)
                                     .addConstructorArgValue(createBackOff(processorSettings.retry()))
                                     .getBeanDefinition();
                             beanRegistry.registerBeanDefinition(

@@ -42,7 +42,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 /**
- * Unit test for the {@link EventHandlingProcessor}.
+ * Unit test for the {@link EventHandlingProcessor}, excluding
+ * {@link com.opencqrs.framework.eventhandler.interceptor.EventInterceptor}s.
  *
  * @see EventHandlingProcessorIntegrationTest
  */
@@ -129,6 +130,7 @@ public class EventHandlingProcessorTest {
                         new EventHandlerDefinition<>(groupId, BookAddedEvent.class, eventHandler1),
                         new EventHandlerDefinition<>(groupId, MyEvent.class, eventHandler2),
                         new EventHandlerDefinition<>(groupId, MyEvent.class, eventHandler3)),
+                List.of(),
                 backOff,
                 delayer);
 
@@ -302,6 +304,7 @@ public class EventHandlingProcessorTest {
                         new EventHandlerDefinition<>(groupId, BookAddedEvent.class, eventHandler1),
                         new EventHandlerDefinition<>(groupId, MyEvent.class, eventHandler2),
                         new EventHandlerDefinition<>(groupId, MyEvent.class, eventHandler3)),
+                List.of(),
                 backOff,
                 delayer);
         doReturn("seq02").when(esr).sequenceIdFor(any(), any());
