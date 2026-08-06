@@ -11,8 +11,6 @@ import com.opencqrs.framework.command.cache.NoStateRebuildingCache;
 import com.opencqrs.framework.command.cache.StateRebuildingCache;
 import com.opencqrs.framework.command.interceptor.*;
 import com.opencqrs.framework.interceptor.InterceptorExecutionException;
-import com.opencqrs.framework.metadata.PropagationMode;
-import com.opencqrs.framework.metadata.PropagationUtil;
 import com.opencqrs.framework.persistence.CapturedEvent;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.persistence.ImmediateEventPublisher;
@@ -36,8 +34,6 @@ public final class CommandRouter {
             stateRebuildingHandlerDefinitions;
     private final List<CommandInterceptor> interceptors;
     private final StateRebuildingCache stateRebuildingCache;
-    private final PropagationMode propagationMode;
-    private final Set<String> propagationKeys;
 
     /**
      * Creates a pre-configured instance of {@code this}.
@@ -49,8 +45,6 @@ public final class CommandRouter {
      *     event-sourcing
      * @param interceptors an ordered list of {@link CommandInterceptor}s (index {@code 0} = outermost), empty if none
      * @param stateRebuildingCache the cache to use for state rebuilding
-     * @param propagationMode the propagation sourcingMode for command meta-data
-     * @param propagationKeys the command meta-data keys to propagate, if necessary
      */
     public CommandRouter(
             EventReader eventReader,
@@ -58,14 +52,10 @@ public final class CommandRouter {
             List<CommandHandlerDefinition> commandHandlerDefinitions,
             List<StateRebuildingHandlerDefinition> stateRebuildingHandlerDefinitions,
             List<CommandInterceptor> interceptors,
-            StateRebuildingCache stateRebuildingCache,
-            PropagationMode propagationMode,
-            Set<String> propagationKeys) {
+            StateRebuildingCache stateRebuildingCache) {
         this.eventReader = eventReader;
         this.immediateEventPublisher = immediateEventPublisher;
         this.stateRebuildingCache = stateRebuildingCache;
-        this.propagationMode = propagationMode;
-        this.propagationKeys = propagationKeys;
         this.interceptors = interceptors;
 
         Set<Class<Command>> ambiguousCommands =
@@ -82,8 +72,8 @@ public final class CommandRouter {
     }
 
     /**
-     * Creates a pre-configured instance of {@code this} with {@linkplain PropagationMode#NONE disabled meta-data
-     * propagation} and {@link NoStateRebuildingCache}.
+     * Creates a pre-configured instance of {@code this} with no {@linkplain CommandInterceptor interceptors} and a
+     * {@link NoStateRebuildingCache}.
      *
      * @param eventReader the event source
      * @param immediateEventPublisher the event sink
@@ -102,9 +92,7 @@ public final class CommandRouter {
                 commandHandlerDefinitions,
                 stateRebuildingHandlerDefinitions,
                 List.of(),
-                new NoStateRebuildingCache(),
-                PropagationMode.NONE,
-                Set.of());
+                new NoStateRebuildingCache());
     }
 
     /**
@@ -138,10 +126,8 @@ public final class CommandRouter {
      *   <li>the events are applied to all matching {@link StateRebuildingHandler}s to reconstruct the instance state
      *   <li>the {@linkplain StateRebuildingCache cache is updated} with the reconstructed instance state
      *   <li>the command is {@linkplain CommandHandler executed} on the instance
-     *   <li>all events captured as part of the command execution are {@linkplain PropagationUtil#propagateMetaData(Map,
-     *       Map, PropagationMode) applied with propagated command meta-data}
-     *   <li>the events are {@linkplain ImmediateEventPublisher#publish(List, List) published atomically} to the
-     *       underlying event store
+     *   <li>the events captured as part of the command execution are {@linkplain ImmediateEventPublisher#publish(List,
+     *       List) published atomically} to the underlying event store
      *   <li>the {@link CommandHandler} result is returned to the caller
      * </ol>
      *
@@ -291,17 +277,7 @@ public final class CommandRouter {
                                 });
 
                         if (!eventCapturer.getEvents().isEmpty()) {
-                            Map<String, ?> propagationMetaData = new HashMap<>(metaData);
-                            propagationMetaData.keySet().retainAll(propagationKeys);
-
-                            List<CapturedEvent> events = eventCapturer.getEvents().stream()
-                                    .map(it -> new CapturedEvent(
-                                            it.subject(),
-                                            it.event(),
-                                            PropagationUtil.propagateMetaData(
-                                                    it.metaData(), propagationMetaData, propagationMode),
-                                            it.preconditions()))
-                                    .toList();
+                            List<CapturedEvent> events = List.copyOf(eventCapturer.getEvents());
 
                             List<Precondition> additionalPreconditions = events.stream()
                                     .map(CapturedEvent::subject)

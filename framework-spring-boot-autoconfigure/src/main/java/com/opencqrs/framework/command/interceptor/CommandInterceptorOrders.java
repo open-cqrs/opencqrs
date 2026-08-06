@@ -14,13 +14,21 @@ import com.opencqrs.framework.optimisticlocking.OptimisticLockingCommandIntercep
  * Interceptor beans without an explicit order sort at {@link org.springframework.core.Ordered#LOWEST_PRECEDENCE}
  * &mdash; i.e. innermost.
  *
- * <p>The negative range is reserved for future outermost provided interceptors (e.g. observability, security); the
- * values are spaced to leave integer room for user interceptors to interleave, e.g.
+ * <p>The negative range holds the <em>outermost</em> provided interceptors &mdash; those whose transform must apply
+ * last (in the {@code publish} stage, the outermost advice runs last) or which must wrap everything (future
+ * observability, security). The values are spaced to leave integer room for user interceptors to interleave, e.g.
  * {@code @Order(CommandInterceptorOrders.OPTIMISTIC_LOCKING - 10)} to sit just outside optimistic locking.
  */
 public final class CommandInterceptorOrders {
 
     private CommandInterceptorOrders() {}
+
+    /**
+     * Order of the {@link com.opencqrs.framework.metadata.MetaDataPropagatingCommandInterceptor}. Outermost among the
+     * provided interceptors so its event meta-data enrichment applies <strong>last</strong> at the {@code publish}
+     * stage &mdash; resilient against user interceptors that also rewrite event meta-data.
+     */
+    public static final int META_DATA_PROPAGATION = -1000;
 
     /** Order of the {@link OptimisticLockingCommandInterceptor}. */
     public static final int OPTIMISTIC_LOCKING = 0;

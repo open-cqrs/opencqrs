@@ -6,7 +6,6 @@ import com.opencqrs.framework.command.cache.LruInMemoryStateRebuildingCache;
 import com.opencqrs.framework.command.cache.NoStateRebuildingCache;
 import com.opencqrs.framework.command.cache.StateRebuildingCache;
 import com.opencqrs.framework.command.interceptor.CommandInterceptor;
-import com.opencqrs.framework.metadata.MetaDataPropagationProperties;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.persistence.ImmediateEventPublisher;
 import java.util.List;
@@ -21,10 +20,7 @@ import org.springframework.context.annotation.Bean;
  * {@link CommandRouter} and {@link StateRebuildingCache} default implementations.
  */
 @AutoConfiguration
-@EnableConfigurationProperties({
-    MetaDataPropagationProperties.class,
-    CommandHandlingCacheProperties.class,
-})
+@EnableConfigurationProperties(CommandHandlingCacheProperties.class)
 public class CommandRouterAutoConfiguration {
 
     @Bean
@@ -36,7 +32,6 @@ public class CommandRouterAutoConfiguration {
             @SuppressWarnings("rawtypes") List<StateRebuildingHandlerDefinition> stateRebuildingHandlerDefinitions,
             @SuppressWarnings("rawtypes") List<CommandInterceptor> commandInterceptors,
             CommandHandlingCacheProperties cacheProperties,
-            MetaDataPropagationProperties metaDataPropagationProperties,
             ApplicationContext applicationContext) {
         String cacheBeanRef =
                 switch (cacheProperties.ref()) {
@@ -54,9 +49,7 @@ public class CommandRouterAutoConfiguration {
                 commandHandlerDefinitions,
                 stateRebuildingHandlerDefinitions,
                 commandInterceptors,
-                applicationContext.getBean(cacheBeanRef, StateRebuildingCache.class),
-                metaDataPropagationProperties.mode(),
-                metaDataPropagationProperties.keys());
+                applicationContext.getBean(cacheBeanRef, StateRebuildingCache.class));
     }
 
     @Bean
