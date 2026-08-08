@@ -1,17 +1,24 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.eventhandler;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.springframework.context.SmartLifecycle;
 
 /**
- * {@link EventHandlingProcessorLifecycleController} implementation that implements {@link SmartLifecycle} to delegate
- * life-cycle handling to the Spring application context.
+ * {@link SmartLifecycle} based implementation for the {@link EventHandlingProcessor}.
+ *
+ * @see EventHandlingProcessorAutoConfiguration#openCqrsSmartLifecycleEventHandlingProcessorLifecycleControllerFactory()
  */
-class SmartLifecycleEventHandlingProcessorLifecycleController
-        implements EventHandlingProcessorLifecycleController, SmartLifecycle {
+class SmartLifecycleEventHandlingProcessorLifecycleController implements SmartLifecycle {
+
+    private static final Logger log =
+            Logger.getLogger(SmartLifecycleEventHandlingProcessorLifecycleController.class.getName());
 
     private boolean autoStartup = true;
-    private boolean running = false;
+    private volatile boolean running = false;
     private final EventHandlingProcessor eventHandlingProcessor;
 
     SmartLifecycleEventHandlingProcessorLifecycleController(EventHandlingProcessor eventHandlingProcessor) {
@@ -29,8 +36,17 @@ class SmartLifecycleEventHandlingProcessorLifecycleController
 
     @Override
     public void start() {
-        eventHandlingProcessor.start();
         running = true;
+        Thread.ofVirtual().start(() -> {
+            try {
+                Future<?> started = eventHandlingProcessor.start();
+                started.get();
+            } catch (ExecutionException | InterruptedException e) {
+                log.log(Level.INFO, eventHandlingProcessor.eventProcessorForLogs() + " prematurely terminated", e);
+            } finally {
+                running = false;
+            }
+        });
     }
 
     @Override
