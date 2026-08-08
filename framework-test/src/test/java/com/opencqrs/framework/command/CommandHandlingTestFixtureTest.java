@@ -8,6 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.opencqrs.framework.command.interceptor.CommandInterceptor;
+import com.opencqrs.framework.command.interceptor.CommandInvocation;
+import com.opencqrs.framework.command.interceptor.CommandLifecycle;
+import com.opencqrs.framework.interceptor.ValueContinuation;
+import com.opencqrs.framework.persistence.CapturedEvent;
 import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
@@ -3455,6 +3460,338 @@ public class CommandHandlingTestFixtureTest {
                         .isInstanceOf(AssertionError.class)
                         .hasMessageContainingAll("subject expected to be equal", "dummy/child", "differs", "dummy");
             }
+        }
+    }
+
+    @Nested
+    public class Interceptors {
+
+        private CommandHandlingTestFixture<DummyCommand> fixture() {
+            return CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(
+                            new StateRebuildingHandlerDefinition<>(
+                                    DummyState.class, EventA.class, (StateRebuildingHandler.FromObject<
+                                                    DummyState, EventA>)
+                                            (state, event) -> new DummyState(true)))
+                    .using(DummyState.class, (CommandHandler.ForInstanceAndCommand<DummyState, DummyCommand, String>)
+                            (state, command, publisher) -> {
+                                publisher.publish(new EventA("emitted"));
+                                return "handled";
+                            });
+        }
+
+        private static final class Veto extends RuntimeException {}
+
+        private abstract static class AllCommands implements CommandInterceptor<Command> {
+            @Override
+            public Class<Command> commandClass() {
+                return Command.class;
+            }
+        }
+
+        @Test
+        void interceptorThrowingSurfacesAsFailure() {
+            CommandInterceptor<Command> denying = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.handler((jp, c) -> {
+                        throw new Veto();
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(denying)
+                    .given()
+                    .nothing()
+                    .when(new DummyCommand())
+                    .fails()
+                    .throwing(Veto.class);
+        }
+
+        @Test
+        void handlerShortCircuitSubstitutesResultAndSkipsHandler() {
+            CommandInterceptor<Command> caching = new AllCommands() {
+                @Override
+                @SuppressWarnings("unchecked")
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.handler((jp, c) -> (R) "cached");
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(caching)
+                    .given()
+                    .nothing()
+                    .when(new DummyCommand())
+                    .succeeds()
+                    .havingResult("cached")
+                    .withoutEvents();
+        }
+
+        @Test
+        void publishAdviceRewritingEventsIsReflectedInEventAssertions() {
+            CommandInterceptor<Command> enriching = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.publish((jp, c) -> {
+                        var request = c.proceed();
+                        if (request == null) {
+                            return null;
+                        }
+                        return request.withEvents(request.events().stream()
+                                .map(e -> new CapturedEvent(
+                                        e.subject(), e.event(), Map.of("enriched", true), e.preconditions()))
+                                .toList());
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(enriching)
+                    .given()
+                    .nothing()
+                    .when(new DummyCommand())
+                    .succeeds()
+                    .allEvents()
+                    .single(e ->
+                            e.comparing(new EventA("emitted")).asserting(a -> a.metaData(Map.of("enriched", true))));
+        }
+
+        @Test
+        void publishJoinPointExposesCapturedEventsAndNoAdditionalPreconditions() {
+            var seenEvents = new AtomicReference<List<CapturedEvent>>();
+            var noAdditionalPreconditions = new AtomicReference<Boolean>();
+            CommandInterceptor<Command> capturing = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.publish((jp, c) -> {
+                        seenEvents.set(jp.events());
+                        noAdditionalPreconditions.set(
+                                jp.additionalPreconditions().isEmpty());
+                        return c.proceed();
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(capturing)
+                    .given()
+                    .nothing()
+                    .when(new DummyCommand())
+                    .succeeds();
+
+            assertThat(seenEvents.get())
+                    .singleElement()
+                    .extracting(CapturedEvent::event)
+                    .isEqualTo(new EventA("emitted"));
+            assertThat(noAdditionalPreconditions.get()).isTrue();
+        }
+
+        @Test
+        void publishAdviceVetoingByThrowingSurfacesAsFailure() {
+            CommandInterceptor<Command> denying = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.publish((jp, c) -> {
+                        throw new Veto();
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(denying)
+                    .given()
+                    .nothing()
+                    .when(new DummyCommand())
+                    .fails()
+                    .throwing(Veto.class);
+        }
+
+        @Test
+        void handlerHookSeesStateRebuiltFromGivenEvents() {
+            var seenInstance = new AtomicReference<Object>();
+            CommandInterceptor<Command> capturing = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.handler((jp, c) -> {
+                        seenInstance.set(jp.instance());
+                        return c.proceed();
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(capturing)
+                    .given()
+                    .events(new EventA("history"))
+                    .when(new DummyCommand())
+                    .succeeds();
+
+            assertThat(seenInstance.get()).isEqualTo(new DummyState(true));
+        }
+
+        @Test
+        void handlerHookSeesStateRebuiltFromGivenState() {
+            var seenInstance = new AtomicReference<Object>();
+            CommandInterceptor<Command> capturing = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.handler((jp, c) -> {
+                        seenInstance.set(jp.instance());
+                        return c.proceed();
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(capturing)
+                    .given()
+                    .state(new DummyState(false))
+                    .when(new DummyCommand())
+                    .succeeds();
+
+            assertThat(seenInstance.get()).isEqualTo(new DummyState(false));
+        }
+
+        @Test
+        void handlerHookSeesLatestSourcedEventIdOfGivenEvents() {
+            var seenEventId = new AtomicReference<>("unset");
+            CommandInterceptor<Command> capturing = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.handler((jp, c) -> {
+                        seenEventId.set(jp.latestSourcedEventId());
+                        return c.proceed();
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(capturing)
+                    .given()
+                    .event(e -> e.id("evt-1").payload(new EventA("history")))
+                    .when(new DummyCommand())
+                    .succeeds();
+
+            assertThat(seenEventId.get()).isEqualTo("evt-1");
+        }
+
+        @Test
+        void handlerHookSeesNullLatestSourcedEventIdWhenNothingSourced() {
+            var seenEventId = new AtomicReference<>("unset");
+            CommandInterceptor<Command> capturing = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.handler((jp, c) -> {
+                        seenEventId.set(jp.latestSourcedEventId());
+                        return c.proceed();
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(capturing)
+                    .given()
+                    .nothing()
+                    .when(new DummyCommand())
+                    .succeeds();
+
+            assertThat(seenEventId.get()).isNull();
+        }
+
+        @Test
+        void givenEventsFireSourcedEventHooksLikeProductionSourcing() {
+            var stages = new ArrayList<String>();
+            CommandInterceptor<Command> recorder = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.sourcing((jp, c) -> {
+                        stages.add("sourcing");
+                        return c.proceed();
+                    });
+                    lc.sourcedEvent((jp, c) -> {
+                        stages.add("sourcedEvent");
+                        return c.proceed();
+                    });
+                    lc.handler((jp, c) -> {
+                        stages.add("handler");
+                        return c.proceed();
+                    });
+                    lc.publishedEvent((jp, c) -> {
+                        stages.add("publishedEvent");
+                        return c.proceed();
+                    });
+                    lc.publish((jp, c) -> {
+                        stages.add("publish");
+                        return c.proceed();
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            fixture()
+                    .withAdditionalInterceptors(recorder)
+                    .given()
+                    .events(new EventA("history"))
+                    .when(new DummyCommand())
+                    .succeeds();
+
+            assertThat(stages).containsExactly("sourcing", "sourcedEvent", "handler", "publishedEvent", "publish");
+        }
+
+        @Test
+        void withAdditionalInterceptorsIsImmutableAndDoesNotAffectTheBaseFixture() {
+            CommandInterceptor<Command> denying = new AllCommands() {
+                @Override
+                public <R> R intercept(
+                        CommandInvocation<Command> inv, CommandLifecycle<R> lc, ValueContinuation<R> cont)
+                        throws Exception {
+                    lc.handler((jp, c) -> {
+                        throw new Veto();
+                    });
+                    return cont.proceed();
+                }
+            };
+
+            var base = fixture();
+
+            base.given().nothing().when(new DummyCommand()).succeeds();
+            base.withAdditionalInterceptors(denying)
+                    .given()
+                    .nothing()
+                    .when(new DummyCommand())
+                    .fails();
+            // the base fixture is unaffected by the derivation
+            base.given().nothing().when(new DummyCommand()).succeeds();
         }
     }
 

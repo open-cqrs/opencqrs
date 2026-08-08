@@ -2,6 +2,8 @@
 package com.opencqrs.framework.command;
 
 import com.opencqrs.esdb.client.Precondition;
+import com.opencqrs.framework.command.interceptor.CommandInterceptorChain;
+import com.opencqrs.framework.interceptor.InterceptorExecutionException;
 import com.opencqrs.framework.persistence.CapturedEvent;
 import com.opencqrs.framework.persistence.EventCapturer;
 import java.util.List;
@@ -19,24 +21,25 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
 
     private final List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions;
     private final String subject;
+    private final CommandInterceptorChain<?> chain;
 
     final AtomicReference<@Nullable I> previousInstance;
 
     public CommandEventCapturer(
             @Nullable I initialInstance,
             String subject,
-            List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions) {
+            List<StateRebuildingHandlerDefinition<I, Object>> stateRebuildingHandlerDefinitions,
+            CommandInterceptorChain<?> chain) {
         this.stateRebuildingHandlerDefinitions = stateRebuildingHandlerDefinitions;
         this.previousInstance = new AtomicReference<@Nullable I>(initialInstance);
         this.subject = subject;
+        this.chain = chain;
     }
 
     @Override
     public <E> @Nullable I publish(E event, Map<String, ?> metaData, List<Precondition> preconditions) {
         getEvents().add(new CapturedEvent(subject, event, metaData, preconditions));
-
-        Util.applyUsingHandlers(stateRebuildingHandlerDefinitions, previousInstance, subject, event, metaData, null);
-
+        applyToHandlers(subject, event, metaData);
         return previousInstance.get();
     }
 
@@ -45,9 +48,19 @@ public class CommandEventCapturer<I> extends EventCapturer implements CommandEve
             String subjectSuffix, E event, Map<String, ?> metaData, List<Precondition> preconditions) {
         String s = subject + "/" + subjectSuffix;
         getEvents().add(new CapturedEvent(s, event, metaData, preconditions));
-
-        Util.applyUsingHandlers(stateRebuildingHandlerDefinitions, previousInstance, s, event, metaData, null);
-
+        applyToHandlers(s, event, metaData);
         return previousInstance.get();
+    }
+
+    private <E> void applyToHandlers(String subject, E event, Map<String, ?> metaData) {
+        try {
+            Util.applyUsingHandlers(
+                    stateRebuildingHandlerDefinitions, previousInstance, subject, event, metaData, null, chain);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InterceptorExecutionException(
+                    "command interceptor raised a checked exception while applying a published event", e);
+        }
     }
 }

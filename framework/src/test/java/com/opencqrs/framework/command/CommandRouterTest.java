@@ -10,6 +10,7 @@ import com.opencqrs.esdb.client.Option;
 import com.opencqrs.esdb.client.Precondition;
 import com.opencqrs.framework.*;
 import com.opencqrs.framework.command.cache.NoStateRebuildingCache;
+import com.opencqrs.framework.metadata.MetaDataPropagatingCommandInterceptor;
 import com.opencqrs.framework.metadata.PropagationMode;
 import com.opencqrs.framework.persistence.CapturedEvent;
 import com.opencqrs.framework.persistence.EventReader;
@@ -172,9 +173,9 @@ public class CommandRouterTest {
                 immediateEventPublisher,
                 List.of(chd),
                 stateRebuildingHandlerDefinitions,
-                new NoStateRebuildingCache(),
-                PropagationMode.KEEP_IF_PRESENT,
-                Set.of("propagated01"));
+                List.of(new MetaDataPropagatingCommandInterceptor(
+                        PropagationMode.KEEP_IF_PRESENT, Set.of("propagated01"))),
+                new NoStateRebuildingCache());
 
         UUID result = subject.send(command, commandMetaData);
 
@@ -199,9 +200,7 @@ public class CommandRouterTest {
                                 new Precondition.SubjectIsPristine(
                                         command.getSubject() + "/pages/" + publishedEvent2.page()),
                                 new Precondition.SubjectIsOnEventId(command.getSubject(), "2345"),
-                                new Precondition.SubjectIsOnEventId(command.getSubject() + "/pages/42", "89437534"),
-                                new Precondition.SubjectIsPopulated("/foo"),
-                                new Precondition.SubjectIsOnEventId("/absolute", "0815")));
+                                new Precondition.SubjectIsOnEventId(command.getSubject() + "/pages/42", "89437534")));
     }
 
     @ParameterizedTest

@@ -54,12 +54,12 @@
       ]
     },
     {
-      "name": "opencqrs.event-handling.standard.life-cycle.controller-registration",
+      "name": "opencqrs.event-handling.standard.life-cycle.controller-factory",
       "providers": [
         {
           "name": "spring-bean-reference",
           "parameters": {
-            "target": "com.opencqrs.framework.eventhandler.EventHandlingProcessorLifecycleRegistration"
+            "target": "com.opencqrs.framework.eventhandler.EventHandlingProcessorLifecycleControllerFactory"
           }
         }
       ]
