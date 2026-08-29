@@ -9,6 +9,13 @@ import static org.mockito.Mockito.*;
 import com.opencqrs.esdb.client.eventql.EventQueryBuilder;
 import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
 import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
+import com.opencqrs.framework.tracing.OpenTelemetryEventTracingContextExecutor;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.TraceFlags;
+import io.opentelemetry.api.trace.TraceState;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.sdk.trace.IdGenerator;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -353,6 +360,51 @@ public class EsdbClientIntegrationTest {
 
             assertThat(client.read(subject, Set.of())).as("no events written").isEmpty();
         }
+
+        @Test
+        public void traceInformationPublishedIfAvailable(
+                @Autowired OpenTelemetryEventTracingContextExecutor otelTraceContextExecutor) {
+
+            IdGenerator ids = IdGenerator.random();
+
+            TraceState traceState = TraceState.builder()
+                    .put("key1", "value1")
+                    .put("key2", "value2")
+                    .build();
+
+            SpanContext spanContext = SpanContext.create(
+                    ids.generateTraceId(), ids.generateSpanId(), TraceFlags.getSampled(), traceState);
+
+            List<Event> published;
+
+            try (Scope ignored = Span.wrap(spanContext).makeCurrent()) {
+                String subject = randomSubject();
+
+                Map<String, Object> data =
+                        objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class);
+
+                published = client.write(
+                        List.of(new EventCandidate(TEST_SOURCE, subject, "com.opencqrs.books-added.v1", data)),
+                        List.of(new Precondition.SubjectIsPristine(subject)));
+            }
+
+            assertThat(Span.current().getSpanContext().isValid()).isFalse();
+            assertThat(published)
+                    .singleElement()
+                    .satisfies(e -> otelTraceContextExecutor.executeInRestoreContextFromEvent(e, () -> {
+                        assertThat(Span.current().getSpanContext().getTraceId()).isEqualTo(spanContext.getTraceId());
+                        assertThat(Span.current()
+                                        .getSpanContext()
+                                        .getTraceState()
+                                        .get("key1"))
+                                .isEqualTo("value1");
+                        assertThat(Span.current()
+                                        .getSpanContext()
+                                        .getTraceState()
+                                        .get("key2"))
+                                .isEqualTo("value2");
+                    }));
+        }
     }
 
     @Nested
@@ -551,13 +603,22 @@ public class EsdbClientIntegrationTest {
 
             var subjects = List.of(randomSubject(), randomSubject(), randomSubject());
 
-            subjects.forEach(subject -> client.write(
-                    List.of(new EventCandidate(
-                            TEST_SOURCE,
-                            subject,
-                            "com.opencqrs.books-added.v1",
-                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
-                    List.of(new Precondition.SubjectIsPristine(subject))));
+            IdGenerator ids = IdGenerator.random();
+            SpanContext spanContext = SpanContext.create(
+                    ids.generateTraceId(),
+                    ids.generateSpanId(),
+                    TraceFlags.getSampled(),
+                    TraceState.builder().put("key", "value").build());
+
+            try (Scope ignored = Span.wrap(spanContext).makeCurrent()) {
+                subjects.forEach(subject -> client.write(
+                        List.of(new EventCandidate(
+                                TEST_SOURCE,
+                                subject,
+                                "com.opencqrs.books-added.v1",
+                                objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
+                        List.of(new Precondition.SubjectIsPristine(subject))));
+            }
 
             client.read("/", Set.of(new Option.Recursive()), consumedEvents::add);
 
@@ -571,6 +632,8 @@ public class EsdbClientIntegrationTest {
                 assertThat(e.id()).isNotBlank();
                 assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
                 assertThat(e.predecessorHash()).isNotBlank();
+                assertThat(e.traceParent()).isNotBlank();
+                assertThat(e.traceState()).isNotBlank();
                 assertThat(objectMapper.convertValue(e.data(), BookAddedEvent.class))
                         .isEqualTo(new BookAddedEvent("JRR Tolkien", "LOTR"));
             }));
@@ -663,7 +726,7 @@ public class EsdbClientIntegrationTest {
             assertThat(ref).hasValueSatisfying(event -> {
                 assertThat(event)
                         .usingRecursiveComparison()
-                        .ignoringFields("id", "time", "hash", "predecessorHash")
+                        .ignoringFields("id", "time", "hash", "predecessorHash", "traceParent", "traceState")
                         .isEqualTo(new Event(
                                 eventCandidate.source(),
                                 subject,
@@ -674,7 +737,9 @@ public class EsdbClientIntegrationTest {
                                 Instant.MIN,
                                 "application/json",
                                 "irrelevant",
-                                "irrelevant"));
+                                "irrelevant",
+                                null,
+                                null));
                 assertThat(event.id()).isNotBlank();
                 assertThat(event.time()).isBeforeOrEqualTo(Instant.now());
                 assertThat(event.hash()).isNotBlank();

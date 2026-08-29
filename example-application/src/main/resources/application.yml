@@ -1,6 +1,5 @@
 spring.application.name: library
 
-
 esdb:
   server:
     uri: http://localhost:3000
@@ -32,3 +31,21 @@ management:
     health:
       show-components: always
       #show-details: always
+    beans:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "beans"
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: "http://localhost:4318/v1/traces"
+  tracing:
+    sampling:
+      probability: 1.0 # For Demo purposes: Exports ALL traces and spans to otel collector
+  otlp:
+    metrics:
+      export:
+        enabled: false

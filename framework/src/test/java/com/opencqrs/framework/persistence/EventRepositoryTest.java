@@ -84,7 +84,9 @@ public class EventRepositoryTest {
                 Instant.now(),
                 "application/json",
                 "1",
-                "0");
+                "0",
+                null,
+                null);
 
         private Event upcastedEvent = new Event(
                 eventSource.source(),
@@ -96,7 +98,9 @@ public class EventRepositoryTest {
                 Instant.now(),
                 "application/json",
                 "1",
-                "0");
+                "0",
+                null,
+                null);
 
         private BookAddedEvent convertedEvent = new BookAddedEvent("4711");
         private Map<String, ?> convertedMetaData = Map.of("purpose", "test");
@@ -252,7 +256,9 @@ public class EventRepositoryTest {
                     Instant.now(),
                     "json",
                     "hash",
-                    "predecessor");
+                    "predecessor",
+                    null,
+                    null);
 
             var event2 = new BookAddedEvent("4712");
             var serialized2 = Map.of("payload", "{ isbn=4712 }", "metadata", "{}");
@@ -266,7 +272,9 @@ public class EventRepositoryTest {
                     Instant.now(),
                     "json",
                     "hash",
-                    "predecessor");
+                    "predecessor",
+                    null,
+                    null);
 
             doReturn("book-added.v1").when(eventTypeResolver).getEventType(BookAddedEvent.class);
             doReturn(serialized1).when(eventDataMarshaller).serialize(new EventData<>(metaData1, event1));
@@ -312,7 +320,9 @@ public class EventRepositoryTest {
                     Instant.now(),
                     "json",
                     "hash",
-                    "predecessor");
+                    "predecessor",
+                    null,
+                    null);
 
             var event2 = new BookAddedEvent("4712");
             var serialized2 = Map.of("payload", "{ isbn=4712 }", "metadata", "{}");
@@ -326,7 +336,9 @@ public class EventRepositoryTest {
                     Instant.now(),
                     "json",
                     "hash",
-                    "predecessor");
+                    "predecessor",
+                    null,
+                    null);
 
             doReturn("book-added.v1").when(eventTypeResolver).getEventType(BookAddedEvent.class);
             doReturn(serialized1).when(eventDataMarshaller).serialize(new EventData<>(metaData1, event1));
