@@ -1,0 +1,36 @@
+name: Publish Reports
+
+on:
+  workflow_run:
+    workflows: 
+      - QA Pipeline
+    types:
+      - completed
+
+permissions:
+  checks: write
+  pull-requests: write
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: testreports
+          repository: ${{ github.event.workflow_run.head_repository.full_name }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Test Results
+        uses: mikepenz/action-junit-report@v5
+        if: success() || failure()
+        with:
+          commit: ${{github.event.workflow_run.head_sha}}
+          report_paths: '**/build/test-results/test/TEST-*.xml'
+          include_passed: false
+          include_time_in_summary: true
+          detailed_summary: true
+          group_suite: true
+          truncate_stack_traces: false
+          comment: true
