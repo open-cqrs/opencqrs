@@ -172,7 +172,7 @@ public class BookController {
 
 ## Testing the Application
 
-Finally, after [starting the {{ esdb_name() }}](../01_setup/index.md#running-the-event-sourcing-db) and our 
+Finally, after [starting the {{ esdb_name() }}](../01_setup/index.md#running-the-eventsourcingdb) and our 
 [application](../01_setup/index.md#running-the-application), new book copies for the library may be purchased
 using the REST API, for instance as follows:
 

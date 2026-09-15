@@ -204,7 +204,7 @@ public class BookCatalogController {
 
 ## Testing the Application
 
-Finally, after [starting the {{ esdb_name() }}](../01_setup/index.md#running-the-event-sourcing-db) and our
+Finally, after [starting the {{ esdb_name() }}](../01_setup/index.md#running-the-eventsourcingdb) and our
 [application](../01_setup/index.md#running-the-application), you can query the book catalog, for instance
 matching the book title, using:
 
