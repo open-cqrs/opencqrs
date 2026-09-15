@@ -128,7 +128,7 @@ flowchart LR
     WM --> E[Event]
     E --> ES[(Event Store)]
 
-    style WM fill:#f9a825,stroke:#f57f17,color:#000
+    style WM fill:#f9a82543
 ```
 
 The command bus routes the incoming command to the correct handler. The **[command handler](../../../../reference/extension_points/command_handler/index.md)** loads the current state, passes it to the write model, and receives the decision back. If the write model produces events, the handler persists them in the event store. If the write model rejects the command, the handler translates that rejection into an error response. Every component in this pipeline except the write model itself is infrastructure - **the write model is only the yellow box in the middle**.

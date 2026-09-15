@@ -54,7 +54,7 @@ flowchart LR
     ES[(Event Store)] -->|"Revision 1\n(stored)"| U[Upcaster Chain]
     U -->|"Revision 3\n(current)"| APP[Application]
 
-    style U fill:#f9a825,stroke:#f57f17,color:#000
+    style U fill:#f9a82543
 ```
 
 The simplest case is when the missing data can be **calculated from fields that already exist in the event**. Consider the loan application domain. Your system has been storing `LoanApplicationSubmittedEvent` events for months, each containing a `locationType` field that records whether the applicant's address was verified in person or via postal mail. A new requirement demands a boolean `verifiedAddress` field - and the answer is already there in the existing data.
@@ -262,9 +262,9 @@ flowchart TD
     Q2 -->|Yes| S2[Compensate\nin Upcaster]
     Q2 -->|No| S3[Enrich Lazily]
 
-    style S1 fill:#c8e6c9,stroke:#2e7d32,color:#000
-    style S2 fill:#c8e6c9,stroke:#2e7d32,color:#000
-    style S3 fill:#fff9c4,stroke:#f9a825,color:#000
+    style S1 fill:#2e7d3283
+    style S2 fill:#2e7d3283
+    style S3 fill:#f9a82543
 ```
 
 The common thread across all three strategies is that the event store remains untouched. Upcasters transform at read time, producing representations that match the current schema without modifying stored events. Lazy enrichment adds new events to the stream rather than rewriting old ones. The immutability contract - the foundation that makes audit trails, replay, and temporal queries possible - stays intact no matter which strategy you choose.

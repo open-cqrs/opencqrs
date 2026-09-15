@@ -20,11 +20,15 @@ events related to that specific instance, are actually needed to reconstruct its
 as shown below:
 
 ``` mermaid
-%%{init: { 'logLevel': 'debug', 'theme': 'default', "themeVariables": {
-    "cScale0": "olive",
-    "cScale2": "olive",
-    "cScale4": "olive"
- } } }%%
+%%{init: { "themeVariables": {
+    "cScale0": "#707000", "cScaleLabel0": "#ffffff",
+    "cScale1": "#9a6104", "cScaleLabel1": "#ffffff",
+    "cScale2": "#707000", "cScaleLabel2": "#ffffff",
+    "cScale3": "#8d24a8", "cScaleLabel3": "#ffffff",
+    "cScale4": "#707000", "cScaleLabel4": "#ffffff"
+ },
+ "themeCSS": "line { stroke: #70787c !important; } marker path, marker polygon, [id$=arrowhead] path { fill: #70787c !important; stroke: #70787c !important; }"
+ } }%%
 timeline
     Book A: BookPurchasedEvent
     Book B: BookPurchasedEvent

@@ -203,7 +203,7 @@ flowchart LR
     S2 --> PM
     PM -->|consulted by| CH[Command Handlers]
 
-    style PM fill:#c8e6c9,stroke:#2e7d32,color:#000
+    style PM fill:#2e7d3283
 ```
 
 A reasonable question at this point: why not use a feature flag? Feature flags flip the behavior of the entire system at once - the moment you switch the flag, every running process suddenly behaves under the new rules. That is precisely what you want to avoid. Pinning is per instance. Each loan application carries its own version through to completion, regardless of what newer applications use.

@@ -32,7 +32,7 @@ flowchart TB
     CommandEventPublisher---|"(6) write event(s)"|EventRepository
     CommandHandler---|"(7) return command result"|Stop
     
-    classDef extension fill:indianred;
+    classDef extension fill:#cd5c5c6e;
     class CommandHandler extension;
     class StateRebuildingHandler extension;
 ```
@@ -58,7 +58,7 @@ flowchart TB
     EventHandlingProcessor---|"(3a) handle event"|EventHandler
     EventHandlingProcessor---|"(3b) update progress"|ProgressTracker
 
-    classDef extension fill:indianred;
+    classDef extension fill:#cd5c5c6e;
     class EventHandler extension;
 ```
 

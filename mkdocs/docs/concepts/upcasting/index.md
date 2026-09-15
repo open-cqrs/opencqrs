@@ -68,11 +68,13 @@ block-beta
     6 --> BookLentEvent
     5 --> BookReturnedEvent
 
-    classDef classA fill:olive;
+    classDef container fill:#00000000,stroke:#00000000;
+    class stream,events container
+    classDef classA fill:#8080006f;
     class 1,3,7,BookPurchasedEvent classA
-    classDef classB fill:navy;
+    classDef classB fill:#00008050;
     class 2,4,6,BookLentEvent classB
-    classDef classC fill:sienna;
+    classDef classC fill:#a0522d7e;
     class 5,BookReturnedEvent classC
 ```
 
@@ -141,11 +143,13 @@ block-beta
     6 --> BookLentEvent
     5 --> BookReturnedEvent
 
-    classDef classA fill:olive;
+    classDef container fill:#00000000,stroke:#00000000;
+    class stream,events container
+    classDef classA fill:#8080006f;
     class 1,3,7,U1,U2,BookPurchasedEvent classA
-    classDef classB fill:navy;
+    classDef classB fill:#00008050;
     class 2,4,6,U3,BookLentEvent classB
-    classDef classC fill:sienna;
+    classDef classC fill:#a0522d7e;
     class 5,BookReturnedEvent classC
 ```
 
