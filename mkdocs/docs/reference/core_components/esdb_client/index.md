@@ -1,5 +1,5 @@
 ---
-description: Accessing the {{ esdb_name() }} using the Java Client SDK
+description: Accessing the EventSourcingDB using the Java Client SDK
 ---
 
 The `esdb-client` [module](../../modules/index.md) provides helper classes, encapsulating the
