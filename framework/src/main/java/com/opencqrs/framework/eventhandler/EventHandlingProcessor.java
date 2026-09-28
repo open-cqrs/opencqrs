@@ -1,11 +1,17 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.eventhandler;
 
-import com.opencqrs.esdb.client.ClientException;
 import com.opencqrs.esdb.client.Event;
 import com.opencqrs.esdb.client.Option;
 import com.opencqrs.framework.CqrsFrameworkException;
 import com.opencqrs.framework.client.ClientInterruptedException;
+import com.opencqrs.framework.eventhandler.interceptor.Delivery;
+import com.opencqrs.framework.eventhandler.interceptor.EventHandlerInvocation;
+import com.opencqrs.framework.eventhandler.interceptor.EventInterceptor;
+import com.opencqrs.framework.eventhandler.interceptor.EventInterceptorChain;
+import com.opencqrs.framework.eventhandler.interceptor.EventInterior;
+import com.opencqrs.framework.eventhandler.interceptor.EventInvocation;
+import com.opencqrs.framework.eventhandler.interceptor.Relevance;
 import com.opencqrs.framework.eventhandler.partitioning.EventSequenceResolver;
 import com.opencqrs.framework.eventhandler.partitioning.PartitionKeyResolver;
 import com.opencqrs.framework.eventhandler.progress.Progress;
@@ -15,15 +21,11 @@ import com.opencqrs.framework.serialization.EventDataMarshaller;
 import com.opencqrs.framework.types.EventTypeResolver;
 import com.opencqrs.framework.upcaster.EventUpcasters;
 import java.lang.reflect.UndeclaredThrowableException;
-import java.net.http.HttpRequest;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -44,7 +46,6 @@ public class EventHandlingProcessor implements Runnable {
 
     private static final Logger log = Logger.getLogger(EventHandlingProcessor.class.getName());
 
-    private final AtomicInteger threadNum = new AtomicInteger();
     private final AtomicReference<@Nullable ExecutorService> running = new AtomicReference<>();
     private final String groupId;
     private final long partition;
@@ -55,6 +56,7 @@ public class EventHandlingProcessor implements Runnable {
     final EventSequenceResolver eventSequenceResolver;
     private final PartitionKeyResolver partitionKeyResolver;
     private final List<EventHandlerDefinition> eventHandlerDefinitions;
+    final List<EventInterceptor> eventInterceptors;
     final BackOff backoff;
     private final Delayer delayer;
 
@@ -67,6 +69,7 @@ public class EventHandlingProcessor implements Runnable {
             EventSequenceResolver eventSequenceResolver,
             PartitionKeyResolver partitionKeyResolver,
             List<EventHandlerDefinition> eventHandlerDefinitions,
+            List<EventInterceptor> eventInterceptors,
             BackOff backoff,
             Delayer delayer) {
         if (eventHandlerDefinitions.isEmpty()) {
@@ -91,6 +94,7 @@ public class EventHandlingProcessor implements Runnable {
         this.eventSequenceResolver = eventSequenceResolver;
         this.partitionKeyResolver = partitionKeyResolver;
         this.eventHandlerDefinitions = eventHandlerDefinitions;
+        this.eventInterceptors = eventInterceptors;
         this.backoff = backoff;
         this.delayer = delayer;
     }
@@ -107,6 +111,8 @@ public class EventHandlingProcessor implements Runnable {
      * @param eventSequenceResolver the event sequence resolver to determine the event sequence id
      * @param partitionKeyResolver the partition key resolver to determine if the event needs to be handled {@code this}
      * @param eventHandlerDefinitions a list of {@link EventHandlerDefinition} to dispatch events to
+     * @param eventInterceptors an already-ordered (index {@code 0} = outermost) list of {@link EventInterceptor}s
+     *     wrapping the event processing
      * @param backoff a configurable back-off strategy for retryable errors
      */
     public EventHandlingProcessor(
@@ -118,6 +124,7 @@ public class EventHandlingProcessor implements Runnable {
             EventSequenceResolver eventSequenceResolver,
             PartitionKeyResolver partitionKeyResolver,
             List<EventHandlerDefinition> eventHandlerDefinitions,
+            List<EventInterceptor> eventInterceptors,
             BackOff backoff) {
         this(
                 partition,
@@ -128,6 +135,7 @@ public class EventHandlingProcessor implements Runnable {
                 eventSequenceResolver,
                 partitionKeyResolver,
                 eventHandlerDefinitions,
+                eventInterceptors,
                 backoff,
                 Thread::sleep);
     }
@@ -169,8 +177,8 @@ public class EventHandlingProcessor implements Runnable {
      * Errors or exceptions occurring throughout the event processing loop are handled as follows:
      *
      * <ul>
-     *   <li>{@link CqrsFrameworkException.NonTransientException}s thrown by any matching {@link EventHandler} won't be
-     *       retried and will terminate the processing loop unrecoverably
+     *   <li>{@link CqrsFrameworkException.NonTransientException}s and {@link Error}s thrown by any matching
+     *       {@link EventHandler} won't be retried and will terminate the processing loop unrecoverably
      *   <li>any other {@link Throwable} thrown by any matching {@link EventHandler} is subject to retry
      *   <li>{@link CqrsFrameworkException.TransientException}s thrown by framework components are subject to retry
      *   <li>any thread interruption before or after calling the {@link EventHandler} will terminate the processing
@@ -185,205 +193,249 @@ public class EventHandlingProcessor implements Runnable {
      * {@linkplain BackOff.Execution#next() exhausted} the erroneous event will be skipped, continuing with the next
      * observable event, once available.
      *
-     * <p><strong>This method is assumed to be started within a thread pool with one additional spare thread, which is
-     * used to dispatch any raw {@link Event} received via {@link EventReader#consumeRaw(EventReader.ClientRequestor,
-     * BiConsumer)}. This effectively offloads event upcasting, type resolution, deserialization, and the actual event
-     * handling from the underlying {@link java.net.http.HttpClient} {@link java.net.http.HttpResponse.BodySubscriber}
-     * thread, in order to be able to {@link #stop()} {@code this} properly.</strong>
+     * <p>The per-event processing &mdash; relevance evaluation, upcasting/conversion, and handler dispatch (steps
+     * 3&ndash;8) &mdash; is wrapped by the applicable {@linkplain EventInterceptor event interceptors} (ordered
+     * outermost-first), inside the {@linkplain ProgressTracker#proceed(String, long, Supplier) progress-tracked} loop
+     * iteration. Each interceptor's root is (re-)invoked <strong>once per attempt</strong> &mdash; including every
+     * retry &mdash; and its {@linkplain com.opencqrs.framework.eventhandler.interceptor.EventLifecycle#handler handler}
+     * advice wraps each matching {@link EventHandler} invocation. Which interceptors fire is decided by their
+     * {@linkplain EventInterceptor#delivery() delivery} level against the event's {@linkplain Relevance relevance} and
+     * whether it is actionable; an event skipped after back-off exhaustion fires no interceptors. An interceptor that
+     * throws participates in the same error handling as an {@link EventHandler} above &mdash; a
+     * {@link CqrsFrameworkException.NonTransientException} (including an
+     * {@linkplain com.opencqrs.framework.interceptor.InterceptorContractViolation interceptor-contract violation}) or
+     * an {@link Error} terminates the loop unrecoverably; anything else is retried.
+     *
+     * <p>Event upcasting, type resolution, deserialization, and the actual event handling all run synchronously on the
+     * event-processor thread (the thread {@link #start()} submits {@code this} to), since
+     * {@link com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)} consumes the event stream on the
+     * calling thread. {@link #stop()} {@linkplain java.util.concurrent.ExecutorService#shutdownNow() interrupts} that
+     * thread to terminate the loop.
      */
     @Override
     public void run() {
         var skipEvent = new AtomicBoolean(false);
         var retryHandler = new RetryHandler();
-        var executorService = Optional.ofNullable(this.running.get())
-                .orElseThrow(() -> new IllegalStateException(eventProcessorForLogs() + " not running"));
 
         log.info(() -> eventProcessorForLogs() + " entering event handling loop");
-        while (true) {
-            try {
+        try {
+            while (true) {
                 try {
-                    Set<Option> options = new HashSet<>();
-                    if (recursive) {
-                        options.add(new Option.Recursive());
-                    }
-                    Optional.of(progressTracker.current(groupId, partition))
-                            .map(progress -> switch (progress) {
-                                case Progress.Success success -> success.id();
-                                case Progress.None ignored -> null;
-                            })
-                            .map(Option.LowerBoundExclusive::new)
-                            .ifPresent(options::add);
+                    try {
+                        Set<Option> options = new HashSet<>();
+                        if (recursive) {
+                            options.add(new Option.Recursive());
+                        }
+                        Optional.of(progressTracker.current(groupId, partition))
+                                .map(progress -> switch (progress) {
+                                    case Progress.Success success -> success.id();
+                                    case Progress.None ignored -> null;
+                                })
+                                .map(Option.LowerBoundExclusive::new)
+                                .ifPresent(options::add);
 
-                    eventReader.consumeRaw(
-                            (client, eventConsumer) -> client.observe(subject, options, eventConsumer),
-                            (rawCallback, raw) -> {
-                                try {
-                                    executorService
-                                            .submit(() -> {
-                                                progressTracker.proceed(groupId, partition, () -> {
-                                                    if (!skipEvent.getAndSet(false)) {
-                                                        var rawEventRelevant =
-                                                                switch (eventSequenceResolver) {
-                                                                    case EventSequenceResolver.ForRawEvent esr ->
-                                                                        partitionKeyResolver.resolve(
-                                                                                        esr.sequenceIdFor(raw))
-                                                                                == partition;
-                                                                    case EventSequenceResolver
-                                                                                    .ForObjectAndMetaDataAndRawEvent
-                                                                            ignored -> true;
-                                                                };
-                                                        if (rawEventRelevant) {
-                                                            rawCallback.upcast((upcastedCallback, upcasted) ->
-                                                                    upcastedCallback.convert((metadata, event) -> {
-                                                                        var convertedEventRelevant =
-                                                                                switch (eventSequenceResolver) {
-                                                                                    case EventSequenceResolver
-                                                                                                    .ForRawEvent
-                                                                                            ignored -> true;
-                                                                                    case EventSequenceResolver
-                                                                                                    .ForObjectAndMetaDataAndRawEvent
-                                                                                            esr ->
-                                                                                        partitionKeyResolver.resolve(
-                                                                                                        esr
-                                                                                                                .sequenceIdFor(
-                                                                                                                        event,
-                                                                                                                        metadata))
-                                                                                                == partition;
-                                                                                };
-                                                                        if (convertedEventRelevant) {
-                                                                            eventHandlerDefinitions.stream()
-                                                                                    .filter(
-                                                                                            ehd -> ehd.eventClass()
-                                                                                                    .isAssignableFrom(
-                                                                                                            upcastedCallback
-                                                                                                                    .getEventJavaClass()))
-                                                                                    .forEach(ehd -> {
-                                                                                        try {
-                                                                                            switch (ehd.handler()) {
-                                                                                                case EventHandler
-                                                                                                                .ForObject
-                                                                                                        handler ->
-                                                                                                    handler.handle(
-                                                                                                            event);
-                                                                                                case EventHandler
-                                                                                                                .ForObjectAndMetaData
-                                                                                                        handler ->
-                                                                                                    handler.handle(
-                                                                                                            event,
-                                                                                                            metadata);
-                                                                                                case EventHandler
-                                                                                                                .ForObjectAndMetaDataAndRawEvent
-                                                                                                        handler ->
-                                                                                                    handler.handle(
-                                                                                                            event,
-                                                                                                            metadata,
-                                                                                                            raw);
-                                                                                            }
-                                                                                        } catch (Error
-                                                                                                | RuntimeException e) {
-                                                                                            throw new WrappedEventHandlingException(
-                                                                                                    raw, e);
-                                                                                        }
-                                                                                    });
-                                                                        }
-                                                                    }));
-                                                        }
+                        eventReader.consumeRaw(
+                                (client, eventConsumer) -> client.observe(subject, options, eventConsumer),
+                                (rawCallback, raw) -> {
+                                    try {
+                                        progressTracker.proceed(groupId, partition, () -> {
+                                            if (!skipEvent.getAndSet(false)) {
+                                                process(raw, rawCallback);
 
-                                                        if (retryHandler.isRetryExecution()) {
-                                                            log.log(
-                                                                    Level.INFO,
-                                                                    () -> eventProcessorForLogs()
-                                                                            + " successfully recovered for event id: "
-                                                                            + raw.id());
-                                                        }
-                                                    } else {
-                                                        log.log(
-                                                                Level.INFO,
-                                                                () -> eventProcessorForLogs() + " skipped event id: "
-                                                                        + raw.id());
-                                                    }
-                                                    retryHandler.reset();
-                                                    return new Progress.Success(raw.id());
-                                                });
-                                            })
-                                            .get();
-                                } catch (InterruptedException | RejectedExecutionException e) {
-                                    throw new WrappedEventHandlingException(raw, e);
-                                } catch (ExecutionException e) {
-                                    if (e.getCause() instanceof WrappedEventHandlingException) {
-                                        throw (WrappedEventHandlingException) e.getCause();
-                                    } else {
-                                        throw new WrappedEventHandlingException(
-                                                raw, Objects.requireNonNull(e.getCause()));
+                                                if (retryHandler.isRetryExecution()) {
+                                                    log.log(
+                                                            Level.INFO,
+                                                            () -> eventProcessorForLogs()
+                                                                    + " successfully recovered for event id: "
+                                                                    + raw.id());
+                                                }
+                                            } else {
+                                                log.log(
+                                                        Level.INFO,
+                                                        () -> eventProcessorForLogs() + " skipped event id: "
+                                                                + raw.id());
+                                            }
+                                            retryHandler.reset();
+                                            return new Progress.Success(raw.id());
+                                        });
+                                    } catch (RuntimeException e) {
+                                        throw new EventProcessingFailure(raw, e);
                                     }
+                                });
+                    } catch (EventProcessingFailure e) {
+                        Throwable cause = e.getCause();
+                        switch (cause) {
+                            case UndeclaredThrowableException ex -> {
+                                switch (ex.getCause()) {
+                                    case CqrsFrameworkException.NonTransientException undeclared -> throw undeclared;
+                                    case Error undeclared -> throw undeclared;
+                                    case null, default ->
+                                        skipEvent.set(
+                                                retryHandler.handle(e.event, Objects.requireNonNull(ex.getCause())));
                                 }
-                            });
-                } catch (WrappedEventHandlingException e) {
-                    Throwable cause = e.getCause();
-                    switch (cause) {
-                        case InterruptedException ignored -> {
-                            log.log(
-                                    Level.INFO,
-                                    eventProcessorForLogs()
-                                            + " interrupted or shut down, terminating event handling loop",
-                                    cause);
-                            return;
-                        }
-                        case RejectedExecutionException ignored -> {
-                            log.log(
-                                    Level.INFO,
-                                    eventProcessorForLogs()
-                                            + " interrupted or shut down, terminating event handling loop",
-                                    cause);
-                            return;
-                        }
-                        case UndeclaredThrowableException ex -> {
-                            switch (ex.getCause()) {
-                                case CqrsFrameworkException.NonTransientException undeclared -> throw undeclared;
-                                case null, default ->
-                                    skipEvent.set(retryHandler.handle(e.event, Objects.requireNonNull(ex.getCause())));
                             }
+                            case CqrsFrameworkException.NonTransientException ignored -> throw cause;
+                            case null, default ->
+                                skipEvent.set(retryHandler.handle(e.event, Objects.requireNonNull(cause)));
                         }
-                        case CqrsFrameworkException.NonTransientException ignored -> throw cause;
-                        case null, default ->
-                            skipEvent.set(retryHandler.handle(e.event, Objects.requireNonNull(cause)));
+                    } catch (ClientInterruptedException e) {
+                        log.log(
+                                Level.INFO,
+                                eventProcessorForLogs() + " interrupted or shut down, terminating event handling loop",
+                                e.getCause());
+                        return;
+                    } catch (CqrsFrameworkException.TransientException e) {
+                        skipEvent.set(retryHandler.handle(null, e));
                     }
-                } catch (ClientInterruptedException e) {
+                } catch (InterruptedException e) {
                     log.log(
                             Level.INFO,
                             eventProcessorForLogs() + " interrupted or shut down, terminating event handling loop",
-                            e.getCause());
+                            e);
                     return;
-                } catch (CqrsFrameworkException.TransientException e) {
-                    skipEvent.set(retryHandler.handle(null, e));
+                } catch (Throwable t) {
+                    log.log(Level.SEVERE, t, () -> eventProcessorForLogs() + " giving up on unrecoverable error");
+                    return;
                 }
-            } catch (InterruptedException e) {
-                log.log(
-                        Level.INFO,
-                        eventProcessorForLogs() + " interrupted or shut down, terminating event handling loop",
-                        e);
-                return;
-            } catch (Throwable t) {
-                log.log(Level.SEVERE, t, () -> eventProcessorForLogs() + " giving up on unrecoverable error");
-                return;
             }
+        } finally {
+            stop();
         }
     }
 
     /**
-     * Starts {@code this} using a {@link Executors#newFixedThreadPool(int)} with size {@code 2}. The first thread
-     * within the pool is used to start the {@linkplain #run() event processing loop}, while the second one is used for
-     * the raw {@link Event} dispatching.
+     * Processes a single raw event end to end: determines its partition {@link Relevance}, upcasts and converts it, and
+     * dispatches every partition-relevant converted event to each matching {@link EventHandler} &mdash; the whole thing
+     * wrapped by the applicable {@link EventInterceptor}s (see {@link #applyInterceptors}).
      *
-     * @return a future for the event processing loop to determine, when it ends (prematurely)
+     * <p>A wrong-partition event under an {@link EventSequenceResolver.ForRawEvent} resolver is recognized from the raw
+     * event alone and is therefore <strong>not</strong> upcast &mdash; no upcasting is wasted on events routed to
+     * another partition. The chain still runs, with {@link Relevance#NO} and an empty body, so only
+     * {@link Delivery#ALL} interceptors observe it.
+     *
+     * <p>Any other event is upcast <em>once</em> into a buffered fan-out &mdash; introducing no upcasting beyond what
+     * handling already requires &mdash; so its aggregate {@link Relevance} and whether it is <em>actionable</em> (some
+     * partition-relevant converted event has a matching handler) are both known before the interceptor root fires. The
+     * aggregate relevance is {@link Relevance#YES} for a {@code ForRawEvent} resolver (its non-relevant events already
+     * returned above, so even an empty fan-out counts as owned); for a converted resolver it folds the per-event
+     * relevance to {@link Relevance#YES} (all relevant), {@link Relevance#NO} (none relevant, or an empty fan-out), or
+     * {@link Relevance#PARTIAL} (mixed).
+     *
+     * @param raw the raw event to process
+     * @param rawCallback callback used to upcast and convert {@code raw} on demand
+     */
+    private void process(Event raw, EventReader.RawCallback rawCallback) {
+        if (eventSequenceResolver instanceof EventSequenceResolver.ForRawEvent esr
+                && !partitionRelevant(esr.sequenceIdFor(raw))) {
+            applyInterceptors(raw, Relevance.NO, false, chain -> {});
+            return;
+        }
+
+        List<ConvertedEvent> fanOut = new ArrayList<>();
+        rawCallback.upcast((upcastedCallback, upcasted) ->
+                upcastedCallback.convert((metadata, event) -> fanOut.add(new ConvertedEvent(
+                        upcastedCallback.getEventJavaClass(),
+                        event,
+                        metadata,
+                        switch (eventSequenceResolver) {
+                            case EventSequenceResolver.ForRawEvent ignored -> true;
+                            case EventSequenceResolver.ForObjectAndMetaDataAndRawEvent esr ->
+                                partitionRelevant(esr.sequenceIdFor(event, metadata));
+                        }))));
+
+        Relevance relevance =
+                switch (eventSequenceResolver) {
+                    case EventSequenceResolver.ForRawEvent ignored -> Relevance.YES;
+                    case EventSequenceResolver.ForObjectAndMetaDataAndRawEvent<?> ignored -> {
+                        long relevant = fanOut.stream()
+                                .filter(ConvertedEvent::partitionRelevant)
+                                .count();
+                        if (relevant == 0) {
+                            yield Relevance.NO;
+                        } else if (relevant == fanOut.size()) {
+                            yield Relevance.YES;
+                        } else {
+                            yield Relevance.PARTIAL;
+                        }
+                    }
+                };
+
+        boolean actionable = fanOut.stream()
+                .anyMatch(c -> c.partitionRelevant()
+                        && eventHandlerDefinitions.stream()
+                                .anyMatch(ehd -> ehd.eventClass().isAssignableFrom(c.javaClass())));
+
+        applyInterceptors(raw, relevance, actionable, chain -> {
+            for (ConvertedEvent converted : fanOut) {
+                if (!converted.partitionRelevant()) {
+                    continue;
+                }
+                for (EventHandlerDefinition<?> ehd : eventHandlerDefinitions) {
+                    if (ehd.eventClass().isAssignableFrom(converted.javaClass())) {
+                        chain.handler(
+                                new EventHandlerInvocation<>(ehd, converted.event(), converted.metadata()),
+                                () -> invokeHandler(ehd, converted.event(), converted.metadata(), raw));
+                    }
+                }
+            }
+        });
+    }
+
+    /** Single converted event, after upcast fan-out, including its partition relevance. */
+    private record ConvertedEvent(
+            Class<?> javaClass, Object event, Map<String, ?> metadata, boolean partitionRelevant) {}
+
+    private boolean partitionRelevant(String eventSequence) {
+        return partitionKeyResolver.resolve(eventSequence) == partition;
+    }
+
+    /**
+     * Selects the {@link EventInterceptor}s whose {@link Delivery} admits an event of the given {@code relevance} and
+     * {@code actionable}-ness, and runs them (outermost first) around {@code interior}. The chain is always built
+     * &mdash; an empty applicable list is a pass-through that still runs {@code interior} (so handlers fire) but
+     * composes no interceptor root.
+     *
+     * <p>Interceptor advice and the wrapped handlers throw only unchecked exceptions, so anything they raise propagates
+     * unwrapped, leaving the {@linkplain #run() loop} to classify it: a
+     * {@link CqrsFrameworkException.NonTransientException} (or an {@link Error}) terminates the loop, any other
+     * {@link RuntimeException} may retry.
+     *
+     * @param raw the raw event, exposed to interceptors via {@link EventInvocation} and named in error messages
+     * @param relevance the event's aggregate partition relevance
+     * @param actionable whether some partition-relevant converted event has a matching handler
+     * @param interior the per-event body run inside the chain (handler dispatch, or empty)
+     */
+    private void applyInterceptors(Event raw, Relevance relevance, boolean actionable, EventInterior interior) {
+        List<EventInterceptor> applicable = eventInterceptors.stream()
+                .filter(interceptor -> switch (interceptor.delivery()) {
+                    case ACTIONABLE -> relevance != Relevance.NO && actionable;
+                    case PARTITIONED -> relevance != Relevance.NO;
+                    case ALL -> true;
+                })
+                .toList();
+        new EventInterceptorChain(applicable)
+                .execute(new EventInvocation(raw, groupId, partition, relevance), interior);
+    }
+
+    private static void invokeHandler(EventHandlerDefinition ehd, Object event, Map<String, ?> metadata, Event raw) {
+        switch (ehd.handler()) {
+            case EventHandler.ForObject handler -> handler.handle(event);
+            case EventHandler.ForObjectAndMetaData handler -> handler.handle(event, metadata);
+            case EventHandler.ForObjectAndMetaDataAndRawEvent handler -> handler.handle(event, metadata, raw);
+        }
+    }
+
+    /**
+     * Starts {@code this} using a {@link Executors#newThreadPerTaskExecutor(ThreadFactory)}. A single thread within the
+     * pool runs the {@linkplain #run() event processing loop}, including raw {@link Event} dispatching and handling.
+     *
+     * @return a future for the event processing loop to determine, when it ends (prematurely), in which case
+     *     {@code this} is stopped
      */
     public Future<?> start() {
-        var es = Executors.newFixedThreadPool(
-                2,
-                runnable -> new Thread(
-                        runnable,
-                        "event-processor-" + getGroupId() + "-" + getPartition() + "-worker-"
-                                + threadNum.getAndIncrement()));
+        var es = Executors.newThreadPerTaskExecutor(Thread.ofVirtual()
+                .name("event-processor-" + getGroupId() + "-" + getPartition())
+                .factory());
         if (!running.compareAndSet(null, es)) {
             throw new IllegalStateException(eventProcessorForLogs() + " already started");
         }
@@ -459,17 +511,25 @@ public class EventHandlingProcessor implements Runnable {
     }
 
     /**
-     * Internal {@linkplain ClientException exception} used to capture exceptions from the
-     * {@link com.opencqrs.esdb.client.EsdbClient}s event consumer callback.
+     * Internal unchecked exception wrapping a {@link RuntimeException} that occurred while processing a specific event
+     * &mdash; from the event handler, an interceptor, upcasting/type resolution/deserialization, or the
+     * {@linkplain ProgressTracker#proceed(String, long, Supplier) progress commit} &mdash; carrying the affected
+     * {@link Event}. An {@link Error} is deliberately <strong>not</strong> wrapped: it propagates past this to
+     * {@link #run()}'s terminal {@code catch}, terminating the loop unrecoverably rather than entering the retryable
+     * classification.
      *
-     * @see com.opencqrs.esdb.client.HttpRequestErrorHandler#handle(HttpRequest, Function)
+     * <p>It is intentionally <strong>not</strong> one of the {@link com.opencqrs.esdb.client.ClientException} subtypes
+     * mapped by the {@link com.opencqrs.framework.client.ClientRequestErrorMapper}, so it propagates back out through
+     * {@link com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)} unmapped, allowing {@link #run()} to
+     * classify its {@linkplain #getCause() cause} for retry or termination.
+     *
      * @see com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)
      */
-    private static class WrappedEventHandlingException extends ClientException {
+    private static class EventProcessingFailure extends RuntimeException {
 
         private final Event event;
 
-        WrappedEventHandlingException(Event event, Throwable cause) {
+        EventProcessingFailure(Event event, Throwable cause) {
             super(cause);
             this.event = event;
         }

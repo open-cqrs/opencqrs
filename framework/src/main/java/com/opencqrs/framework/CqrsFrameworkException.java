@@ -29,6 +29,18 @@ public sealed class CqrsFrameworkException extends RuntimeException {
         public TransientException(String message, Throwable cause) {
             super(message, cause);
         }
+
+        /** Base exception class representing concurrency errors, when publishing events. */
+        public abstract static class ConcurrencyException extends TransientException {
+
+            public ConcurrencyException(String message) {
+                super(message);
+            }
+
+            public ConcurrencyException(String message, Throwable cause) {
+                super(message, cause);
+            }
+        }
     }
 
     /** Exception class representing non-recoveralbe errors. */
