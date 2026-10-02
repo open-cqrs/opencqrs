@@ -23,7 +23,7 @@ public class BookVerifier {
     @BookVerifying
     public void on(
             BookReturnedEvent event, @Autowired BookRepository repository, @Autowired CommandRouter commandRouter) {
-        if (random.nextBoolean()) {
+        if (true /*random.nextBoolean()*/) {
             var book = repository.findById(event.isbn()).get();
             try {
                 commandRouter.send(

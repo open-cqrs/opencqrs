@@ -16,6 +16,22 @@ services:
         environment:
             H2_OPTIONS: "-ifNotExists"
 
+
+    jaeger:
+        image: cr.jaegertracing.io/jaegertracing/jaeger:latest
+        container_name: jaeger
+        ports:
+            - 16686:16686
+
+    otel:
+        image: otel/opentelemetry-collector
+        volumes:
+            - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
+        depends_on:
+            - jaeger
+        ports:
+            - 4318:4318
+
     application:
         image: "opencqrs/example-application:latest"
         ports:
@@ -32,6 +48,8 @@ services:
         depends_on:
             - event-store
             - h2database
+            - jaeger
+            - otel
         deploy:
             replicas: 2
 

@@ -19,6 +19,7 @@ import com.opencqrs.framework.eventhandler.progress.Progress;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.serialization.EventData;
+import com.opencqrs.framework.tracing.TracingAwareEventReader;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.time.Instant;
 import java.util.*;
@@ -49,7 +50,7 @@ public class EventHandlingProcessorTest {
     private final String observeSubject = "/test";
 
     @Mock
-    private EventReader eventReader;
+    private TracingAwareEventReader eventReader;
 
     @Mock
     private EsdbClient client;
@@ -103,7 +104,9 @@ public class EventHandlingProcessorTest {
                 Instant.now(),
                 "content-type",
                 "1",
-                "0");
+                "0",
+                null,
+                null);
         submittedEvents.put(raw, new EventData<>(metaData, payload));
         assertThat(eventQueue.add(raw)).as("could not submit event to queue").isTrue();
         return raw;
@@ -180,7 +183,9 @@ public class EventHandlingProcessorTest {
                                                 raw.time(),
                                                 raw.dataContentType(),
                                                 raw.hash(),
-                                                raw.predecessorHash())),
+                                                raw.predecessorHash(),
+                                                null,
+                                                null)),
                                 raw);
                     });
                     return null;
