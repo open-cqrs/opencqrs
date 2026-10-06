@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -40,6 +41,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+/**
+ * Unit test for the {@link EventHandlingProcessor}.
+ *
+ * @see EventHandlingProcessorIntegrationTest
+ */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class EventHandlingProcessorTest {
@@ -54,7 +60,7 @@ public class EventHandlingProcessorTest {
     @Mock
     private EsdbClient client;
 
-    private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     @Mock
     private ProgressTracker progressTracker;
@@ -203,11 +209,12 @@ public class EventHandlingProcessorTest {
         doReturn(0L).when(partitionKeyResolver).resolve("seq01");
     }
 
-    private void startSubject() {
-        executor.submit(() -> {
-            subject.start().get();
+    private Future<Thread> startSubject() {
+        return executor.submit(() -> {
+            Thread eventProcessorThread = Thread.currentThread();
+            subject.run();
             subjectFinished = true;
-            return null;
+            return eventProcessorThread;
         });
     }
 
@@ -239,6 +246,25 @@ public class EventHandlingProcessorTest {
             verifyNoInteractions(backOff, backOffExecution);
             assertThat(lastProgress).isEqualTo(new Progress.Success(raw.id()));
         });
+    }
+
+    @Test
+    public void eventHandlerRunsOnEventProcessorThread() throws Exception {
+        var handlerThread = new AtomicReference<Thread>();
+        var event = new BookAddedEvent("4711");
+        doAnswer(invocation -> {
+                    handlerThread.set(Thread.currentThread());
+                    // terminate the loop so the processing thread is returned via the future
+                    throw new CqrsFrameworkException.NonTransientException("terminating");
+                })
+                .when(eventHandler1)
+                .handle(event);
+
+        submitEvent(event, Map.of());
+
+        Thread eventProcessorThread = startSubject().get();
+
+        assertThat(handlerThread.get()).isSameAs(eventProcessorThread);
     }
 
     @Test
@@ -457,6 +483,56 @@ public class EventHandlingProcessorTest {
             verify(eventReader, atMost(1)).consumeRaw(any(), any());
             verifyNoInteractions(eventHandler1, eventHandler2, backOffExecution);
 
+            assertThat(lastProgress).isNull();
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            classes = {
+                CqrsFrameworkException.TransientException.class,
+                CqrsFrameworkException.class,
+                RuntimeException.class,
+                Error.class
+            })
+    public void progressTrackerRetriedOnTransientError(Class<? extends Throwable> clazz) {
+        BookAddedEvent event = new BookAddedEvent("4711");
+        Map<String, ?> metaData = Map.of("purpose", "testing");
+        Event raw = submitEvent(event, metaData);
+
+        doThrow(clazz)
+                .doAnswer(invocationOnMock -> {
+                    lastProgress = (Progress)
+                            invocationOnMock.getArgument(2, Supplier.class).get();
+                    return null;
+                })
+                .when(progressTracker)
+                .proceed(any(), eq(0L), any());
+
+        startSubject();
+
+        await().untilAsserted(() -> {
+            verify(backOff).start();
+            verify(backOffExecution, atLeast(1)).next();
+            verify(eventHandler1, atLeast(1)).handle(event);
+            assertThat(lastProgress).isEqualTo(new Progress.Success(raw.id()));
+        });
+    }
+
+    @Test
+    public void eventProcessorTerminatingOnUnrecoverableNonTransientErrorFromProgressTracker() {
+        BookAddedEvent event = new BookAddedEvent("4711");
+        submitEvent(event, Map.of());
+
+        doThrow(new CqrsFrameworkException.NonTransientException("progress commit failed"))
+                .when(progressTracker)
+                .proceed(any(), eq(0L), any());
+
+        startSubject();
+
+        await().untilAsserted(() -> {
+            assertThat(subjectFinished).isTrue();
+            verifyNoInteractions(backOff, backOffExecution);
             assertThat(lastProgress).isNull();
         });
     }

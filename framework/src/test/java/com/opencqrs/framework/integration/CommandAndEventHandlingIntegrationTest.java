@@ -13,14 +13,13 @@ import com.opencqrs.framework.*;
 import com.opencqrs.framework.client.ConcurrencyException;
 import com.opencqrs.framework.command.*;
 import com.opencqrs.framework.eventhandler.EventHandling;
-import com.opencqrs.framework.eventhandler.EventHandlingProcessorLifecycleController;
+import com.opencqrs.framework.eventhandler.EventHandlingProcessor;
 import com.opencqrs.framework.persistence.EventRepository;
 import com.opencqrs.framework.serialization.EventData;
 import com.opencqrs.framework.serialization.EventDataMarshaller;
 import com.opencqrs.framework.types.EventTypeResolver;
 import com.opencqrs.framework.upcaster.AbstractEventDataMarshallingEventUpcaster;
 import com.opencqrs.framework.upcaster.EventUpcaster;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,7 +35,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.annotation.DirtiesContext;
@@ -155,28 +153,6 @@ public class CommandAndEventHandlingIntegrationTest {
     }
 
     @TestConfiguration
-    static class EventHandlingRetries {
-
-        public record Execution(String id, Boolean failing) {}
-
-        List<Execution> executions = new ArrayList<>();
-
-        @EventHandling("group-2")
-        public void bookAddedFailing(BookAddedEvent event) {
-            if (event.isbn().startsWith("fail")) {
-                if (executions.stream().noneMatch(it -> it.id.equals(event.isbn()))) {
-                    executions.add(new Execution(event.isbn(), true));
-                    throw new IllegalStateException("failing");
-                } else {
-                    executions.add(new Execution(event.isbn(), false));
-                }
-            } else if (event.isbn().startsWith("succeed")) {
-                executions.add(new Execution(event.isbn(), false));
-            }
-        }
-    }
-
-    @TestConfiguration
     static class EventUpcasting {
 
         @Bean
@@ -256,14 +232,6 @@ public class CommandAndEventHandlingIntegrationTest {
 
     @Autowired
     private EsdbClient client;
-
-    @Autowired
-    private ApplicationContext applicationContext;
-
-    private ConfigurableApplicationContext getEventHandlerContext() {
-        return applicationContext.getBean(
-                "openCqrsEventHandlingProcessorContext", ConfigurableApplicationContext.class);
-    }
 
     @Test
     public void commandsAndEventsSuccessfullyHandled(@Autowired SuccessfulCommandAndEventHandling configuration) {
@@ -385,27 +353,6 @@ public class CommandAndEventHandlingIntegrationTest {
     }
 
     @Test
-    public void failingEventHandlerRetried(@Autowired EventHandlingRetries configuration) {
-        commandRouter.send(new AddBookCommand("succeed-1"));
-        commandRouter.send(new AddBookCommand("fail-1"));
-        commandRouter.send(new AddBookCommand("succeed-2"));
-        commandRouter.send(new AddBookCommand("fail-2"));
-        commandRouter.send(new AddBookCommand("succeed-3"));
-
-        await().untilAsserted(() -> {
-            assertThat(configuration.executions)
-                    .containsExactly(
-                            new EventHandlingRetries.Execution("succeed-1", false),
-                            new EventHandlingRetries.Execution("fail-1", true),
-                            new EventHandlingRetries.Execution("fail-1", false),
-                            new EventHandlingRetries.Execution("succeed-2", false),
-                            new EventHandlingRetries.Execution("fail-2", true),
-                            new EventHandlingRetries.Execution("fail-2", false),
-                            new EventHandlingRetries.Execution("succeed-3", false));
-        });
-    }
-
-    @Test
     public void eventsUpcasted(
             @Autowired EventUpcasting configuration, @Autowired EventDataMarshaller eventDataMarshaller) {
         client.write(
@@ -434,21 +381,20 @@ public class CommandAndEventHandlingIntegrationTest {
     @Test
     @DirtiesContext
     public void eventHandlingProcessorsStoppedOnContextShutdown(
-            @Autowired InterruptableEventHandlerConfiguration config)
+            @Autowired ConfigurableApplicationContext applicationContext,
+            @Autowired InterruptableEventHandlerConfiguration config,
+            @Autowired List<EventHandlingProcessor> processors)
             throws BrokenBarrierException, InterruptedException {
         commandRouter.send(new AddBookCommand(UUID.randomUUID().toString()));
 
         config.barrier.await();
-
-        var processorLifecycleControllers =
-                getEventHandlerContext().getBeansOfType(EventHandlingProcessorLifecycleController.class);
-        getEventHandlerContext().close();
+        applicationContext.stop();
 
         await().untilAsserted(() -> {
             assertThat(config.exceptionRef)
                     .hasValueSatisfying(e -> assertThat(e).isInstanceOf(InterruptedException.class));
-            assertThat(processorLifecycleControllers.values())
-                    .allSatisfy(it -> assertThat(it.isRunning()).isFalse());
+            assertThat(processors).isNotEmpty().allSatisfy(it -> assertThat(it.isRunning())
+                    .isFalse());
         });
     }
 
