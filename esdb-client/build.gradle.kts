@@ -4,6 +4,7 @@ dependencies {
     compileOnly("org.jspecify:jspecify")
     compileOnly(libs.nullawayAnnotations)
     implementation("org.springframework.boot:spring-boot-starter-jackson")
+    implementation("io.thenativeweb:eventsourcingdb:1.0.0")
     testImplementation(project(":esdb-client-spring-boot-starter"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc")

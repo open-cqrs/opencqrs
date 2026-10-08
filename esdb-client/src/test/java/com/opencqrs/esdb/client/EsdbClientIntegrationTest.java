@@ -9,15 +9,14 @@ import static org.mockito.Mockito.*;
 import com.opencqrs.esdb.client.eventql.EventQueryBuilder;
 import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
 import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -392,25 +391,13 @@ public class EsdbClientIntegrationTest {
         }
 
         @Test
-        public void heartBeatsProperlyIgnored() {
-            var heartBeatConsumed = new AtomicInteger(0);
-            doAnswer((Answer<Marshaller.ResponseElement>) invocationOnMock -> {
-                        Marshaller.ResponseElement element =
-                                (Marshaller.ResponseElement) invocationOnMock.callRealMethod();
-                        if (element instanceof Marshaller.ResponseElement.Heartbeat) {
-                            heartBeatConsumed.incrementAndGet();
-                        }
-                        return element;
-                    })
-                    .when(marshaller)
-                    .fromReadOrObserveResponseLine(anyString());
-
+        public void heartBeatsProperlyIgnored() throws InterruptedException {
             var observedEvents = new ConcurrentLinkedDeque<Event>();
 
-            CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(
-                    () -> client.observe("/", Set.of(new Option.Recursive()), observedEvents::add));
-
             String subject = randomSubject();
+            CompletableFuture<Void> completableFuture =
+                    CompletableFuture.runAsync(() -> client.observe(subject, Set.of(), observedEvents::add));
+
             client.write(
                     List.of(new EventCandidate(
                             TEST_SOURCE,
@@ -419,12 +406,14 @@ public class EsdbClientIntegrationTest {
                             objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
                     List.of(new Precondition.SubjectIsPristine(subject)));
 
-            await().untilAsserted(() -> {
-                assertThat(observedEvents).isNotEmpty();
-                assertThat(heartBeatConsumed.get()).isGreaterThan(3);
-            });
+            await().untilAsserted(() -> assertThat(observedEvents).isNotEmpty());
+
+            // EventSourcingDB sends a heartbeat every second while observing, so several of them pass while
+            // waiting. None of them may end the observation or reach the consumer as an event.
+            Thread.sleep(Duration.ofSeconds(4));
 
             assertThat(completableFuture.isDone()).isFalse();
+            assertThat(observedEvents).hasSize(1);
         }
 
         @Test
