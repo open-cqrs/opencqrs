@@ -1,0 +1,43 @@
+name: Trusted
+
+on:
+  workflow_run:
+    workflows: ["Fork"]
+    types:
+      - completed
+
+jobs:
+  annotate:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      checks: write
+      contents: read
+
+    steps:
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          repository: open-cqrs/opencqrs
+          ref: ${{ github.event.workflow_run.head_commit.id }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Tests
+        run: nix develop --impure --command ./gradlew --no-daemon clean test
+
+      - name: Publish Test Results
+        uses: mikepenz/action-junit-report@v5
+        if: success() || failure()
+        with:
+          report_paths: '*/build/test-results/test/TEST-*.xml'
+          include_passed: false
+          include_time_in_summary: true
+          detailed_summary: true
+          group_suite: true
+          truncate_stack_traces: false
+          comment: true
