@@ -113,6 +113,7 @@ nav:
     - Registering explicit Event Types: howto/explicit_type_registration/index.md
     - Upcasting Events: howto/upcasting_events/index.md
     - Reliable Event Handling in a Distributed Environment: howto/running_in_parallel/index.md
+    - Setup Tracing with OpenTelemetry: howto/quickstart_opentelemetry/index.md
   - Reference:
     - reference/README.md
     - Modules: reference/modules/index.md
@@ -132,6 +133,8 @@ nav:
     - Test Support:
         - reference/test_support/index.md
         - Command Handling Tests: reference/test_support/command_handling_test_fixture/index.md
+    - Tracing:
+        - reference/tracing/index.md
   - Concepts:
     - concepts/README.md
     - Events: concepts/events/index.md

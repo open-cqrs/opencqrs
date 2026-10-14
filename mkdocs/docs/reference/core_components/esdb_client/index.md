@@ -40,9 +40,10 @@ configuration properties:
 * an API token to authenticate
 * a {{ javadoc_class_ref("com.opencqrs.esdb.client.Marshaller") }} instance responsible for serializing and deserializing events
 * a `java.net.http.HttpClient.Builder` instance
+* a {{ javadoc_class_ref("com.opencqrs.esdb.client.tracing.TracingEventEnricher") }} implemenation's instance for handling tracing information in the event trail
 
 The following example shows, how to instantiate an {{ javadoc_class_ref("com.opencqrs.esdb.client.EsdbClient") }} using
-the built-in {{ javadoc_class_ref("com.opencqrs.esdb.client.jackson.JacksonMarshaller") }}.
+the built-in {{ javadoc_class_ref("com.opencqrs.esdb.client.jackson.JacksonMarshaller") }} and {{ javadoc_class_ref("com.opencqrs.esdb.client.tracing.OpenTelemetryTracingEventEnricher") }}.
 
 ```java
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,6 +51,8 @@ import com.opencqrs.esdb.client.jackson.JacksonMarshaller;
 
 import java.net.URI;
 import java.net.http.HttpClient;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import com.opencqrs.esdb.client.tracing.OpenTelemetryTracingEventEnricher;
 
 public class EsdbClientConfiguration {
 
@@ -58,7 +61,8 @@ public class EsdbClientConfiguration {
                 URI.create("http://localhost:3000"),
                 "<api token>",
                 new JacksonMarshaller(new ObjectMapper()),
-                HttpClient.newBuilder()
+                HttpClient.newBuilder(),
+                new OpenTelemetryTracingEventEnricher(GlobalOpenTelemetry.get())
         );
     }
 }
