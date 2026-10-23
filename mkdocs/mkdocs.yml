@@ -3,6 +3,9 @@ site_name: OpenCQRS
 site_url: https://docs.opencqrs.com
 repo_url: https://github.com/open-cqrs/opencqrs
 
+hooks:
+  - hooks/canonical.py
+
 plugins:
   - search:
       lang: en
