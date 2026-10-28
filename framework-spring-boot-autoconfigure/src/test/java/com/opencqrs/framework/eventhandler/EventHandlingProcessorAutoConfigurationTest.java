@@ -14,12 +14,19 @@ import com.opencqrs.framework.eventhandler.progress.InMemoryProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.JdbcProgressTracker;
 import com.opencqrs.framework.eventhandler.progress.ProgressTracker;
 import com.opencqrs.framework.persistence.EventReader;
+import com.opencqrs.framework.tracing.NoTracingAwareEventReader;
+import com.opencqrs.framework.tracing.OpenTelemetryTracingAwareEventReader;
+import com.opencqrs.framework.tracing.TracingAwareEventReader;
+import io.opentelemetry.api.OpenTelemetry;
+import java.io.IOException;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.LogManager;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -55,6 +62,47 @@ class EventHandlingProcessorAutoConfigurationTest {
         @Profile("deactivated")
         public EventHandlerDefinition<Object> ehdC() {
             return new EventHandlerDefinition<>("c", Object.class, (EventHandler.ForObject<Object>) e -> {});
+        }
+    }
+
+    /**
+     * Defines {@link EventHandlingProcessorAutoConfiguration} (including its nested classes) itself, while hiding all
+     * OpenTelemetry classes. In contrast to {@link FilteredClassLoader}, which only affects condition evaluation, this
+     * also covers the reflective introspection of the auto-configuration class, as for applications without
+     * OpenTelemetry on the class-path. Being defined by a different class loader, the auto-configuration cannot access
+     * package-private framework classes, hence event handling processors cannot be instantiated.
+     */
+    static class WithoutOpenTelemetryClassLoader extends ClassLoader {
+
+        private static final String AUTO_CONFIGURATION = EventHandlingProcessorAutoConfiguration.class.getName();
+
+        WithoutOpenTelemetryClassLoader() {
+            super(WithoutOpenTelemetryClassLoader.class.getClassLoader());
+        }
+
+        @Override
+        protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            if (name.startsWith("io.opentelemetry.")) {
+                throw new ClassNotFoundException(name);
+            }
+            if (!name.equals(AUTO_CONFIGURATION) && !name.startsWith(AUTO_CONFIGURATION + "$")) {
+                return super.loadClass(name, resolve);
+            }
+            synchronized (getClassLoadingLock(name)) {
+                var loaded = findLoadedClass(name);
+                if (loaded != null) {
+                    return loaded;
+                }
+                try (var classFile = getParent().getResourceAsStream(name.replace('.', '/') + ".class")) {
+                    if (classFile == null) {
+                        throw new ClassNotFoundException(name);
+                    }
+                    var bytes = classFile.readAllBytes();
+                    return defineClass(name, bytes, 0, bytes.length);
+                } catch (IOException e) {
+                    throw new ClassNotFoundException(name, e);
+                }
+            }
         }
     }
 
@@ -369,5 +417,65 @@ class EventHandlingProcessorAutoConfigurationTest {
                             .allSatisfy((beanName, bean) -> assertThat(bean)
                                     .isInstanceOf(LeaderElectionEventHandlingProcessorLifecycleController.class));
                 });
+    }
+
+    @Test
+    public void noTracingEventReaderConfiguredIfOpenTelemetryNotOnClasspath() throws ClassNotFoundException {
+        var classLoader = new WithoutOpenTelemetryClassLoader();
+        new ApplicationContextRunner()
+                .withClassLoader(classLoader)
+                // AutoConfigurations.of() would re-resolve the class by name, bypassing the class loader
+                .withUserConfiguration(classLoader.loadClass(EventHandlingProcessorAutoConfiguration.class.getName()))
+                .withBean(EventReader.class, Mockito::mock)
+                .run(context -> assertThat(context)
+                        .hasNotFailed()
+                        .getBean(TracingAwareEventReader.class)
+                        .isInstanceOf(NoTracingAwareEventReader.class));
+    }
+
+    @Test
+    public void noTracingEventReaderConfiguredIfOpenTelemetryBeanMissing() {
+        assertEventHandlingProcessorContext(runner.withUserConfiguration(MyConfiguration.class), context -> {
+            var eventReader = context.getBean(TracingAwareEventReader.class);
+            assertThat(eventReader).isInstanceOf(NoTracingAwareEventReader.class);
+            assertThat(context)
+                    .getBeans(EventHandlingProcessor.class)
+                    .hasSize(2)
+                    .allSatisfy((beanName, bean) -> assertThat(bean.eventReader).isSameAs(eventReader));
+        });
+    }
+
+    @Test
+    public void openTelemetryTracingEventReaderConfiguredIfOpenTelemetryBeanPresent() {
+        assertEventHandlingProcessorContext(
+                runner.withUserConfiguration(MyConfiguration.class).withBean(OpenTelemetry.class, OpenTelemetry::noop),
+                context -> {
+                    var eventReader = context.getBean(TracingAwareEventReader.class);
+                    assertThat(eventReader).isInstanceOf(OpenTelemetryTracingAwareEventReader.class);
+                    assertThat(context)
+                            .getBeans(EventHandlingProcessor.class)
+                            .hasSize(2)
+                            .allSatisfy((beanName, bean) ->
+                                    assertThat(bean.eventReader).isSameAs(eventReader));
+                });
+    }
+
+    @ParameterizedTest(name = "OpenTelemetry bean present: {0}")
+    @ValueSource(booleans = {true, false})
+    public void userDefinedTracingAwareEventReaderPreferred(boolean openTelemetryBeanPresent) {
+        var userEventReader = mock(TracingAwareEventReader.class);
+        var userRunner = runner.withUserConfiguration(MyConfiguration.class)
+                .withBean(TracingAwareEventReader.class, () -> userEventReader);
+        if (openTelemetryBeanPresent) {
+            userRunner = userRunner.withBean(OpenTelemetry.class, OpenTelemetry::noop);
+        }
+
+        assertEventHandlingProcessorContext(userRunner, context -> {
+            assertThat(context).getBean(TracingAwareEventReader.class).isSameAs(userEventReader);
+            assertThat(context)
+                    .getBeans(EventHandlingProcessor.class)
+                    .hasSize(2)
+                    .allSatisfy((beanName, bean) -> assertThat(bean.eventReader).isSameAs(userEventReader));
+        });
     }
 }

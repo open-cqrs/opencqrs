@@ -9,6 +9,7 @@ import static org.mockito.Mockito.*;
 import com.opencqrs.esdb.client.eventql.EventQueryBuilder;
 import com.opencqrs.esdb.client.eventql.EventQueryErrorHandler;
 import com.opencqrs.esdb.client.eventql.EventQueryRowHandler;
+import io.opentelemetry.sdk.trace.IdGenerator;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -551,12 +552,16 @@ public class EsdbClientIntegrationTest {
 
             var subjects = List.of(randomSubject(), randomSubject(), randomSubject());
 
+            IdGenerator ids = IdGenerator.random();
+
             subjects.forEach(subject -> client.write(
                     List.of(new EventCandidate(
                             TEST_SOURCE,
                             subject,
                             "com.opencqrs.books-added.v1",
-                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class))),
+                            objectMapper.convertValue(new BookAddedEvent("JRR Tolkien", "LOTR"), Map.class),
+                            "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+                            "opencqrs=a3ce929d,vendor=12345")),
                     List.of(new Precondition.SubjectIsPristine(subject))));
 
             client.read("/", Set.of(new Option.Recursive()), consumedEvents::add);
@@ -571,6 +576,8 @@ public class EsdbClientIntegrationTest {
                 assertThat(e.id()).isNotBlank();
                 assertThat(e.time()).isBeforeOrEqualTo(Instant.now());
                 assertThat(e.predecessorHash()).isNotBlank();
+                assertThat(e.traceParent()).isNotBlank();
+                assertThat(e.traceState()).isNotBlank();
                 assertThat(objectMapper.convertValue(e.data(), BookAddedEvent.class))
                         .isEqualTo(new BookAddedEvent("JRR Tolkien", "LOTR"));
             }));
@@ -663,7 +670,7 @@ public class EsdbClientIntegrationTest {
             assertThat(ref).hasValueSatisfying(event -> {
                 assertThat(event)
                         .usingRecursiveComparison()
-                        .ignoringFields("id", "time", "hash", "predecessorHash")
+                        .ignoringFields("id", "time", "hash", "predecessorHash", "traceParent", "traceState")
                         .isEqualTo(new Event(
                                 eventCandidate.source(),
                                 subject,
@@ -674,7 +681,9 @@ public class EsdbClientIntegrationTest {
                                 Instant.MIN,
                                 "application/json",
                                 "irrelevant",
-                                "irrelevant"));
+                                "irrelevant",
+                                null,
+                                null));
                 assertThat(event.id()).isNotBlank();
                 assertThat(event.time()).isBeforeOrEqualTo(Instant.now());
                 assertThat(event.hash()).isNotBlank();
