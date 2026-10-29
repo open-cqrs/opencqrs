@@ -1,6 +1,6 @@
 spring.application.name: test-app
 
-cqrs.event-handling:
+opencqrs.event-handling:
   standard:
     retry:
       policy: fixed

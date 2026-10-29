@@ -1,11 +1,15 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.command;
 
+import com.opencqrs.framework.command.CommandHandlingTestContextCustomizerFactory.InterceptorsEnabled;
+import com.opencqrs.framework.command.interceptor.CommandInterceptor;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.MethodInvokingFactoryBean;
@@ -37,8 +41,14 @@ public class CommandHandlingTestAutoConfiguration {
 
     @Bean
     public CommandHandlingTestFixture.Builder<?> commandHandlingTestFixtureBuilder(
-            StateRebuildingHandlerDefinition[] stateRebuildingHandlerDefinitions) {
-        return CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(stateRebuildingHandlerDefinitions);
+            StateRebuildingHandlerDefinition[] stateRebuildingHandlerDefinitions,
+            List<CommandInterceptor> interceptors,
+            ObjectProvider<InterceptorsEnabled> interceptorsEnabled) {
+        boolean enabled = interceptorsEnabled
+                .getIfAvailable(() -> new InterceptorsEnabled(true))
+                .value();
+        return CommandHandlingTestFixture.withStateRebuildingHandlerDefinitions(stateRebuildingHandlerDefinitions)
+                .withInterceptors(enabled ? interceptors : List.of());
     }
 
     @Bean
