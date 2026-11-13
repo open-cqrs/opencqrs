@@ -163,17 +163,26 @@ public class EventHandlingProcessor implements Runnable {
      * Errors or exceptions occurring throughout the event processing loop are handled as follows:
      *
      * <ul>
-     *   <li>{@link CqrsFrameworkException.NonTransientException}s thrown by any matching {@link EventHandler} won't be
-     *       retried and will terminate the processing loop unrecoverably
-     *   <li>any other {@link Throwable} thrown by any matching {@link EventHandler} is subject to retry
-     *   <li>{@link CqrsFrameworkException.TransientException}s thrown by framework components are subject to retry
-     *   <li>any thread interruption before or after calling the {@link EventHandler} will terminate the processing
-     *       loop, assuming {@code this} was {@linkplain #stop() stopped}
-     *   <li>any other {@link Throwable} thrown by any of the framework components won't be retried and will terminate
-     *       the processing loop unrecoverably
+     *   <li>{@link CqrsFrameworkException.NonTransientException}s thrown while processing an event, i.e. by any
+     *       matching {@link EventHandler} or during upcasting, type resolution, deserialization, or the
+     *       {@linkplain ProgressTracker#proceed(String, long, Supplier) progress update}, won't be retried and will
+     *       terminate the processing loop unrecoverably
+     *   <li>any other {@link Throwable} thrown while processing an event is subject to retry
+     *   <li>{@link CqrsFrameworkException.TransientException}s thrown outside of event processing, i.e. while observing
+     *       the event stream or retrieving the current progress, are subject to retry
+     *   <li>{@link ClientInterruptedException}s raised while observing the event stream and
+     *       {@link InterruptedException}s raised while backing off will terminate the processing loop, assuming
+     *       {@code this} was {@linkplain #stop() stopped}
+     *   <li>any other {@link Throwable} thrown outside of event processing won't be retried and will terminate the
+     *       processing loop unrecoverably
      * </ul>
      *
-     * Retry of failed {@link EventHandler}s or framework components will cause the event processor to {@link BackOff
+     * Exceptions thrown by {@link EventHandler}s are classified as described above, even if caused by a thread
+     * interruption. A {@linkplain #stop() stopped} event processor terminates at its next interruption point, i.e. when
+     * backing off or when observing the event stream again. {@link #stop()} is the defined way to shut down an event
+     * processor; throwing exceptions from event handlers is not.
+     *
+     * <p>Retry of failed {@link EventHandler}s or framework components will cause the event processor to {@link BackOff
      * back off} from the event processing loop, {@link Thread#sleep(long) waiting} before retrying the failed event
      * according to the aforementioned <i>event processing loop</i>. Once the {@link BackOff back off} is
      * {@linkplain BackOff.Execution#next() exhausted} the erroneous event will be skipped, continuing with the next
@@ -213,56 +222,7 @@ public class EventHandlingProcessor implements Runnable {
                                     try {
                                         progressTracker.proceed(groupId, partition, () -> {
                                             if (!skipEvent.getAndSet(false)) {
-                                                var rawEventRelevant =
-                                                        switch (eventSequenceResolver) {
-                                                            case EventSequenceResolver.ForRawEvent esr ->
-                                                                partitionKeyResolver.resolve(esr.sequenceIdFor(raw))
-                                                                        == partition;
-                                                            case EventSequenceResolver.ForObjectAndMetaDataAndRawEvent
-                                                                    ignored -> true;
-                                                        };
-                                                if (rawEventRelevant) {
-                                                    rawCallback.upcast((upcastedCallback, upcasted) ->
-                                                            upcastedCallback.convert((metadata, event) -> {
-                                                                var convertedEventRelevant =
-                                                                        switch (eventSequenceResolver) {
-                                                                            case EventSequenceResolver.ForRawEvent
-                                                                                    ignored -> true;
-                                                                            case EventSequenceResolver
-                                                                                            .ForObjectAndMetaDataAndRawEvent
-                                                                                    esr ->
-                                                                                partitionKeyResolver.resolve(
-                                                                                                esr.sequenceIdFor(
-                                                                                                        event,
-                                                                                                        metadata))
-                                                                                        == partition;
-                                                                        };
-                                                                if (convertedEventRelevant) {
-                                                                    eventHandlerDefinitions.stream()
-                                                                            .filter(
-                                                                                    ehd -> ehd.eventClass()
-                                                                                            .isAssignableFrom(
-                                                                                                    upcastedCallback
-                                                                                                            .getEventJavaClass()))
-                                                                            .forEach(ehd -> {
-                                                                                switch (ehd.handler()) {
-                                                                                    case EventHandler.ForObject
-                                                                                            handler ->
-                                                                                        handler.handle(event);
-                                                                                    case EventHandler
-                                                                                                    .ForObjectAndMetaData
-                                                                                            handler ->
-                                                                                        handler.handle(event, metadata);
-                                                                                    case EventHandler
-                                                                                                    .ForObjectAndMetaDataAndRawEvent
-                                                                                            handler ->
-                                                                                        handler.handle(
-                                                                                                event, metadata, raw);
-                                                                                }
-                                                                            });
-                                                                }
-                                                            }));
-                                                }
+                                                dispatch(rawCallback, raw);
 
                                                 if (retryHandler.isRetryExecution()) {
                                                     log.log(
@@ -322,6 +282,49 @@ public class EventHandlingProcessor implements Runnable {
         } finally {
             stop();
         }
+    }
+
+    /**
+     * Upcasts and converts the given raw {@link Event} and passes the result to all matching {@link EventHandler}s,
+     * provided the event is relevant for this partition, both before (raw) and after (converted) conversion, depending
+     * on the configured {@link EventSequenceResolver}.
+     */
+    private void dispatch(EventReader.RawCallback rawCallback, Event raw) {
+        var rawEventRelevant =
+                switch (eventSequenceResolver) {
+                    case EventSequenceResolver.ForRawEvent esr ->
+                        partitionKeyResolver.resolve(esr.sequenceIdFor(raw)) == partition;
+                    case EventSequenceResolver.ForObjectAndMetaDataAndRawEvent ignored -> true;
+                };
+        if (!rawEventRelevant) {
+            return;
+        }
+
+        rawCallback.upcast((upcastedCallback, upcasted) -> upcastedCallback.convert((metadata, event) -> {
+            var convertedEventRelevant =
+                    switch (eventSequenceResolver) {
+                        case EventSequenceResolver.ForRawEvent ignored -> true;
+                        case EventSequenceResolver.ForObjectAndMetaDataAndRawEvent esr ->
+                            partitionKeyResolver.resolve(esr.sequenceIdFor(event, metadata)) == partition;
+                    };
+            if (convertedEventRelevant) {
+                handle(upcastedCallback.getEventJavaClass(), event, metadata, raw);
+            }
+        }));
+    }
+
+    /** Passes the converted event to all {@link EventHandler}s matching the given Java event type. */
+    private void handle(Class<?> eventJavaClass, Object event, Map<String, ?> metadata, Event raw) {
+        eventHandlerDefinitions.stream()
+                .filter(ehd -> ehd.eventClass().isAssignableFrom(eventJavaClass))
+                .forEach(ehd -> {
+                    switch (ehd.handler()) {
+                        case EventHandler.ForObject handler -> handler.handle(event);
+                        case EventHandler.ForObjectAndMetaData handler -> handler.handle(event, metadata);
+                        case EventHandler.ForObjectAndMetaDataAndRawEvent handler ->
+                            handler.handle(event, metadata, raw);
+                    }
+                });
     }
 
     /**
