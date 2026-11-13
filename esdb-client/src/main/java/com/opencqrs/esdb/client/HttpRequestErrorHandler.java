@@ -140,17 +140,18 @@ final class HttpRequestErrorHandler {
         try {
             return httpClient.send(request, bodyHandler);
         } catch (IOException e) {
-            throw switch (e.getCause()) {
-                case null -> new ClientException.TransportException("failed to send request with unknown cause", e);
-                default -> new ClientException.TransportException("failed to send request", e.getCause());
-            };
+            if (isInterruption(e)) {
+                Thread.currentThread().interrupt();
+                throw new ClientException.InterruptedException("request interrupted", e);
+            }
+            throw new ClientException.TransportException("failed to send request", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ClientException.InterruptedException("request interrupted", e);
         }
     }
 
-    private ClientException.HttpException mapErrorStatus(int statusCode, String body) throws ClientException {
+    private ClientException.HttpException mapErrorStatus(int statusCode, String body) {
         if (statusCode >= 400 && statusCode < 500) {
             return new ClientException.HttpException.HttpClientException(
                     "HTTP client request error: " + body, statusCode);
@@ -163,10 +164,12 @@ final class HttpRequestErrorHandler {
     }
 
     /**
-     * Determines whether the given {@link IOException} raised while consuming the response body represents a genuine
-     * thread interruption. Blocking reads on the {@link HttpClient}'s response stream surface an interrupt as an
-     * {@link IOException} wrapping an {@link InterruptedException} (the JDK re-sets the interrupt flag); an interrupt
-     * during an interruptible channel operation may instead manifest as a {@link ClosedByInterruptException}.
+     * Determines whether the given {@link IOException} raised while sending the request or consuming the response body
+     * represents a genuine thread interruption. Blocking reads on the {@link HttpClient}'s response stream surface an
+     * interrupt as an {@link IOException} wrapping an {@link InterruptedException} (the JDK re-sets the interrupt
+     * flag); an interrupt during an interruptible channel operation may instead manifest as a
+     * {@link ClosedByInterruptException}. Both are detected anywhere in the cause chain, including the given exception
+     * itself.
      *
      * <p>Transport conditions such as timeouts or broken connections are deliberately <strong>not</strong> treated as
      * interruptions &mdash; the caller surfaces them as {@link ClientException.TransportException} (retryable). In
@@ -174,11 +177,8 @@ final class HttpRequestErrorHandler {
      * a timeout, not a thread interrupt) is intentionally not matched here.
      */
     private static boolean isInterruption(IOException e) {
-        if (e instanceof ClosedByInterruptException) {
-            return true;
-        }
-        for (Throwable t = e.getCause(); t != null; t = t.getCause()) {
-            if (t instanceof InterruptedException) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof InterruptedException || t instanceof ClosedByInterruptException) {
                 return true;
             }
         }
