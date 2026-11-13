@@ -2,6 +2,7 @@
 package com.opencqrs.framework.eventhandler;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,6 +24,7 @@ import java.lang.reflect.UndeclaredThrowableException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
@@ -265,6 +267,122 @@ public class EventHandlingProcessorTest {
         Thread eventProcessorThread = startSubject().get();
 
         assertThat(handlerThread.get()).isSameAs(eventProcessorThread);
+    }
+
+    @Test
+    public void processorNotRunningAfterEventHandlingLoopTerminated() throws Exception {
+        doThrow(new CqrsFrameworkException.NonTransientException("terminating"))
+                .when(eventReader)
+                .consumeRaw(any(), any());
+
+        subject.start().get(5, TimeUnit.SECONDS);
+
+        assertThat(subject.isRunning()).isFalse();
+    }
+
+    @Test
+    public void restartedProcessorNotStoppedByPreviousEventHandlingLoopTerminatingLate() throws Exception {
+        var calls = new AtomicInteger();
+        var previousLoopBusy = new CountDownLatch(1);
+        var releasePreviousLoop = new CountDownLatch(1);
+        var restartedLoopObserving = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    if (calls.getAndIncrement() == 0) {
+                        // simulates in-flight work, which finishes only after the processor has been restarted
+                        previousLoopBusy.countDown();
+                        awaitUninterruptibly(releasePreviousLoop);
+                        throw new ClientInterruptedException("previous loop interrupted", null);
+                    }
+                    restartedLoopObserving.countDown();
+                    try {
+                        new CountDownLatch(1).await(); // observing, until interrupted
+                    } catch (InterruptedException e) {
+                        throw new ClientInterruptedException("restarted loop interrupted", e);
+                    }
+                    return null;
+                })
+                .when(eventReader)
+                .consumeRaw(any(), any());
+
+        Future<?> previous = subject.start();
+        previousLoopBusy.await();
+        subject.stop();
+        Future<?> restarted = subject.start();
+        restartedLoopObserving.await();
+
+        releasePreviousLoop.countDown();
+        previous.get(5, TimeUnit.SECONDS);
+
+        try {
+            assertThat(subject.isRunning())
+                    .as("restarted loop survives the late termination of the previous loop")
+                    .isTrue();
+            assertThat(restarted)
+                    .as("restarted loop not interrupted by the previous loop")
+                    .isNotDone();
+        } finally {
+            subject.stop();
+        }
+    }
+
+    @Test
+    public void processorStoppedEvenIfEventHandlingLoopNeverBlocks() throws Exception {
+        var consumeRawCalled = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    consumeRawCalled.countDown();
+                    return null; // returns immediately, i.e. the loop never reaches a blocking operation
+                })
+                .when(eventReader)
+                .consumeRaw(any(), any());
+
+        Future<?> loop = subject.start();
+        consumeRawCalled.await();
+        subject.stop();
+
+        loop.get(5, TimeUnit.SECONDS);
+        assertThat(subject.isRunning()).isFalse();
+    }
+
+    @Test
+    public void secondStartRejectedWithoutAffectingRunningEventHandlingLoop() throws Exception {
+        var observing = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    observing.countDown();
+                    try {
+                        new CountDownLatch(1).await(); // observing, until interrupted
+                    } catch (InterruptedException e) {
+                        throw new ClientInterruptedException("loop interrupted", e);
+                    }
+                    return null;
+                })
+                .when(eventReader)
+                .consumeRaw(any(), any());
+
+        Future<?> loop = subject.start();
+        observing.await();
+
+        try {
+            assertThatThrownBy(subject::start).isInstanceOf(IllegalStateException.class);
+            assertThat(subject.isRunning()).isTrue();
+            assertThat(loop).as("running loop not affected by rejected start").isNotDone();
+        } finally {
+            subject.stop();
+        }
+    }
+
+    private static void awaitUninterruptibly(CountDownLatch latch) {
+        boolean interrupted = false;
+        while (true) {
+            try {
+                latch.await();
+                break;
+            } catch (InterruptedException e) {
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Test

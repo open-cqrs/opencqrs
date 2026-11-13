@@ -192,7 +192,8 @@ public class EventHandlingProcessor implements Runnable {
      * event-processor thread (the thread {@link #start()} submits {@code this} to), since
      * {@link com.opencqrs.esdb.client.EsdbClient#observe(String, Set, Consumer)} consumes the event stream on the
      * calling thread. {@link #stop()} {@linkplain java.util.concurrent.ExecutorService#shutdownNow() interrupts} that
-     * thread to terminate the loop.
+     * thread to terminate the loop. The interrupt status is also checked before each loop iteration, so the loop
+     * terminates even if no blocking operation is reached.
      */
     @Override
     public void run() {
@@ -200,88 +201,83 @@ public class EventHandlingProcessor implements Runnable {
         var retryHandler = new RetryHandler();
 
         log.info(() -> eventProcessorForLogs() + " entering event handling loop");
-        try {
-            while (true) {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
                 try {
-                    try {
-                        Set<Option> options = new HashSet<>();
-                        if (recursive) {
-                            options.add(new Option.Recursive());
-                        }
-                        Optional.of(progressTracker.current(groupId, partition))
-                                .map(progress -> switch (progress) {
-                                    case Progress.Success success -> success.id();
-                                    case Progress.None ignored -> null;
-                                })
-                                .map(Option.LowerBoundExclusive::new)
-                                .ifPresent(options::add);
+                    Set<Option> options = new HashSet<>();
+                    if (recursive) {
+                        options.add(new Option.Recursive());
+                    }
+                    Optional.of(progressTracker.current(groupId, partition))
+                            .map(progress -> switch (progress) {
+                                case Progress.Success success -> success.id();
+                                case Progress.None ignored -> null;
+                            })
+                            .map(Option.LowerBoundExclusive::new)
+                            .ifPresent(options::add);
 
-                        eventReader.consumeRaw(
-                                (client, eventConsumer) -> client.observe(subject, options, eventConsumer),
-                                (rawCallback, raw) -> {
-                                    try {
-                                        progressTracker.proceed(groupId, partition, () -> {
-                                            if (!skipEvent.getAndSet(false)) {
-                                                dispatch(rawCallback, raw);
+                    eventReader.consumeRaw(
+                            (client, eventConsumer) -> client.observe(subject, options, eventConsumer),
+                            (rawCallback, raw) -> {
+                                try {
+                                    progressTracker.proceed(groupId, partition, () -> {
+                                        if (!skipEvent.getAndSet(false)) {
+                                            dispatch(rawCallback, raw);
 
-                                                if (retryHandler.isRetryExecution()) {
-                                                    log.log(
-                                                            Level.INFO,
-                                                            () -> eventProcessorForLogs()
-                                                                    + " successfully recovered for event id: "
-                                                                    + raw.id());
-                                                }
-                                            } else {
+                                            if (retryHandler.isRetryExecution()) {
                                                 log.log(
                                                         Level.INFO,
-                                                        () -> eventProcessorForLogs() + " skipped event id: "
+                                                        () -> eventProcessorForLogs()
+                                                                + " successfully recovered for event id: "
                                                                 + raw.id());
                                             }
-                                            retryHandler.reset();
-                                            return new Progress.Success(raw.id());
-                                        });
-                                    } catch (Error | RuntimeException e) {
-                                        throw new EventProcessingFailure(raw, e);
-                                    }
-                                });
-                    } catch (EventProcessingFailure e) {
-                        Throwable cause = e.getCause();
-                        switch (cause) {
-                            case UndeclaredThrowableException ex -> {
-                                switch (ex.getCause()) {
-                                    case CqrsFrameworkException.NonTransientException undeclared -> throw undeclared;
-                                    case null, default ->
-                                        skipEvent.set(
-                                                retryHandler.handle(e.event, Objects.requireNonNull(ex.getCause())));
+                                        } else {
+                                            log.log(
+                                                    Level.INFO,
+                                                    () -> eventProcessorForLogs() + " skipped event id: " + raw.id());
+                                        }
+                                        retryHandler.reset();
+                                        return new Progress.Success(raw.id());
+                                    });
+                                } catch (Error | RuntimeException e) {
+                                    throw new EventProcessingFailure(raw, e);
                                 }
+                            });
+                } catch (EventProcessingFailure e) {
+                    Throwable cause = e.getCause();
+                    switch (cause) {
+                        case UndeclaredThrowableException ex -> {
+                            switch (ex.getCause()) {
+                                case CqrsFrameworkException.NonTransientException undeclared -> throw undeclared;
+                                case null, default ->
+                                    skipEvent.set(retryHandler.handle(e.event, Objects.requireNonNull(ex.getCause())));
                             }
-                            case CqrsFrameworkException.NonTransientException ignored -> throw cause;
-                            case null, default ->
-                                skipEvent.set(retryHandler.handle(e.event, Objects.requireNonNull(cause)));
                         }
-                    } catch (ClientInterruptedException e) {
-                        log.log(
-                                Level.INFO,
-                                eventProcessorForLogs() + " interrupted or shut down, terminating event handling loop",
-                                e.getCause());
-                        return;
-                    } catch (CqrsFrameworkException.TransientException e) {
-                        skipEvent.set(retryHandler.handle(null, e));
+                        case CqrsFrameworkException.NonTransientException ignored -> throw cause;
+                        case null, default ->
+                            skipEvent.set(retryHandler.handle(e.event, Objects.requireNonNull(cause)));
                     }
-                } catch (InterruptedException e) {
+                } catch (ClientInterruptedException e) {
                     log.log(
                             Level.INFO,
                             eventProcessorForLogs() + " interrupted or shut down, terminating event handling loop",
-                            e);
+                            e.getCause());
                     return;
-                } catch (Throwable t) {
-                    log.log(Level.SEVERE, t, () -> eventProcessorForLogs() + " giving up on unrecoverable error");
-                    return;
+                } catch (CqrsFrameworkException.TransientException e) {
+                    skipEvent.set(retryHandler.handle(null, e));
                 }
+            } catch (InterruptedException e) {
+                log.log(
+                        Level.INFO,
+                        eventProcessorForLogs() + " interrupted or shut down, terminating event handling loop",
+                        e);
+                return;
+            } catch (Throwable t) {
+                log.log(Level.SEVERE, t, () -> eventProcessorForLogs() + " giving up on unrecoverable error");
+                return;
             }
-        } finally {
-            stop();
         }
+        log.info(() -> eventProcessorForLogs() + " interrupted or shut down, terminating event handling loop");
     }
 
     /**
@@ -339,10 +335,19 @@ public class EventHandlingProcessor implements Runnable {
                 .name("event-processor-" + getGroupId() + "-" + getPartition())
                 .factory());
         if (!running.compareAndSet(null, es)) {
+            es.shutdown();
             throw new IllegalStateException(eventProcessorForLogs() + " already started");
         }
         log.info("starting " + eventProcessorForLogs());
-        return es.submit(this);
+        return es.submit(() -> {
+            try {
+                run();
+            } finally {
+                // only release the executor started here, never the one of a subsequent (re-)start
+                running.compareAndSet(es, null);
+                es.shutdown();
+            }
+        });
     }
 
     /**
