@@ -271,6 +271,16 @@ public class HttpRequestErrorHandlerTest {
         }
 
         @Test
+        public void propagatesErrorsFromConsumer() {
+            var error = new AssertionError("test");
+
+            assertThatThrownBy(() -> subject.handle(buildRequest(200), line -> {
+                        throw error;
+                    }))
+                    .isSameAs(error);
+        }
+
+        @Test
         @Timeout(10)
         public void handlesInterruptionWhileConsumingStream(@Autowired MockServerConfiguration config)
                 throws InterruptedException, BrokenBarrierException {

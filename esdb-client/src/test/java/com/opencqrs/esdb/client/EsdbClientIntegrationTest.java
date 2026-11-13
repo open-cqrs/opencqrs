@@ -430,11 +430,13 @@ public class EsdbClientIntegrationTest {
         @Test
         public void eventsProperlyObservedRecursivelyUsingBlockedCallerThread() {
             var observedEvents = new ConcurrentLinkedDeque<Event>();
+            var callerThread = new AtomicReference<Thread>();
+            Set<Thread> consumerThreads = ConcurrentHashMap.newKeySet();
 
             CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(() -> {
-                var currentThread = Thread.currentThread();
+                callerThread.set(Thread.currentThread());
                 client.observe("/", Set.of(new Option.Recursive()), event -> {
-                    assertThat(Thread.currentThread()).isSameAs(currentThread);
+                    consumerThreads.add(Thread.currentThread());
                     observedEvents.add(event);
                 });
             });
@@ -465,6 +467,9 @@ public class EsdbClientIntegrationTest {
                         }));
             }
 
+            assertThat(consumerThreads)
+                    .as("event consumer invoked on the observing caller thread")
+                    .containsOnly(callerThread.get());
             assertThat(completableFuture.isDone()).isFalse();
         }
     }
