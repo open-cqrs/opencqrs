@@ -82,7 +82,7 @@ final class HttpRequestErrorHandler {
         try (Stream<String> lines = response.body()) {
             var statusCode = response.statusCode();
             if (statusCode != 200) {
-                throw mapErrorStatus(statusCode, lines.collect(Collectors.joining("\n")));
+                throw mapErrorStatus(statusCode, readErrorBody(lines));
             }
 
             lines.forEach(line -> {
@@ -102,6 +102,22 @@ final class HttpRequestErrorHandler {
                 throw new ClientException.InterruptedException("HTTP response consumption interrupted", cause);
             }
             throw new ClientException.TransportException("HTTP response consumption failed", cause);
+        }
+    }
+
+    /**
+     * Reads the error response body defensively, so that a failure while reading it does not hide the HTTP status code,
+     * which determines the {@link ClientException} to be thrown. The thread's interrupt status is restored, if the read
+     * was interrupted.
+     */
+    private static String readErrorBody(Stream<String> lines) {
+        try {
+            return lines.collect(Collectors.joining("\n"));
+        } catch (UncheckedIOException e) {
+            if (e.getCause() != null && isInterruption(e.getCause())) {
+                Thread.currentThread().interrupt();
+            }
+            return "<unavailable: " + e.getCause() + ">";
         }
     }
 

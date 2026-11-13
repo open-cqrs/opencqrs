@@ -99,6 +99,20 @@ public class HttpRequestErrorHandlerTest {
             brokenFinishBarrier.await();
             throw new IOException("aborting the committed response to break the connection");
         }
+
+        /**
+         * Commits a {@code 500} response and pushes a partial error body, then aborts the already-committed response by
+         * throwing, so that the client fails while reading the error body. Used to verify that the HTTP status code is
+         * not lost in that case.
+         */
+        @GetMapping("/api/broken-error")
+        public void brokenError(HttpServletResponse response) throws IOException {
+            response.setStatus(500);
+            response.setContentType(MediaType.TEXT_PLAIN_VALUE);
+            response.getOutputStream().write("partial error\n".getBytes(StandardCharsets.UTF_8));
+            response.flushBuffer();
+            throw new IOException("aborting the committed error response to break the connection");
+        }
     }
 
     @LocalServerPort
@@ -287,6 +301,19 @@ public class HttpRequestErrorHandlerTest {
 
             assertThat(caught.get()).isInstanceOf(ClientException.InterruptedException.class);
             assertThat(interruptFlagSet).isTrue();
+        }
+
+        @Test
+        @Timeout(10)
+        public void keepsStatusCodeForBrokenConnectionWhileReadingErrorBody() {
+            HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/broken-error"))
+                    .GET()
+                    .build();
+
+            assertThatThrownBy(() -> subject.handle(request, line -> fail("consumer must not be called in error case")))
+                    .isInstanceOfSatisfying(
+                            ClientException.HttpException.HttpServerException.class,
+                            e -> assertThat(e.getStatusCode()).isEqualTo(500));
         }
 
         @Test
