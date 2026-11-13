@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -228,9 +229,9 @@ public class HttpRequestErrorHandlerTest {
         StreamingResponse() {
             super((request, success) -> {
                 var response = new StringBuffer();
-                subject.handle(request, stream -> {
+                subject.handle(request, line -> {
                     if (success) {
-                        stream.forEach(response::append);
+                        response.append(line);
                     } else {
                         fail("consumer must not be called in error case");
                     }
@@ -244,11 +245,12 @@ public class HttpRequestErrorHandlerTest {
                 classes = {
                     ClientException.class,
                     IllegalStateException.class,
+                    UncheckedIOException.class,
                 })
         public void propagatesRuntimeExceptionsFromConsumer(Class<? extends RuntimeException> exceptionClass) {
             var exception = mock(exceptionClass);
 
-            assertThatThrownBy(() -> subject.handle(buildRequest(200), stream -> {
+            assertThatThrownBy(() -> subject.handle(buildRequest(200), line -> {
                         throw exception;
                     }))
                     .isSameAs(exception);
@@ -269,7 +271,7 @@ public class HttpRequestErrorHandlerTest {
             Thread consumer = Thread.ofVirtual().start(() -> {
                 try {
                     // consumes "line1", then blocks on the next read, since no more content is sent
-                    subject.handle(request, stream -> stream.forEach(line -> firstLineConsumed.countDown()));
+                    subject.handle(request, line -> firstLineConsumed.countDown());
                 } catch (Throwable t) {
                     interruptFlagSet.set(Thread.currentThread().isInterrupted());
                     caught.set(t);
@@ -301,7 +303,7 @@ public class HttpRequestErrorHandlerTest {
             Thread consumer = Thread.ofVirtual().start(() -> {
                 try {
                     // consumes "line1", then blocks on the next read, since the promised content never arrives
-                    subject.handle(request, stream -> stream.forEach(line -> firstLineConsumed.countDown()));
+                    subject.handle(request, line -> firstLineConsumed.countDown());
                 } catch (Throwable t) {
                     caught.set(t);
                 }

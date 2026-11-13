@@ -53,30 +53,31 @@ final class HttpRequestErrorHandler {
     }
 
     /**
-     * {@linkplain HttpClient#send(HttpRequest, HttpResponse.BodyHandler) Sends} the given {@link HttpRequest}, exposing
-     * the response body as a lazily consumed {@linkplain HttpResponse.BodyHandlers#ofLines() line stream} to the given
-     * handler and mapping exceptions and HTTP status codes to {@link ClientException}, if necessary.
+     * {@linkplain HttpClient#send(HttpRequest, HttpResponse.BodyHandler) Sends} the given {@link HttpRequest}, lazily
+     * reading the response body {@linkplain HttpResponse.BodyHandlers#ofLines() line by line} and passing each line to
+     * the given handler, mapping exceptions and HTTP status codes to {@link ClientException}, if necessary.
      *
-     * <p>The {@link Stream} is consumed on the calling thread and {@linkplain Stream#close() closed} once the handler
-     * returns, hence the handler <strong>must not</strong> retain it beyond the callback. The response body is decoded
-     * using the character set specified in the {@code Content-Type} response header, falling back to {@code UTF-8}.
+     * <p>Lines are read and passed to the handler on the calling thread. The response body is decoded using the
+     * character set specified in the {@code Content-Type} response header, falling back to {@code UTF-8}. The
+     * underlying response stream is always closed before this method returns.
      *
      * <p>The handler is only invoked, if the {@link HttpResponse#statusCode()} is {@code 200}, otherwise an appropriate
-     * {@link ClientException} carrying the reconstructed error body is thrown. {@link ClientException}s thrown from the
-     * handler are propagated to the caller as-is; any {@link UncheckedIOException} raised while consuming the stream is
-     * wrapped as {@link ClientException.TransportException}.
+     * {@link ClientException} carrying the reconstructed error body is thrown. Any exception thrown from the handler
+     * (including {@link ClientException}s and {@link UncheckedIOException}s) is propagated to the caller unchanged.
+     * Only {@link IOException}s raised while reading (or closing) the response body itself are mapped to
+     * {@link ClientException.InterruptedException} (if caused by thread interruption) or
+     * {@link ClientException.TransportException} otherwise.
      *
      * @param request the HTTP request to send
-     * @param handler the consumer responsible for handling the {@code 200} response line stream (which will always be
-     *     closed by this method after returning from the handler)
+     * @param lineHandler the consumer responsible for handling each line of a {@code 200} response
      * @throws ClientException.TransportException in case of a communication error
      * @throws ClientException.InterruptedException in case of thread interruption
      * @throws ClientException.HttpException.HttpClientException in case of a {@code 4xx} HTTP status code
      * @throws ClientException.HttpException.HttpServerException in case of a {@code 5xx} HTTP status code
      * @throws ClientException.HttpException in case of an unexpected HTTP status code
-     * @throws ClientException (or subclasses) if thrown by the {@code handler}
+     * @throws ClientException (or subclasses) if thrown by the {@code lineHandler}
      */
-    void handle(HttpRequest request, Consumer<Stream<String>> handler) throws ClientException {
+    void handle(HttpRequest request, Consumer<String> lineHandler) throws ClientException {
         HttpResponse<Stream<String>> response = makeRequest(request, HttpResponse.BodyHandlers.ofLines());
         try (Stream<String> lines = response.body()) {
             var statusCode = response.statusCode();
@@ -84,7 +85,15 @@ final class HttpRequestErrorHandler {
                 throw mapErrorStatus(statusCode, lines.collect(Collectors.joining("\n")));
             }
 
-            handler.accept(lines);
+            lines.forEach(line -> {
+                try {
+                    lineHandler.accept(line);
+                } catch (UncheckedIOException e) {
+                    throw new LineHandlerIOException(e);
+                }
+            });
+        } catch (LineHandlerIOException e) {
+            throw e.handlerException;
         } catch (UncheckedIOException e) {
             IOException cause =
                     Objects.requireNonNull(e.getCause(), "UncheckedIOException must have IOException cause");
@@ -93,6 +102,20 @@ final class HttpRequestErrorHandler {
                 throw new ClientException.InterruptedException("HTTP response consumption interrupted", cause);
             }
             throw new ClientException.TransportException("HTTP response consumption failed", cause);
+        }
+    }
+
+    /**
+     * Shields an {@link UncheckedIOException} thrown by the line handler from being mapped as a failure to read the
+     * response body, so that it can be propagated to the caller unchanged.
+     */
+    private static final class LineHandlerIOException extends RuntimeException {
+
+        private final UncheckedIOException handlerException;
+
+        LineHandlerIOException(UncheckedIOException handlerException) {
+            super(handlerException);
+            this.handlerException = handlerException;
         }
     }
 
@@ -134,7 +157,7 @@ final class HttpRequestErrorHandler {
      * particular {@link java.io.InterruptedIOException} (whose subclass {@link java.net.SocketTimeoutException} denotes
      * a timeout, not a thread interrupt) is intentionally not matched here.
      */
-    private boolean isInterruption(IOException e) {
+    private static boolean isInterruption(IOException e) {
         if (e instanceof ClosedByInterruptException) {
             return true;
         }
