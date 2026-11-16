@@ -8,6 +8,7 @@ import com.opencqrs.framework.command.cache.StateRebuildingCache;
 import com.opencqrs.framework.metadata.MetaDataPropagationProperties;
 import com.opencqrs.framework.persistence.EventReader;
 import com.opencqrs.framework.persistence.ImmediateEventPublisher;
+import com.opencqrs.framework.tracing.TracingContextSpanBuilder;
 import java.util.List;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -35,6 +36,7 @@ public class CommandRouterAutoConfiguration {
             @SuppressWarnings("rawtypes") List<StateRebuildingHandlerDefinition> stateRebuildingHandlerDefinitions,
             CommandHandlingCacheProperties cacheProperties,
             MetaDataPropagationProperties metaDataPropagationProperties,
+            TracingContextSpanBuilder tracingContextSpanBuilder,
             ApplicationContext applicationContext) {
         String cacheBeanRef =
                 switch (cacheProperties.ref()) {
@@ -53,7 +55,8 @@ public class CommandRouterAutoConfiguration {
                 stateRebuildingHandlerDefinitions,
                 applicationContext.getBean(cacheBeanRef, StateRebuildingCache.class),
                 metaDataPropagationProperties.mode(),
-                metaDataPropagationProperties.keys());
+                metaDataPropagationProperties.keys(),
+                tracingContextSpanBuilder);
     }
 
     @Bean
