@@ -1,7 +1,7 @@
 ---
 draft: false
 title: "Beyond the Aggregate Root: How OpenCQRS Decouples What the Aggregate Bundled Together"
-date: 2026-10-12
+date: 2026-11-18
 authors:
   - kersten
 categories:
