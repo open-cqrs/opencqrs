@@ -1,0 +1,2390 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://www.digitalfrontiers.de/blog/missing-aggregate/">
+      
+      
+        <link rel="prev" href="../assert-on-what-happened-not-who-was-called/">
+      
+      
+      
+      <link rel="icon" href="../../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.4">
+    
+    
+      
+        <title>Beyond the Aggregate Root: How OpenCQRS Decouples What the Aggregate Bundled Together - OpenCQRS</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.8608ea7d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+      
+        <meta  property="og:type"  content="website" >
+      
+        <meta  property="og:title"  content="Beyond the Aggregate Root: How OpenCQRS Decouples What the Aggregate Bundled Together - OpenCQRS" >
+      
+        <meta  property="og:description"  content="None" >
+      
+        <meta  property="og:image"  content="https://docs.opencqrs.com/assets/images/social/blog/posts/2026/2026-11-18-missing-aggregate/index.png" >
+      
+        <meta  property="og:image:type"  content="image/png" >
+      
+        <meta  property="og:image:width"  content="1200" >
+      
+        <meta  property="og:image:height"  content="630" >
+      
+        <meta  property="og:url"  content="https://www.digitalfrontiers.de/blog/missing-aggregate/" >
+      
+        <meta  name="twitter:card"  content="summary_large_image" >
+      
+        <meta  name="twitter:title"  content="Beyond the Aggregate Root: How OpenCQRS Decouples What the Aggregate Bundled Together - OpenCQRS" >
+      
+        <meta  name="twitter:description"  content="None" >
+      
+        <meta  name="twitter:image"  content="https://docs.opencqrs.com/assets/images/social/blog/posts/2026/2026-11-18-missing-aggregate/index.png" >
+      
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#beyond-the-aggregate-root-how-opencqrs-decouples-what-the-aggregate-bundled-together" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://www.opencqrs.com" title="OpenCQRS" class="md-header__button md-logo" aria-label="OpenCQRS" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OpenCQRS
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Beyond the Aggregate Root: How OpenCQRS Decouples What the Aggregate Bundled Together
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/open-cqrs/opencqrs" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../howto/" class="md-tabs__link">
+          
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/" class="md-tabs__link">
+          
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../concepts/" class="md-tabs__link">
+          
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Blog
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://www.opencqrs.com" title="OpenCQRS" class="md-nav__button md-logo" aria-label="OpenCQRS" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    OpenCQRS
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/open-cqrs/opencqrs" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../tutorials/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/01_setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setting up the Environment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/02_command_handling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Handling Commands
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/03_domain_logic/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Developing the Domain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/04_book_reminder/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Handling Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/05_catalog_projection/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Building Read Models from Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/06_testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing the Domain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../howto/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../howto/explicit_type_registration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Registering explicit Event Types
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../howto/upcasting_events/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upcasting Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../howto/running_in_parallel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Reliable Event Handling in a Distributed Environment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/modules/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Modules
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/events/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Representations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Exception Handling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/core_components/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Core Components
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            Core Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/core_components/esdb_client/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ESDB Client
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/core_components/event_repository/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Repository
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/core_components/command_router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Command Router
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/core_components/event_handling_processor/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Handling Processor
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/extension_points/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Extension Points
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            Extension Points
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/extension_points/command_handler/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Defining Command Handlers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/extension_points/state_rebuilding_handler/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Defining State Rebuilding Handlers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/extension_points/event_handler/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Defining Event Handlers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/test_support/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Test Support
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            Test Support
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/test_support/command_handling_test_fixture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Command Handling Tests
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../concepts/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Concepts
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Concepts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/events/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/event_sourcing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Sourcing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/upcasting/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Upcasting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Blog
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Blog
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Archive
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
+            <span class="md-nav__icon md-icon"></span>
+            Archive
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../archive/2026/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2026
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Categories
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_3">
+            <span class="md-nav__icon md-icon"></span>
+            Categories
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/building-opencqrs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Building OpenCQRS
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/cqrs--event-sourcing-essentials/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CQRS & Event Sourcing Essentials
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/engineering/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Engineering
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/event-sourcing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Event Sourcing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/system-evolution--business-logic/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    System Evolution & Business Logic
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../category/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-aggregate-was-really-doing" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the Aggregate Was Really Doing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-scope-where-state-comes-from" class="md-nav__link">
+    <span class="md-ellipsis">
+      Read Scope - Where State Comes From
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#write-target-where-events-go" class="md-nav__link">
+    <span class="md-ellipsis">
+      Write Target - Where Events Go
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consistency-boundary-what-must-not-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consistency Boundary - What Must Not Change
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-vector-one-atomic-write" class="md-nav__link">
+    <span class="md-ellipsis">
+      One Vector, One Atomic Write
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-subjects-dont-share-a-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      When Subjects Don't Share a Hierarchy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#write-boundary-and-check-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Write Boundary and Check Boundary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-buys-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      What This Buys You
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+  <div class="md-content md-content--post" data-md-component="content">
+    <div class="md-sidebar md-sidebar--post" data-md-component="sidebar" data-md-type="navigation">
+      <div class="md-sidebar__scrollwrap">
+        <div class="md-sidebar__inner md-post">
+          <nav class="md-nav md-nav--primary">
+            <div class="md-post__back">
+              <div class="md-nav__title md-nav__container">
+                <a href="../" class="md-nav__link">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+                  <span class="md-ellipsis">
+                    Back to index
+                  </span>
+                </a>
+              </div>
+            </div>
+            
+              <div class="md-post__authors md-typeset">
+                
+                  <div class="md-profile md-post__profile">
+                    <span class="md-author md-author--long">
+                      <img src="../authors/kersten.jpg" alt="Kersten Kriegbaum">
+                    </span>
+                    <span class="md-profile__description">
+                      <strong>
+                        
+                          Kersten Kriegbaum
+                        
+                      </strong>
+                      <br>
+                      Consultant @ Digital Frontiers
+                    </span>
+                  </div>
+                
+              </div>
+            
+            <ul class="md-post__meta md-nav__list">
+              <li class="md-nav__item md-nav__item--section">
+                <div class="md-post__title">
+                  <span class="md-ellipsis">
+                    Metadata
+                  </span>
+                </div>
+                <nav class="md-nav">
+                  <ul class="md-nav__list">
+                    <li class="md-nav__item">
+                      <div class="md-nav__link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V8h14m-3-7v2H8V1H6v2H5c-1.11 0-2 .89-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1m-1 11h-5v5h5z"/></svg>
+                        <time datetime="2026-11-18 00:00:00+00:00" class="md-ellipsis">November 18, 2026</time>
+                      </div>
+                    </li>
+                    
+                    
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 3v15h3V3zm3 2 4 13 3-1-4-13zM5 5v13h3V5zM3 19v2h18v-2z"/></svg>
+                          <span class="md-ellipsis">
+                            in
+                            
+                              <a href="../category/building-opencqrs/">Building OpenCQRS</a></span>
+                        </div>
+                      </li>
+                    
+                    
+                      
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8 8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8m0-18a10 10 0 0 1 10 10 10 10 0 0 1-10 10C6.47 22 2 17.5 2 12A10 10 0 0 1 12 2m.5 5v5.25l4.5 2.67-.75 1.23L11 13V7z"/></svg>
+                          <span class="md-ellipsis">
+                            
+                              18 min read
+                            
+                          </span>
+                        </div>
+                      </li>
+                    
+                  </ul>
+                </nav>
+              </li>
+            </ul>
+            
+          </nav>
+          
+        </div>
+      </div>
+    </div>
+    <article class="md-content__inner md-typeset">
+      
+        
+  
+
+
+
+  
+  
+
+
+<h1 id="beyond-the-aggregate-root-how-opencqrs-decouples-what-the-aggregate-bundled-together">Beyond the Aggregate Root: How <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> Decouples What the Aggregate Bundled Together</h1>
+<p>This article is about a part of <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> that took me a while to grasp, not because the mechanics are hard but because an old modeling habit was in the way. The best way in is a small example. Take a shared bank account: several users can have access to the same account, and one command grants a user that access. It is a few checks and one event, and it is the fastest way to run into a question that a Domain-Driven Design background answers for you and <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> deliberately does not.</p>
+<p>Think about what an access grant is in that domain. It carries rights that change over time, it can be revoked, and when money goes missing you want to know who granted which rights to whom and when. A flag on the account would hold none of that. A grant has its own life and its own history.</p>
+<p>The rule for creating one, though, does not belong to the grant. Whether user-99 may get access to account 4711 depends on the account: it has to exist, and it must not be closed. Nothing about the grant itself can answer that. The thing you check and the thing you create are two different things, and no framework is involved yet.</p>
+<p>Now put this into <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr>. Every event is stored under a subject, a path like <code>/account/4711</code>. A grant with its own history gets its own subject below the account, <code>/account/4711/access/user-99</code>, and that is where the <code>AccessGrantedEvent</code> belongs. Every command has exactly one subject as well, and before the handler runs, the framework loads the events under that subject and <strong><a href="../../concepts/event_sourcing/#reconstructing-the-write-model">rebuilds the state</a></strong> the handler decides on. So which subject should the grant command have: the one where the event ends up, or the one whose state the rules need?</p>
+<p>If you know Domain-Driven Design, you know why this question seems to need exactly one answer. There, the Aggregate Root settles it: the events you read for a decision, the new events you write and the consistency check all belong to the same Aggregate. There is a second way to look at it, which treats those three jobs as separate decisions that only coincide in the simple case. That is the direction Dynamic Consistency Boundaries take, and it is the direction <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> takes, with subject paths instead of a query. In this article we look at what the Aggregate Root actually does, why I think the split is the better default, and how the three parts become independent dimensions that each command can shape on its own.</p>
+<!-- more -->
+
+<h2 id="what-the-aggregate-was-really-doing">What the Aggregate Was Really Doing</h2>
+<p class="annotate">The Aggregate Root is a well-established pattern. Eric Evans introduced it as a central part of tactical <abbr title="Domain Driven Design">DDD</abbr> (1), and Vaughn Vernon's <em>Implementing Domain-Driven Design</em> made it the standard way to apply the pattern. Many developers learned to model a domain by drawing boundaries, picking a root and routing every command through it. The pattern works because one type owns three things at the same time.</p>
+<ol>
+<li>Evans introduced the Aggregate Root in <em>Domain-Driven Design</em> (Addison-Wesley, 2003), the <em>Blue Book</em>. Vernon's <em>Implementing Domain-Driven Design</em> (Addison-Wesley, 2013), the <em>Red Book</em>, is the de-facto handbook for applying the pattern in production systems.</li>
+</ol>
+<p>The first is the <strong>anchor for state reconstruction</strong>. When a command arrives, the framework loads the events of this Aggregate, replays them through the Aggregate class and hands you the reconstructed object. Which events to load is never a question, because the type settles membership. The second is the <strong>target identity for new events</strong>: when the Aggregate validates a command and emits events, they are written to the Aggregate's stream, so its identity is also the address of the new events. You never pick a destination.</p>
+<p>The third is the <strong>consistency boundary</strong>, and this is the one that gets the least attention. Inside the Aggregate, everything is transactionally consistent: the framework appends the new events only if nobody modified the Aggregate concurrently. Between Aggregates you have to accept eventual consistency. <abbr title="Domain Driven Design">DDD</abbr> treats the Aggregate as the unit of transactional safety, so this role is the strategic core of the pattern.</p>
+<p>The following diagram shows the conflation. On the left, all three roles live inside one type. On the right, the same three roles as separate decisions, in the shape <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> gives them:</p>
+<pre class="mermaid"><code>flowchart LR
+    subgraph DDD["One type: DDD Aggregate Root"]
+        ROOT["AggregateRoot&lt;br/&gt;━━━━━━━━━━━━━&lt;br/&gt;Read Scope&lt;br/&gt;Write Target&lt;br/&gt;Consistency Boundary"]
+    end
+
+    subgraph OCQ["Three decisions: OpenCQRS"]
+        direction TB
+        S1["Read Scope:&lt;br/&gt;(Subject, SourcingMode)"]
+        S2["Write Target:&lt;br/&gt;publishRelative /&lt;br/&gt;absolute subject"]
+        S3["Consistency Boundary:&lt;br/&gt;sourcing preconditions +&lt;br/&gt;SubjectCondition +&lt;br/&gt;custom preconditions"]
+    end
+
+    DDD ~~~ OCQ</code></pre>
+<p>Because all three roles share one identity, they look like a single concept, and that is where the question comes from: you look for the one identity to attach the access grant to, because the Aggregate model says such an identity always exists. The model hides the conflation so well that you only notice it once the Aggregate is gone. The bundle is convenient exactly as long as the three coincide, and the moment they do not, the Aggregate leaves you two bad options: grow the boundary until it covers everything the command touches, or cut it and give up the atomic write. Approaches in the direction of Dynamic Consistency Boundaries make the same split. <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> gives each decision a concrete shape: a subject path and a sourcing mode for reading, a publish call for writing, and a <abbr title="The list of Precondition values the CommandRouter hands to the event store together with the captured events; the store checks all of them atomically and rejects the whole batch if one fails.">precondition vector</abbr> for the check.</p>
+<h2 id="read-scope-where-state-comes-from">Read Scope - Where State Comes From</h2>
+<p>Without the Aggregate Root, the first role stands on its own. <strong><a href="../../reference/extension_points/state_rebuilding_handler/">State reconstruction</a></strong> in <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> is controlled by the <strong>Read Scope</strong>. It has two parts: the subject of the command instance and the <strong><a href="../../reference/extension_points/command_handler/#command-handler-definitions"><code>SourcingMode</code></a></strong> of the command class. Both are values, not types, and both can differ per command type, even when two commands work on the same business object.</p>
+<p>The subject is a hierarchical path such as <code>/account/4711</code> or <code>/account/4711/access/user-99</code>. The hierarchy has meaning for the framework: it knows that <code>/account/4711/access/user-99</code> lies below <code>/account/4711</code>. The <code>SourcingMode</code> then tells the framework how to use the subject when reading.</p>
+<p>The examples in this article use a shared bank account domain. Each account is the root of its own subtree, with access grants below it, because a grant has its own history and its own commands: rights change, access gets revoked. You could store the grant events on the account subject instead, and the question from the introduction would never come up. The price is that every rights change sources the whole account with all its deposits to decide about one grant, and every balance projection has to skip access events. Users have a separate hierarchy, because accounts do not own users and users do not own accounts:</p>
+<pre class="mermaid"><code>flowchart TB
+    A["/account/4711"]
+    A1["/account/4711/access/user-99"]
+    A2["/account/4711/access/user-42"]
+    U["/user/user-99"]
+    U2["/user/user-42"]
+
+    A --- A1
+    A --- A2</code></pre>
+<p>Accounts and users are related, but the relationship is expressed through preconditions later, not through the path. The <code>SourcingMode</code> decides how much of a hierarchy a command reads. The enum is short enough to read in full, with the Javadoc tags rendered as text:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">enum</span><span class="w"> </span><span class="n">SourcingMode</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="cm">/** No events will be fetched for the Command&#39;s subject. */</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">NONE</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="cm">/** Events will be fetched for the Command&#39;s subject non-recursively. */</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="n">LOCAL</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="cm">/** Events will be fetched for the Command&#39;s subject recursively. */</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="n">RECURSIVE</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>A <code>GrantAccessCommand</code> with subject <code>/account/4711</code> and <code>RECURSIVE</code> loads the account plus every access grant below it. The handler needs the account to check that it is still open, and it sees the existing grants, so it can tell whether the user already has access. The recursive read has a second effect that shows up later: the framework knows which grant subjects it read, and it will guard the one the handler creates. A <code>DepositCommand</code> on the same subject with <code>LOCAL</code> loads only the account-level events, so the same business object gets two different read scopes. With an Aggregate Root that was impossible, because the Aggregate itself was the unit of loading.</p>
+<details class="info">
+<summary>The defaults</summary>
+<p>The handlers in this article spell out their <code>SourcingMode</code>, but <code>@CommandHandling</code> defaults to <code>RECURSIVE</code>, and <code>Command.getSubjectCondition()</code> defaults to <code>NONE</code>. A handler that declares nothing therefore reads the whole subtree and lets the router guard every subject it read, while the existence of the command's own subject is never checked. Both defaults are worth setting deliberately, as the grant and the deposit do.</p>
+</details>
+<h2 id="write-target-where-events-go">Write Target - Where Events Go</h2>
+<p>The second role of the Aggregate Root is the destination for new events. In <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> the <strong><a href="../../reference/extension_points/command_handler/">command handler</a></strong> sets the destination itself. The command's subject is the default, and the handler can choose any other subject. That answers the question from the introduction: <strong>the command's subject is the read anchor, not the identity of the thing being modified</strong>.</p>
+<p>The handler receives a <strong><a href="../../reference/extension_points/command_handler/#command-handlers"><code>CommandEventPublisher</code></a></strong> to emit events. The interface offers two convenience families and one inherited fallback. <code>publish(event, ...)</code> writes the event to the command's subject. <code>publishRelative(subjectSuffix, event, ...)</code> appends a suffix to the command's subject and writes the event there. The inherited <code>publish(subject, event, ...)</code> takes any absolute subject.</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">CommandEventPublisher</span><span class="o">&lt;</span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">EventPublisher</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span><span class="w"> </span><span class="n">I</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="n">E</span><span class="w"> </span><span class="n">event</span><span class="p">,</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">                  </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="o">?&gt;</span><span class="w"> </span><span class="n">metaData</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">                  </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Precondition</span><span class="o">&gt;</span><span class="w"> </span><span class="n">preconditions</span><span class="p">);</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span><span class="w"> </span><span class="n">I</span><span class="w"> </span><span class="nf">publishRelative</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">subjectSuffix</span><span class="p">,</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">                          </span><span class="n">E</span><span class="w"> </span><span class="n">event</span><span class="p">,</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">                          </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="o">?&gt;</span><span class="w"> </span><span class="n">metaData</span><span class="p">,</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">                          </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Precondition</span><span class="o">&gt;</span><span class="w"> </span><span class="n">preconditions</span><span class="p">);</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="c1">// plus convenience overloads without metaData / preconditions</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Back to the access grant. A <code>GrantAccessCommand</code> is dispatched with subject <code>/account/4711</code>. The handler sources the account state and the existing grants recursively, checks that the grant is allowed and writes the event below the account, to the grant's own subject. Here is the handler, still without any preconditions, which come in the next section:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nd">@CommandHandling</span><span class="p">(</span><span class="n">sourcingMode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SourcingMode</span><span class="p">.</span><span class="na">RECURSIVE</span><span class="p">)</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">grantAccess</span><span class="p">(</span><span class="n">Account</span><span class="w"> </span><span class="n">account</span><span class="p">,</span><span class="w"> </span><span class="n">GrantAccessCommand</span><span class="w"> </span><span class="n">command</span><span class="p">,</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">                        </span><span class="n">CommandEventPublisher</span><span class="o">&lt;</span><span class="n">Account</span><span class="o">&gt;</span><span class="w"> </span><span class="n">publisher</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">account</span><span class="p">.</span><span class="na">isClosed</span><span class="p">())</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AccountClosedException</span><span class="p">();</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">account</span><span class="p">.</span><span class="na">hasAccess</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">userId</span><span class="p">()))</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AccessAlreadyGrantedException</span><span class="p">();</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="n">publisher</span><span class="p">.</span><span class="na">publishRelative</span><span class="p">(</span><span class="s">&quot;access/&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">userId</span><span class="p">(),</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">AccessGrantedEvent</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">userId</span><span class="p">(),</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">rights</span><span class="p">()));</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">}</span>
+</span></code></pre></div>
+<p class="annotate">The event lands at <code>/account/4711/access/user-99</code>. The read scope is the account, the write target is a new subject below it, and two separate mechanisms decide them independently. The check in <code>account.hasAccess</code> works because <code>RECURSIVE</code> sources the grant events along with the account, so the <code>@StateRebuilding</code> handlers of the account see them. The separate subject matters as soon as the grant gets commands of its own: a <code>ChangeRightsCommand</code> on <code>/account/4711/access/user-99</code> sources that one short subject, and a concurrent deposit on the account does not invalidate it, because the deposit never touches the grant's subject (1).</p>
+<ol>
+<li>The checks are per exact subject. A <code>SubjectIsOnEventId</code> for <code>/account/4711/access/user-99</code> only compares that subject's latest event id, and the Javadoc of <code>Precondition</code> in the esdb-client module says the same about <code>SubjectIsPristine</code> and <code>SubjectIsPopulated</code> for events below the given subject. The grant command itself is a different case: it sources the account recursively, so it carries a check on <code>/account/4711</code>, and a concurrent deposit makes it fail.</li>
+</ol>
+<details class="tip">
+<summary>publishRelative is sugar</summary>
+<p><code>publishRelative("access/user-99", event)</code> is a convenience method on top of <code>EventPublisher.publish(subject, event, ...)</code>, which the interface inherits from its parent. With that base method, a command handler can write to any absolute subject. Prefer <code>publishRelative</code> when the destination is a child of the command's subject, because then the call site shows the relationship. Use the absolute variant when the destination is outside the command's hierarchy, for example a system-wide audit log.</p>
+</details>
+<p>If the same handler also has to write an audit record, it uses this absolute method. The event goes to <code>/audit/access-changes</code>, completely outside the read scope of <code>/account/4711</code>. It is still part of the same atomic write batch as the access grant. The framework does not apply it to the instance either: only <code>publish</code> and <code>publishRelative</code> feed the state rebuilding handlers, while the absolute variant records the event and nothing else. So one command writes to two destinations in one atomic step.</p>
+<h2 id="consistency-boundary-what-must-not-change">Consistency Boundary - What Must Not Change</h2>
+<p>The split is most visible in the third role, the consistency boundary. In the Aggregate model the type defines the boundary, and a version check on the Aggregate root enforces it. <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> has no typed root and therefore no Aggregate version. Instead, the consistency boundary is put together at runtime from three independent sources. All of them end up in a single vector of <strong><a href="../../reference/extension_points/command_handler/">preconditions</a></strong> that is attached to the atomic write.</p>
+<p>The first source is the sourcing scope, and you get it for free. For every subject whose events the framework reads to reconstruct state, it automatically adds a <strong><a href="https://docs.eventsourcingdb.io/fundamentals/preconditions/"><code>SubjectIsOnEventId</code></a></strong> precondition to the write. The condition says: this subject must still be at the event id I saw when I read it, otherwise refuse the write. For every subject inside the sourcing scope that the handler writes to for the first time, it adds a <code>SubjectIsPristine</code> precondition: nobody may have touched this subject between my read and my write. You write no consistency code for either, and the vector covers <strong><a href="../../reference/extension_points/command_handler/#consistency-and-atomicity">what the handler read and what it wrote</a></strong>, nothing beyond that.</p>
+<p>The second source is the command itself. <code>Command.SubjectCondition</code> is a declarative property on the command class: <code>NONE</code>, <code>EXISTS</code> or <code>PRISTINE</code>. The framework checks it before the handler runs and also adds a matching precondition to the atomic write. A <code>GrantAccessCommand</code> declares <code>EXISTS</code> on <code>/account/4711</code>, which means "refuse the command if no events have ever been recorded for this account". The framework checks this at sourcing time and enforces it as a <code>SubjectIsPopulated</code> precondition at publish time.</p>
+<div class="admonition warning">
+<p class="admonition-title">SubjectCondition with <abbr title="A property of a command handler definition that controls how events are read for the command's subject: NONE, LOCAL (just that subject), or RECURSIVE (subject and all descendants).">SourcingMode</abbr>.NONE</p>
+<p>With <code>NONE</code> the framework reads nothing, so it cannot reject the command before the handler runs. The matching precondition is still attached to the atomic write, so the store refuses the batch if the condition is violated. Your handler just cannot rely on it while deciding, and it runs once in vain. Prefer <code>LOCAL</code> or <code>RECURSIVE</code> whenever the condition matters to the handler's decision.</p>
+</div>
+<p>The third source shows the decoupling most clearly. Every captured event can carry its own preconditions through <code>CapturedEvent.preconditions()</code>. The grant handler from above can require that the user is registered, and the condition is checked atomically with the write, even though <code>/user/user-99</code> was never in the sourcing scope and the handler never read it. A typed Aggregate has no built-in way to do this. The call looks like this:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">publisher</span><span class="p">.</span><span class="na">publishRelative</span><span class="p">(</span><span class="s">&quot;access/&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">userId</span><span class="p">(),</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">AccessGrantedEvent</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">userId</span><span class="p">(),</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">rights</span><span class="p">()),</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(),</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">Precondition</span><span class="p">.</span><span class="na">SubjectIsPopulated</span><span class="p">(</span><span class="s">&quot;/user/&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">userId</span><span class="p">())));</span>
+</span></code></pre></div>
+<h2 id="one-vector-one-atomic-write">One Vector, One Atomic Write</h2>
+<p>This fragment from <strong><a href="../../reference/core_components/command_router/"><code>CommandRouter.send</code></a></strong> shows how the three sources end up in one vector. The code is simplified, but the shape is the real one. Read it top to bottom:</p>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// new subjects within sourcing scope -&gt; SubjectIsPristine</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">List</span><span class="o">&lt;</span><span class="n">Precondition</span><span class="o">&gt;</span><span class="w"> </span><span class="n">additionalPreconditions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">events</span><span class="p">.</span><span class="na">stream</span><span class="p">()</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">        </span><span class="p">.</span><span class="na">map</span><span class="p">(</span><span class="n">CapturedEvent</span><span class="p">::</span><span class="n">subject</span><span class="p">)</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">        </span><span class="p">.</span><span class="na">filter</span><span class="p">(</span><span class="n">subject</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="cm">/* subject is inside sourcing scope */</span><span class="p">)</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">        </span><span class="p">.</span><span class="na">filter</span><span class="p">(</span><span class="n">subject</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="o">!</span><span class="n">sourcedSubjectIds</span><span class="p">.</span><span class="na">containsKey</span><span class="p">(</span><span class="n">subject</span><span class="p">))</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">        </span><span class="p">.</span><span class="na">map</span><span class="p">(</span><span class="n">Precondition</span><span class="p">.</span><span class="na">SubjectIsPristine</span><span class="p">::</span><span class="k">new</span><span class="p">)</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="p">.</span><span class="na">collect</span><span class="p">(</span><span class="n">toList</span><span class="p">());</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1">// declarative SubjectCondition -&gt; SubjectIsPristine or SubjectIsPopulated</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">getSubjectCondition</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">PRISTINE</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">additionalPreconditions</span><span class="p">.</span><span class="na">add</span><span class="p">(</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">Precondition</span><span class="p">.</span><span class="na">SubjectIsPristine</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">getSubject</span><span class="p">()));</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">EXISTS</span><span class="w">   </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">additionalPreconditions</span><span class="p">.</span><span class="na">add</span><span class="p">(</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">Precondition</span><span class="p">.</span><span class="na">SubjectIsPopulated</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">getSubject</span><span class="p">()));</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="p">}</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="c1">// every sourced subject -&gt; SubjectIsOnEventId at the last seen id</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="n">sourcedSubjectIds</span><span class="p">.</span><span class="na">entrySet</span><span class="p">().</span><span class="na">stream</span><span class="p">()</span>
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">        </span><span class="p">.</span><span class="na">map</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Precondition</span><span class="p">.</span><span class="na">SubjectIsOnEventId</span><span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="na">getKey</span><span class="p">(),</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="na">getValue</span><span class="p">()))</span>
+</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">        </span><span class="p">.</span><span class="na">collect</span><span class="p">(</span><span class="n">toCollection</span><span class="p">(()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">additionalPreconditions</span><span class="p">));</span>
+</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>
+</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="c1">// custom per-event preconditions</span>
+</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="n">events</span><span class="p">.</span><span class="na">stream</span><span class="p">()</span>
+</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">        </span><span class="p">.</span><span class="na">flatMap</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="na">preconditions</span><span class="p">().</span><span class="na">stream</span><span class="p">())</span>
+</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">        </span><span class="p">.</span><span class="na">collect</span><span class="p">(</span><span class="n">toCollection</span><span class="p">(()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">additionalPreconditions</span><span class="p">));</span>
+</span><span id="__span-4-26"><a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>
+</span><span id="__span-4-27"><a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="n">immediateEventPublisher</span><span class="p">.</span><span class="na">publish</span><span class="p">(</span><span class="n">events</span><span class="p">,</span><span class="w"> </span><span class="n">additionalPreconditions</span><span class="p">);</span>
+</span></code></pre></div>
+<p>This code has no Aggregate version and no global lock. The vector lists what must still be true at write time, collected step by step from the command and from what the handler did. For the grant, it holds four kinds of entries: <code>SubjectIsPopulated</code> for <code>/account/4711</code> from the <code>EXISTS</code> condition, <code>SubjectIsOnEventId</code> for the account and for every grant the handler read, <code>SubjectIsPristine</code> for <code>/account/4711/access/user-99</code>, and <code>SubjectIsPopulated</code> for <code>/user/user-99</code> from the handler. The framework passes the vector and the events to one atomic publish call, and the event store either accepts the whole batch or rejects it. A concurrent <code>CloseAccountCommand</code> moves the account to a new event id and the grant is refused, although the grant lives on a subject the close never touched.</p>
+<p>So far the examples were easy. Accounts and their access grants share a subject path, and sourcing <code>/account/4711</code> recursively gives you everything you need to validate a new grant. This is also the case where <abbr title="Domain Driven Design">DDD</abbr>'s Aggregate Root works well: a parent and its children with a clear boundary.</p>
+<h2 id="when-subjects-dont-share-a-hierarchy">When Subjects Don't Share a Hierarchy</h2>
+<p>A transfer between two accounts is different. <code>/account/4711</code> and <code>/account/8203</code> are siblings, neither lies below the other, and no sourcing mode reaches from one to the other. Still, both accounts' rules are evaluated in one place, the transfer handler. That is the trade: one decision, made atomically, at the price that the transfer handler has to know the target's deposit rules, like the frozen check below. The three mechanisms still help, even though the two subjects share no hierarchy.</p>
+<p>In code, it works like this. The handler injects an <strong><a href="../../reference/core_components/event_repository/"><code>EventReader</code></a></strong>, sources <code>/account/8203</code> with it directly, outside the framework's automatic sourcing, and rebuilds the state of the second account in memory, strongly consistent with the event store. While side-sourcing, the handler also remembers the latest event id it saw for <code>/account/8203</code>. It then checks both accounts, captures a <code>WithdrawnEvent</code> on <code>/account/4711</code> and a <code>DepositedEvent</code> on <code>/account/8203</code>, and attaches a custom precondition <code>SubjectIsOnEventId("/account/8203", lastSeenIdOfB)</code> to the deposit event. If the second account changed between the side-source and the atomic publish, the store rejects the batch and the router throws a <strong><a href="../../reference/exceptions/#framework-exceptions"><code>ConcurrencyException</code></a></strong>.</p>
+<details class="info">
+<summary>Why not a Read Model?</summary>
+<p>If a decision depends on the state of <code>/account/8203</code>, sourcing its events directly from the event store gives you a strongly consistent view of the account at this moment. A <strong><a href="../one-truth-many-views/">read model</a></strong> cannot do that. It is eventually consistent by definition, so it may lag behind, and the <code>SubjectIsOnEventId</code> precondition would only detect this at write time, not when you make the decision. A read model is fine when you only need to know whether something exists. When a business rule depends on the current value of state that another command can change, source the events.</p>
+</details>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nd">@CommandHandling</span><span class="p">(</span><span class="n">sourcingMode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SourcingMode</span><span class="p">.</span><span class="na">LOCAL</span><span class="p">)</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">transfer</span><span class="p">(</span><span class="n">Account</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">TransferCommand</span><span class="w"> </span><span class="n">command</span><span class="p">,</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">                     </span><span class="n">CommandEventPublisher</span><span class="o">&lt;</span><span class="n">Account</span><span class="o">&gt;</span><span class="w"> </span><span class="n">publisher</span><span class="p">,</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">                     </span><span class="nd">@Autowired</span><span class="w"> </span><span class="n">EventReader</span><span class="w"> </span><span class="n">eventReader</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="c1">// Side-source /account/B and remember its latest event id.</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="n">AtomicReference</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lastSeenIdOfB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AtomicReference</span><span class="o">&lt;&gt;</span><span class="p">();</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="n">Account</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sourceAccount</span><span class="p">(</span><span class="n">eventReader</span><span class="p">,</span><span class="w"> </span><span class="n">command</span><span class="p">.</span><span class="na">targetSubject</span><span class="p">(),</span><span class="w"> </span><span class="n">lastSeenIdOfB</span><span class="p">);</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">b</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">TargetAccountNotFoundException</span><span class="p">();</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="na">balance</span><span class="p">().</span><span class="na">compareTo</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">amount</span><span class="p">())</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">InsufficientFundsException</span><span class="p">();</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">b</span><span class="p">.</span><span class="na">isFrozen</span><span class="p">())</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">TargetFrozenException</span><span class="p">();</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">    </span><span class="n">publisher</span><span class="p">.</span><span class="na">publish</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">WithdrawnEvent</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">amount</span><span class="p">()));</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">    </span><span class="n">publisher</span><span class="p">.</span><span class="na">publish</span><span class="p">(</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">        </span><span class="n">command</span><span class="p">.</span><span class="na">targetSubject</span><span class="p">(),</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">DepositedEvent</span><span class="p">(</span><span class="n">command</span><span class="p">.</span><span class="na">amount</span><span class="p">()),</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">        </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(),</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">        </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">Precondition</span><span class="p">.</span><span class="na">SubjectIsOnEventId</span><span class="p">(</span>
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">            </span><span class="n">command</span><span class="p">.</span><span class="na">targetSubject</span><span class="p">(),</span><span class="w"> </span><span class="n">lastSeenIdOfB</span><span class="p">.</span><span class="na">get</span><span class="p">())));</span>
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>LOCAL</code> is deliberate. The transfer needs the balance, which lives on the account subject, and sourcing recursively would pull every grant into the consistency boundary, so a concurrent rights change on some grant would make the transfer fail for no reason. Three things in this handler are up to you, because the framework cannot do them: reading <code>/account/B</code> through <code>EventReader</code> instead of <code>Command.getSubject()</code>, applying B's events to an <code>Account</code> yourself, and passing the observed event id into a <code>SubjectIsOnEventId</code> precondition on the deposit event. Everything else, including the atomic publish at the end, is the usual flow with one extra precondition. Retrying after a <code>ConcurrencyException</code> is the caller's decision, and the framework marks the exception as transient for exactly that purpose.</p>
+<details class="info">
+<summary>What sourceAccount does</summary>
+<div class="language-java highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">private</span><span class="w"> </span><span class="n">Account</span><span class="w"> </span><span class="nf">sourceAccount</span><span class="p">(</span><span class="n">EventReader</span><span class="w"> </span><span class="n">reader</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">subject</span><span class="p">,</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">                              </span><span class="n">AtomicReference</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lastSeenId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="n">AtomicReference</span><span class="o">&lt;</span><span class="n">Account</span><span class="o">&gt;</span><span class="w"> </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AtomicReference</span><span class="o">&lt;&gt;</span><span class="p">();</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="n">reader</span><span class="p">.</span><span class="na">consumeUpcasted</span><span class="p">(</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">        </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">consumer</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="na">read</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(),</span><span class="w"> </span><span class="n">consumer</span><span class="p">),</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">        </span><span class="p">(</span><span class="n">callback</span><span class="p">,</span><span class="w"> </span><span class="n">raw</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">            </span><span class="n">lastSeenId</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">raw</span><span class="p">.</span><span class="na">id</span><span class="p">());</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">            </span><span class="n">callback</span><span class="p">.</span><span class="na">convert</span><span class="p">(</span><span class="n">event</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">state</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">Account</span><span class="p">.</span><span class="na">apply</span><span class="p">(</span><span class="n">state</span><span class="p">.</span><span class="na">get</span><span class="p">(),</span><span class="w"> </span><span class="n">event</span><span class="p">)));</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">        </span><span class="p">});</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">state</span><span class="p">.</span><span class="na">get</span><span class="p">();</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>Account.apply</code> dispatches to the same methods the <code>@StateRebuilding</code> handlers use. The router's own application logic is not public, so this dispatch is yours to write. Remembering the raw event id is the part the framework would otherwise do for you.</p>
+</details>
+<p class="annotate">You could call this <strong>transactional consistency through the back door</strong> (1): Optimistic Concurrency Control, <abbr title="Optimistic Concurrency Control - concurrency strategy that does not block on read, instead validating that observed state has not changed at write time.">OCC</abbr> for short, across two subjects, enforced through preconditions instead of a shared lock. You can build this with Aggregates too, but then you have to assemble the precondition plumbing by hand, outside the framework's command pattern. For cross-hierarchy cases <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> does not promise more than a classical Aggregate. It does give you the <abbr title="The list of Precondition values the CommandRouter hands to the event store together with the captured events; the store checks all of them atomically and rejects the whole batch if one fails.">precondition vector</abbr> as a built-in tool when a single command really needs to span several subjects.</p>
+<ol>
+<li>Shorthand for two-subject Optimistic Concurrency Control over a per-event <abbr title="The list of Precondition values the CommandRouter hands to the event store together with the captured events; the store checks all of them atomically and rejects the whole batch if one fails.">precondition vector</abbr>. The "transactional" part is the all-or-nothing semantics: the atomic publish either commits every event with all observed preconditions still intact, or it commits none. The "back door" part is that the developer assembles this vector by hand instead of getting it from a typed boundary.</li>
+</ol>
+<p>When the price of knowing the target's rules grows, because they are many or belong to another team, a single handler stops being the right place. Then you are looking at coordination that cannot be reduced to one decision: several instances each have their own write-side rule, each rule can fail independently, and a failure in a later step needs explicit compensation. The usual name for the answer is a <abbr title="A coordination pattern that mediates between multiple instances each carrying their own write-side rule, using event handlers and compensating commands. In OpenCQRS, a Saga is just another instance with regular handlers - no special framework concept.">Saga</abbr>, or a process manager. <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> has no type and no term for it. The samples repository calls it a <abbr title="A coordination pattern that mediates between multiple instances each carrying their own write-side rule, using event handlers and compensating commands. In OpenCQRS, a Saga is just another instance with regular handlers - no special framework concept.">Saga</abbr>, so this article does too, and the box below points to a worked example.</p>
+<details class="info">
+<summary>A worked <abbr title="A coordination pattern that mediates between multiple instances each carrying their own write-side rule, using event handlers and compensating commands. In OpenCQRS, a Saga is just another instance with regular handlers - no special framework concept.">Saga</abbr> example</summary>
+<p>The <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> samples repository includes a runnable <abbr title="A coordination pattern that mediates between multiple instances each carrying their own write-side rule, using event handlers and compensating commands. In OpenCQRS, a Saga is just another instance with regular handlers - no special framework concept.">Saga</abbr> at <strong><a href="https://github.com/open-cqrs/opencqrs-samples/tree/main/implementing-sagas">opencqrs-samples/implementing-sagas</a></strong>. The domain is a library lending workflow. <code>Reader</code> enforces "at most two active loans" on its own state, <code>Book</code> enforces "only one borrower at a time" on its own state, and a <code>Loan</code> instance coordinates between them. The <code>@EventHandling("loan")</code> methods, spread over <code>LoanHandling</code>, <code>ReaderHandling</code> and <code>BookHandling</code>, react to events from Reader and Book, dispatch follow-up commands through <code>CommandRouter</code> and send compensating commands (<code>RejectBookRequestCommand</code> → <code>RemoveLoanFromReaderCommand</code> → <code>CancellLoanCommand</code>) when a later step fails. The sample shows that a <abbr title="A coordination pattern that mediates between multiple instances each carrying their own write-side rule, using event handlers and compensating commands. In OpenCQRS, a Saga is just another instance with regular handlers - no special framework concept.">Saga</abbr> in <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> is an ordinary instance with ordinary <code>@CommandHandling</code> and <code>@EventHandling</code> methods. Its state just happens to be a workflow.</p>
+</details>
+<h2 id="write-boundary-and-check-boundary">Write Boundary and Check Boundary</h2>
+<p>The next diagram shows a distinction that is easy to miss. The atomic write boundary, either all my events land or none do, is not the same as the consistency check boundary. An <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> command can write atomically to subjects it never sourced, and it can include subjects in the consistency check that it never writes to. Classical Aggregates treat both as one boundary:</p>
+<pre class="mermaid"><code>flowchart LR
+    subgraph WRITE["Atomic Write Boundary"]
+        direction TB
+        W1["/account/4711&lt;br/&gt;WithdrawnEvent"]
+        W2["/account/8203&lt;br/&gt;DepositedEvent"]
+    end
+
+    subgraph CHECK["Consistency Check Boundary"]
+        direction TB
+        C1["/account/4711&lt;br/&gt;sourced + SubjectIsOnEventId"]
+        C2["/account/8203&lt;br/&gt;not sourced&lt;br/&gt;custom SubjectIsOnEventId"]
+    end
+
+    WRITE -.-&gt; CHECK</code></pre>
+<p>For the transfer, both lists happen to name the same two subjects, but they were filled from different places. The withdrawal's subject entered the check list through sourcing, the deposit's subject through the precondition the handler attached by hand. The grant from earlier shows the lists diverging: <code>/user/user-99</code> is in the check list and in no write list at all, while the audit subject is in the write list and in no check list.</p>
+<p class="annotate">The introduction named <strong>Dynamic Consistency Boundaries</strong> (<abbr title="Dynamic Consistency Boundaries - Sara Pellegrini's framing of event-store consistency expressed as a predicate over events rather than as a bounded type.">DCB</abbr>), as developed by Sara Pellegrini (1), as the direction this split comes from. <abbr title="Dynamic Consistency Boundaries - Sara Pellegrini's framing of event-store consistency expressed as a predicate over events rather than as a bounded type.">DCB</abbr> goes one step further and defines the boundary as a predicate over events instead of a set of subject identifiers. <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> sits between the typed Aggregate and <abbr title="Dynamic Consistency Boundaries - Sara Pellegrini's framing of event-store consistency expressed as a predicate over events rather than as a bounded type.">DCB</abbr>: more flexible than the first, narrower than the second. The <strong><a href="../the-write-model-where-business-logic-lives/">write model article</a></strong> introduces <abbr title="Dynamic Consistency Boundaries - Sara Pellegrini's framing of event-store consistency expressed as a predicate over events rather than as a bounded type.">DCB</abbr> in more depth.</p>
+<ol>
+<li>Pellegrini developed Dynamic Consistency Boundaries in conference talks and articles as a generalization of event-sourced consistency. The key change is that a consistency boundary is a predicate over events (a query), not a bounded type or a set of subject identifiers. Every event that matches the predicate is part of the boundary, no matter where it is stored. Most commands source from and write to the same subject, so the path already settles who "owns" an event. This article is about the rarer cases where reading and writing diverge. <abbr title="Dynamic Consistency Boundaries - Sara Pellegrini's framing of event-store consistency expressed as a predicate over events rather than as a bounded type.">DCB</abbr> is about the even rarer cases where no single owner makes sense at all.</li>
+</ol>
+<h2 id="what-this-buys-you">What This Buys You</h2>
+<p>With the three dimensions separated, each command defines its own boundaries. Different commands can work on the same business object with different read scopes, write targets and consistency requirements, and none of this is fixed at the type level. The flip side is that getting the runtime composition right is now the developer's job. A <code>GrantAccessCommand</code> reads recursively, writes below the account to the grant's own subject, and requires that the user exists outside its hierarchy. A <code>DepositCommand</code> reads locally, writes to its own subject and only requires that the account still exists.</p>
+<p>The lifecycle of a single command shows all three dimensions. The <strong><a href="../../reference/core_components/command_router/">router</a></strong> sources the events it needs, the handler decides what to write, and the framework assembles the <abbr title="The list of Precondition values the CommandRouter hands to the event store together with the captured events; the store checks all of them atomically and rejects the whole batch if one fails.">precondition vector</abbr> and publishes everything in one atomic batch. The sequence diagram follows one command through the router:</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant C as Caller
+    participant R as CommandRouter
+    participant ES as EventStore
+    participant H as CommandHandler
+
+    C-&gt;&gt;R: send(command)
+    Note over R: Read Scope:&lt;br/&gt;resolve (Subject, SourcingMode)
+    R-&gt;&gt;ES: read events for command.subject
+    ES--&gt;&gt;R: sourced events
+    Note over R: rebuild instance state&lt;br/&gt;via StateRebuildingHandlers
+    R-&gt;&gt;H: handle(instance, command, capturer)
+    Note over H: Write Target:&lt;br/&gt;publish / publishRelative /&lt;br/&gt;absolute subject
+    H--&gt;&gt;R: captured events + custom preconditions
+    Note over R: Consistency Boundary:&lt;br/&gt;assemble precondition vector&lt;br/&gt;(sourcing + SubjectCondition + custom)
+    R-&gt;&gt;ES: publish(events, preconditions)
+    ES--&gt;&gt;R: ok or precondition failed
+    R--&gt;&gt;C: result or ConcurrencyException</code></pre>
+<p>The Read Scope is decided at the top, before the handler runs, and the Write Target in the middle, by the handler. The Consistency Boundary is assembled at the bottom from everything before it plus the preconditions the handler attached. Each step owns only its own concern, and no Aggregate-like identity carries all three through the whole flow.</p>
+<p>Now the answer to the opening question is short. The command is dispatched against <code>/account/{id}</code>, the read anchor, and the handler writes the <code>AccessGrantedEvent</code> below it, to <code>/account/{id}/access/{userId}</code>, via <code>publishRelative</code>. The consistency boundary consists of the account's <code>EXISTS</code> condition, the event ids of everything the handler sourced, the pristine check on the new grant subject, and the check that the user exists outside the hierarchy. The search for one place to put the event came from a model that assumes a single anchor. With three separate mechanisms, each part of the question has its own answer.</p>
+<p><abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> leaves that anchor out because bundling the three roles in one type hides that each of them is a decision. The same holds one level up. Business processes across subjects exist as well, and <abbr title="An opinionated, lightweight Java/Kotlin framework for CQRS and Event Sourcing on top of EventSourcingDB, maintained by digital frontiers.">OpenCQRS</abbr> runs them with ordinary subjects and ordinary handlers, as the library sample shows. The sample covers the mechanics. The decisions behind them, where the process state lives, which step compensates which, and what happens when a step runs twice, are a topic of their own.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+      
+    </article>
+  </div>
+
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+        
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../assert-on-what-happened-not-who-was-called/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Assert on What Happened, Not on Who Was Called: Black-Box Testing in Event-Sourced Systems">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Assert on What Happened, Not on Who Was Called: Black-Box Testing in Event-Sourced Systems
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+    <a href="mailto:opencqrs@digitalfrontiers.de" target="_blank" rel="noopener" title="" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4l217.6 163.2c11.4 8.5 27 8.5 38.4 0l217.6-163.2c12.1-9.1 19.2-23.3 19.2-38.4 0-26.5-21.5-48-48-48zM0 176v208c0 35.3 28.7 64 64 64h384c35.3 0 64-28.7 64-64V176L294.4 339.2a63.9 63.9 0 0 1-76.8 0z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://blog.digitalfrontiers.de" target="_blank" rel="noopener" title="blog.digitalfrontiers.de" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M192 32c0 17.7 14.3 32 32 32 123.7 0 224 100.3 224 224 0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32 70.7 0 128 57.3 128 128 0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48-48-21.5-48-48z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/company/digital-frontiers-gmbh-co-kg" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5m282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.digitalfrontiers.de" target="_blank" rel="noopener" title="www.digitalfrontiers.de" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M352 256c0 22.2-1.2 43.6-3.3 64H163.4c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64h185.3c2.2 20.4 3.3 41.8 3.3 64m28.8-64h123.1c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64m112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6 78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7 10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5 11.6 26 20.9 58.2 27 94.7m-209 0H18.6c30-74.1 93.6-130.9 172-151.6-25.5 34.2-45.3 87.7-55.3 151.6M8.1 192h123.1c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64m186.6 254.6c-11.6-26-20.9-58.2-27-94.6h176.6c-6.1 36.4-15.5 68.6-27 94.6-10.5 23.6-22.2 40.7-33.5 51.5-11.2 10.7-20.5 13.9-27.8 13.9s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6-78.4-20.7-142-77.5-172-151.6zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6 25.5-34.2 45.2-87.7 55.3-151.6h116.7z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.footer", "navigation.tabs", "navigation.indexes", "content.code.copy", "content.code.annotate", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f1b6f286.min.js"></script>
+      
+        <script src="../../js/open_external_in_new_tab.js"></script>
+      
+    
+  </body>
+</html>
