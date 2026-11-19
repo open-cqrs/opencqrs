@@ -1,0 +1,17 @@
+com.opencqrs.esdb.client
+com.opencqrs.esdb.client.eventql
+com.opencqrs.esdb.client.jackson
+com.opencqrs.framework
+com.opencqrs.framework.client
+com.opencqrs.framework.command
+com.opencqrs.framework.command.cache
+com.opencqrs.framework.eventhandler
+com.opencqrs.framework.eventhandler.partitioning
+com.opencqrs.framework.eventhandler.progress
+com.opencqrs.framework.metadata
+com.opencqrs.framework.persistence
+com.opencqrs.framework.reflection
+com.opencqrs.framework.serialization
+com.opencqrs.framework.transaction
+com.opencqrs.framework.types
+com.opencqrs.framework.upcaster
