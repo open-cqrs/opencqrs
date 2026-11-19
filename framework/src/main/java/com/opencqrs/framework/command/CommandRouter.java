@@ -245,7 +245,6 @@ public final class CommandRouter {
 
         var eventCapturer = new CommandEventCapturer<>(
                 fromCacheMerged.instance(), command.getSubject(), relevantSRHDs.orElseGet(List::of));
-
         R result =
                 switch (commandHandlerDefinition.handler()) {
                     case CommandHandler.ForCommand<Object, Command, R> handler ->
@@ -290,6 +289,7 @@ public final class CommandRouter {
                     .collect(toCollection(() -> additionalPreconditions));
             immediateEventPublisher.publish(events, additionalPreconditions);
         }
+
         return result;
     }
 

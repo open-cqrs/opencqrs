@@ -27,7 +27,9 @@ public class EventUpcastersTest {
             Instant.now(),
             "application/json",
             "1",
-            "0");
+            "0",
+            null,
+            null);
 
     @Mock(strictness = Mock.Strictness.LENIENT)
     private EventUpcaster upcaster1;

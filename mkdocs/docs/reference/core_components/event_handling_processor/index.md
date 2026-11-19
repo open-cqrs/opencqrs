@@ -87,7 +87,7 @@ configuration properties:
 * an {{ javadoc_class_ref("com.opencqrs.framework.persistence.EventReader") }} instance for observing [events](../../events/index.md)
 * a {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.progress.ProgressTracker") }} instance tracking the processing progress for the processing group and specified partition
 * an {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.partitioning.EventSequenceResolver") }} instance to derive a sequence id from an event
-* a {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.partitioning.PartitionKeyResolver") }} instance derive the assigned partition number from an event's sequence id
+* a {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.partitioning.PartitionKeyResolver") }} instance to derive the assigned partition number from an event's sequence id
 * a list of {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.EventHandlerDefinition") }} instances belonging the same processing group
 * a {{ javadoc_class_ref("com.opencqrs.framework.eventhandler.BackOff") }} instance used to determine the back-off delay before retrying failed event handlers
 

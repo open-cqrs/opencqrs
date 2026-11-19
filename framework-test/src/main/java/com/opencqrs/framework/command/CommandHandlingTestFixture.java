@@ -267,7 +267,9 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 event.time() != null ? event.time() : time(),
                                 "application/test",
                                 UUID.randomUUID().toString(),
-                                UUID.randomUUID().toString());
+                                UUID.randomUUID().toString(),
+                                null,
+                                null);
 
                         AtomicReference reference = new AtomicReference<@Nullable Object>(state());
                         if (!Util.applyUsingHandlers(
@@ -278,7 +280,7 @@ public class CommandHandlingTestFixture<C extends Command> {
                                 rawEvent.subject(),
                                 event.payload(),
                                 event.metaData() != null ? event.metaData() : Map.of(),
-                                rawEvent)) {
+                                rawEvent)) { // TODO: Find better solution (?)
                             throw new IllegalArgumentException(
                                     "No suitable state rebuilding handler definition found for event type: "
                                             + event.payload().getClass().getSimpleName());
