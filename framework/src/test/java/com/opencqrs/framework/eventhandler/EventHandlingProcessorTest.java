@@ -2,6 +2,7 @@
 package com.opencqrs.framework.eventhandler;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,7 +24,9 @@ import java.lang.reflect.UndeclaredThrowableException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -40,6 +43,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+/**
+ * Unit test for the {@link EventHandlingProcessor}.
+ *
+ * @see EventHandlingProcessorIntegrationTest
+ */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class EventHandlingProcessorTest {
@@ -54,7 +62,7 @@ public class EventHandlingProcessorTest {
     @Mock
     private EsdbClient client;
 
-    private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     @Mock
     private ProgressTracker progressTracker;
@@ -203,11 +211,12 @@ public class EventHandlingProcessorTest {
         doReturn(0L).when(partitionKeyResolver).resolve("seq01");
     }
 
-    private void startSubject() {
-        executor.submit(() -> {
-            subject.start().get();
+    private Future<Thread> startSubject() {
+        return executor.submit(() -> {
+            Thread eventProcessorThread = Thread.currentThread();
+            subject.run();
             subjectFinished = true;
-            return null;
+            return eventProcessorThread;
         });
     }
 
@@ -239,6 +248,141 @@ public class EventHandlingProcessorTest {
             verifyNoInteractions(backOff, backOffExecution);
             assertThat(lastProgress).isEqualTo(new Progress.Success(raw.id()));
         });
+    }
+
+    @Test
+    public void eventHandlerRunsOnEventProcessorThread() throws Exception {
+        var handlerThread = new AtomicReference<Thread>();
+        var event = new BookAddedEvent("4711");
+        doAnswer(invocation -> {
+                    handlerThread.set(Thread.currentThread());
+                    // terminate the loop so the processing thread is returned via the future
+                    throw new CqrsFrameworkException.NonTransientException("terminating");
+                })
+                .when(eventHandler1)
+                .handle(event);
+
+        submitEvent(event, Map.of());
+
+        Thread eventProcessorThread = startSubject().get();
+
+        assertThat(handlerThread.get()).isSameAs(eventProcessorThread);
+    }
+
+    @Test
+    public void processorNotRunningAfterEventHandlingLoopTerminated() throws Exception {
+        doThrow(new CqrsFrameworkException.NonTransientException("terminating"))
+                .when(eventReader)
+                .consumeRaw(any(), any());
+
+        subject.start().get(5, TimeUnit.SECONDS);
+
+        assertThat(subject.isRunning()).isFalse();
+    }
+
+    @Test
+    public void restartedProcessorNotStoppedByPreviousEventHandlingLoopTerminatingLate() throws Exception {
+        var calls = new AtomicInteger();
+        var previousLoopBusy = new CountDownLatch(1);
+        var releasePreviousLoop = new CountDownLatch(1);
+        var restartedLoopObserving = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    if (calls.getAndIncrement() == 0) {
+                        // simulates in-flight work, which finishes only after the processor has been restarted
+                        previousLoopBusy.countDown();
+                        awaitUninterruptibly(releasePreviousLoop);
+                        throw new ClientInterruptedException("previous loop interrupted", null);
+                    }
+                    restartedLoopObserving.countDown();
+                    try {
+                        new CountDownLatch(1).await(); // observing, until interrupted
+                    } catch (InterruptedException e) {
+                        throw new ClientInterruptedException("restarted loop interrupted", e);
+                    }
+                    return null;
+                })
+                .when(eventReader)
+                .consumeRaw(any(), any());
+
+        Future<?> previous = subject.start();
+        previousLoopBusy.await();
+        subject.stop();
+        Future<?> restarted = subject.start();
+        restartedLoopObserving.await();
+
+        releasePreviousLoop.countDown();
+        previous.get(5, TimeUnit.SECONDS);
+
+        try {
+            assertThat(subject.isRunning())
+                    .as("restarted loop survives the late termination of the previous loop")
+                    .isTrue();
+            assertThat(restarted)
+                    .as("restarted loop not interrupted by the previous loop")
+                    .isNotDone();
+        } finally {
+            subject.stop();
+        }
+    }
+
+    @Test
+    public void processorStoppedEvenIfEventHandlingLoopNeverBlocks() throws Exception {
+        var consumeRawCalled = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    consumeRawCalled.countDown();
+                    return null; // returns immediately, i.e. the loop never reaches a blocking operation
+                })
+                .when(eventReader)
+                .consumeRaw(any(), any());
+
+        Future<?> loop = subject.start();
+        consumeRawCalled.await();
+        subject.stop();
+
+        loop.get(5, TimeUnit.SECONDS);
+        assertThat(subject.isRunning()).isFalse();
+    }
+
+    @Test
+    public void secondStartRejectedWithoutAffectingRunningEventHandlingLoop() throws Exception {
+        var observing = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    observing.countDown();
+                    try {
+                        new CountDownLatch(1).await(); // observing, until interrupted
+                    } catch (InterruptedException e) {
+                        throw new ClientInterruptedException("loop interrupted", e);
+                    }
+                    return null;
+                })
+                .when(eventReader)
+                .consumeRaw(any(), any());
+
+        Future<?> loop = subject.start();
+        observing.await();
+
+        try {
+            assertThatThrownBy(subject::start).isInstanceOf(IllegalStateException.class);
+            assertThat(subject.isRunning()).isTrue();
+            assertThat(loop).as("running loop not affected by rejected start").isNotDone();
+        } finally {
+            subject.stop();
+        }
+    }
+
+    private static void awaitUninterruptibly(CountDownLatch latch) {
+        boolean interrupted = false;
+        while (true) {
+            try {
+                latch.await();
+                break;
+            } catch (InterruptedException e) {
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Test
@@ -457,6 +601,56 @@ public class EventHandlingProcessorTest {
             verify(eventReader, atMost(1)).consumeRaw(any(), any());
             verifyNoInteractions(eventHandler1, eventHandler2, backOffExecution);
 
+            assertThat(lastProgress).isNull();
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            classes = {
+                CqrsFrameworkException.TransientException.class,
+                CqrsFrameworkException.class,
+                RuntimeException.class,
+                Error.class
+            })
+    public void progressTrackerRetriedOnTransientError(Class<? extends Throwable> clazz) {
+        BookAddedEvent event = new BookAddedEvent("4711");
+        Map<String, ?> metaData = Map.of("purpose", "testing");
+        Event raw = submitEvent(event, metaData);
+
+        doThrow(clazz)
+                .doAnswer(invocationOnMock -> {
+                    lastProgress = (Progress)
+                            invocationOnMock.getArgument(2, Supplier.class).get();
+                    return null;
+                })
+                .when(progressTracker)
+                .proceed(any(), eq(0L), any());
+
+        startSubject();
+
+        await().untilAsserted(() -> {
+            verify(backOff).start();
+            verify(backOffExecution, atLeast(1)).next();
+            verify(eventHandler1, atLeast(1)).handle(event);
+            assertThat(lastProgress).isEqualTo(new Progress.Success(raw.id()));
+        });
+    }
+
+    @Test
+    public void eventProcessorTerminatingOnUnrecoverableNonTransientErrorFromProgressTracker() {
+        BookAddedEvent event = new BookAddedEvent("4711");
+        submitEvent(event, Map.of());
+
+        doThrow(new CqrsFrameworkException.NonTransientException("progress commit failed"))
+                .when(progressTracker)
+                .proceed(any(), eq(0L), any());
+
+        startSubject();
+
+        await().untilAsserted(() -> {
+            assertThat(subjectFinished).isTrue();
+            verifyNoInteractions(backOff, backOffExecution);
             assertThat(lastProgress).isNull();
         });
     }

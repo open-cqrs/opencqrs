@@ -11,11 +11,8 @@ import java.util.List;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
 import org.springframework.integration.jdbc.lock.DefaultLockRepository;
@@ -66,13 +63,9 @@ public class EventHandlingProcessorAutoConfigurationIntegrationTest {
     }
 
     @Test
-    public void eventHandlingProcessorsRunning(
-            @Autowired @Qualifier("openCqrsEventHandlingProcessorContext")
-                    ConfigurableApplicationContext eventHandlingContext) {
-        await().untilAsserted(() -> assertThat(AssertableApplicationContext.get(() -> eventHandlingContext))
-                .getBeans(EventHandlingProcessor.class)
-                .hasSize(3 + 2)
-                .allSatisfy((s, eh) -> assertThat(eh.isRunning()).isTrue()));
+    public void eventHandlingProcessorsRunning(@Autowired List<EventHandlingProcessor> eventHandlingProcessors) {
+        assertThat(eventHandlingProcessors).hasSize(3 + 2).allSatisfy(eh -> assertThat(eh.isRunning())
+                .isTrue());
     }
 
     @Test
