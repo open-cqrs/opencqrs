@@ -77,7 +77,8 @@ public class ClientRequestErrorMapperTest {
                         new ClientException.HttpException.HttpClientException("test", 408),
                         CqrsFrameworkException.TransientException.class),
                 Arguments.of(
-                        new ClientException.HttpException.HttpClientException("test", 409), ConcurrencyException.class),
+                        new ClientException.HttpException.HttpClientException("test", 409),
+                        ConflictingWriteException.class),
                 Arguments.of(new ClientException.InterruptedException("test"), ClientInterruptedException.class));
     }
 

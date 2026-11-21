@@ -4,7 +4,10 @@ package com.opencqrs.framework.command;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.opencqrs.framework.command.CommandHandlingTestContextCustomizerFactory.InterceptorsEnabled;
+import com.opencqrs.framework.command.interceptor.CommandInterceptor;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -30,6 +33,23 @@ public class CommandHandlingTestAutoConfigurationTest {
                                 .isSameAs(context.getBean("myStateRebuildingHandlerDefinition"));
                     });
         });
+    }
+
+    @Test
+    public void initialized_CommandHandlingTestFixture_BuilderIncludingInterceptors() {
+        contextRunner
+                .withBean("noopInterceptor", CommandInterceptor.class, Mockito::mock)
+                .run(context -> assertThat(context.getBean(CommandHandlingTestFixture.Builder.class).interceptors)
+                        .hasSize(1));
+    }
+
+    @Test
+    public void initialized_CommandHandlingTestFixture_BuilderIncludingInterceptorsDisabled() {
+        contextRunner
+                .withBean("noopInterceptor", CommandInterceptor.class, Mockito::mock)
+                .withBean(InterceptorsEnabled.class, () -> new InterceptorsEnabled(false))
+                .run(context -> assertThat(context.getBean(CommandHandlingTestFixture.Builder.class).interceptors)
+                        .isEmpty());
     }
 
     @Test

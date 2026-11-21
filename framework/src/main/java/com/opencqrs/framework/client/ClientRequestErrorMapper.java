@@ -20,8 +20,8 @@ public final class ClientRequestErrorMapper {
      * @param handler encapsulates calls to {@link com.opencqrs.esdb.client.EsdbClient} operations
      * @return the response from the handler if successful
      * @param <T> generic response type for the handler
-     * @throws ConcurrencyException in case of {@link ClientException.HttpException.HttpClientException} with status
-     *     code {@code 409}
+     * @throws ConflictingWriteException in case of {@link ClientException.HttpException.HttpClientException} with
+     *     status code {@code 409}
      * @throws ClientInterruptedException in case of {@link ClientException.InterruptedException}
      * @throws CqrsFrameworkException.TransientException in case of
      *     {@link ClientException.HttpException.HttpClientException} with status code {@code 408}
@@ -53,7 +53,7 @@ public final class ClientRequestErrorMapper {
                 case 408:
                     throw new CqrsFrameworkException.TransientException("http request timeout", e);
                 case 409:
-                    throw new ConcurrencyException("concurrency error", e);
+                    throw new ConflictingWriteException("concurrency error", e);
                 default:
                     throw new CqrsFrameworkException.NonTransientException("http client error", e);
             }

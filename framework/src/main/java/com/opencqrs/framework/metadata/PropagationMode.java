@@ -1,16 +1,11 @@
 /* Copyright (C) 2025 OpenCQRS and contributors */
 package com.opencqrs.framework.metadata;
 
-import com.opencqrs.framework.command.Command;
-import com.opencqrs.framework.command.CommandRouter;
-import java.util.Map;
-
 /**
  * Specifies how meta-data is going to be propagated from source (for instance command meta-data) to destination (for
  * instance published event meta-data).
  *
- * @see PropagationUtil#propagateMetaData(Map, Map, PropagationMode)
- * @see CommandRouter#send(Command, Map)
+ * @see MetaDataPropagatingCommandInterceptor
  */
 public enum PropagationMode {
 

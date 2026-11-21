@@ -7,6 +7,7 @@ import com.opencqrs.esdb.client.Event;
  * Interface to be implemented by commands that can be handled by {@link CommandHandler}s.
  *
  * @see CommandRouter#send(Command)
+ * @see com.opencqrs.framework.command.interceptor.CommandInterceptor
  */
 public interface Command {
 
